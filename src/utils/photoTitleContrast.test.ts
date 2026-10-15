@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle } from './photoTitleContrast';
+import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 
 const pixels = (...brightness: number[]) => new Uint8ClampedArray(
     brightness.flatMap(value => [value, value, value, 255]),
@@ -43,25 +44,48 @@ describe('photo title contrast', () => {
         vi.spyOn(title, 'getBoundingClientRect').mockReturnValue({
             left: -9967, top: 32, width: 400, height: 60,
         } as DOMRect);
-        const context = { drawImage: vi.fn(), getImageData: vi.fn(() => ({ data: pixels(255, 255) })) };
+        const context = { drawImage: vi.fn(), clearRect: vi.fn(), getImageData: vi.fn(() => ({ data: pixels(255, 255) })) };
         vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D);
         return { root, image, context };
     };
 
-    it('samples only the actual title rectangle, scales coordinates and applies the result before export', async () => {
+    it('takes two bounded samples on one canvas for independent whole-photo color and title contrast', async () => {
         const { root, image, context } = setupPhoto();
+        const photoPixels = new Uint8ClampedArray([200, 40, 20, 255]);
+        context.getImageData.mockReturnValueOnce({ data: photoPixels });
         await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(context.drawImage).toHaveBeenCalledExactlyOnceWith(image, 64, 64, 800, 120, 0, 0, 48, 24);
+        expect(context.drawImage).toHaveBeenCalledTimes(2);
+        expect(context.drawImage).toHaveBeenNthCalledWith(1, image, 0, 0, 48, 24);
+        expect(context.drawImage).toHaveBeenNthCalledWith(2, image, 64, 64, 800, 120, 0, 0, 48, 24);
+        expect(context.clearRect).toHaveBeenCalledExactlyOnceWith(0, 0, 48, 24);
+        expect(context.getImageData).toHaveBeenCalledTimes(2);
+        expect(root.style.getPropertyValue('--photo-result-tint')).toBe(getPhotoResultPalette(photoPixels).tint);
+        expect(root.style.getPropertyValue('--photo-result-border')).toBe(getPhotoResultPalette(photoPixels).border);
         expect(root.style.getPropertyValue('--photo-title-color')).toBe('#111827');
         expect(root.style.getPropertyValue('--photo-title-background')).toBe('none');
     });
 
     it('does not break sharing when pixel access is blocked', async () => {
         const { root, context } = setupPhoto();
+        root.style.setProperty('--photo-result-tint', 'rgba(200,100,100,0.12)');
+        root.style.setProperty('--photo-result-border', 'rgba(200,100,100,0.45)');
         context.getImageData.mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(root.style.getPropertyValue('--photo-title-color')).toBe(PHOTO_TITLE_FALLBACK.color);
         expect(root.style.getPropertyValue('--photo-title-shadow')).toBe(PHOTO_TITLE_FALLBACK.shadow);
         expect(root.style.getPropertyValue('--photo-title-background')).toBe(PHOTO_TITLE_FALLBACK.background);
+        expect(root.style.getPropertyValue('--photo-result-tint')).toBe(PHOTO_RESULT_FALLBACK.tint);
+        expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
+    });
+
+    it('does not apply sampled colors or title styles after the composition has been cancelled', async () => {
+        const { root, context } = setupPhoto();
+        const controller = new AbortController();
+        context.getImageData.mockImplementation(() => {
+            controller.abort();
+            return { data: pixels(255) };
+        });
+        await prepareScorePhotoTitle(root, controller.signal);
+        expect(root.getAttribute('style')).toBeNull();
     });
 });

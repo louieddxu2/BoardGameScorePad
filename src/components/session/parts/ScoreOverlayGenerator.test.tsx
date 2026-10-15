@@ -80,6 +80,56 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     expect(queryByText('勝')).toBeNull();
     expect(queryByText('負')).toBeNull();
   });
+
+  it('shows one shared cooperative outcome, preserves scores and anonymity, and never crowns individual players', () => {
+    const players: OverlayData['players'] = [
+      createPlayer('p1', 'Alice', 12),
+      { ...createPlayer('p2', 'Private name', 9), isAnonymous: true },
+    ];
+    const data = baseData(players, ['p1', 'p2'], 'COOP');
+    const { container, queryByText, getByText, rerender } = renderOverlay(data);
+    const team = container.querySelector('[data-score-photo-team]')!;
+    expect(team).toHaveAttribute('data-score-photo-team', 'win');
+    expect(team).toHaveTextContent('團隊勝利');
+    expect(team.querySelectorAll('.lucide-crown')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-score-photo-player] .lucide-crown')).toHaveLength(0);
+    expect(getByText('12')).toBeInTheDocument();
+    expect(getByText('9')).toBeInTheDocument();
+    expect(queryByText('Private name')).toBeNull();
+    expect(container.querySelector('[data-sticker-icon]')).not.toBeNull();
+
+    rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, winners: [],
+        players: players.map(player => ({ ...player, totalScore: 0 })) }} />
+    </LanguageContext.Provider>);
+    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('團隊落敗');
+    expect(container.querySelector('[data-score-photo-team]')).toHaveAttribute('data-score-photo-team', 'loss');
+    expect(container.querySelectorAll('.lucide-crown')).toHaveLength(0);
+    expect(Array.from(container.querySelectorAll('[data-score-photo-player]')).map(entry => entry.lastElementChild?.textContent))
+      .toEqual(['0', '0']);
+  });
+
+  it('does not invent a team loss for unrecorded no-score or inconsistent cooperative outcomes', () => {
+    const players = [createPlayer('p1', 'Alice', 0), createPlayer('p2', 'Bob', 0)];
+    const data = baseData(players, [], 'COOP_NO_SCORE');
+    const { container, rerender } = renderOverlay(data);
+    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('合作遊戲');
+    expect(container.querySelector('[data-score-photo-team]')).toHaveAttribute('data-score-photo-team', 'unknown');
+    rerender(<LanguageContext.Provider value={{ language: 'en', setLanguage: () => undefined }}>
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, winners: ['p1', 'p2'] }} />
+    </LanguageContext.Provider>);
+    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('Team victory');
+    rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, scoringRule: 'COOP', winners: ['p1'] }} />
+    </LanguageContext.Provider>);
+    expect(container.querySelector('[data-score-photo-team]')).toHaveAttribute('data-score-photo-team', 'unknown');
+    expect(container.querySelectorAll('.lucide-crown')).toHaveLength(0);
+    rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data,
+        players: players.map(player => ({ ...player, isForceLost: true })) }} />
+    </LanguageContext.Provider>);
+    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('團隊落敗');
+  });
 });
 
 describe('photo-first score export layout', () => {
@@ -97,6 +147,8 @@ describe('photo-first score export layout', () => {
     expect(image.parentElement).toBe(title.parentElement?.parentElement);
     expect(image).toHaveStyle({ width: '100%', height: 'auto' });
     expect(root).toHaveStyle({ width: '1080px', fontSize: '16px' });
+    expect(root.style.backgroundImage).toContain('var(--photo-result-tint, transparent)');
+    expect(container.querySelector('[data-score-photo-team]')).toBeNull();
     expect(getByText(data.gameName)).toHaveStyle({ fontSize: '44px' });
     expect(title).toHaveStyle({ textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})` });
     expect(queryByText('Private name')).toBeNull();
@@ -109,6 +161,7 @@ describe('photo-first score export layout', () => {
     entries.forEach((entry, index) => {
       expect(entry).toHaveClass('bg-surface-bg', 'border-2', 'border-surface-border', 'justify-between');
       expect(entry).toHaveStyle({ borderRadius: '12px' });
+      expect(entry.style.borderColor).toBe('var(--photo-result-border, rgb(var(--c-surface-border)))');
       const identity = entry.querySelector('[data-score-photo-identity]')!;
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');

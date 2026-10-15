@@ -30,9 +30,16 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const { t, language } = useSessionTranslation();
     const stickerIndices = useMemo(() => getPlayerStickerIndices(data.players.map(player => player.id)), [data.players]);
     const scoringRule = data.scoringRule || 'HIGHEST_WINS';
+    const isCoop = scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE';
+    const teamWon = isCoop && data.players.length > 0 && data.players.every(player => data.winners.includes(player.id));
+    // No-score records may never have recorded an outcome. Do not invent a loss for them.
+    const teamLost = isCoop && !teamWon && data.players.length > 0
+        && !data.players.some(player => data.winners.includes(player.id))
+        && (scoringRule === 'COOP' || data.players.some(player => player.isForceLost));
+    const teamLabel = teamWon ? t('screenshot_team_win')
+        : teamLost ? t('screenshot_team_loss') : t('screenshot_team_coop');
     const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
-        || scoringRule === 'LOWEST_WINS'
-        || scoringRule === 'COOP';
+        || scoringRule === 'LOWEST_WINS';
     const showOutcomeForZeroScores = isScoredOutcomeMode
         && data.players.every(player => player.totalScore === 0);
     const dateStr = new Date(displayTime).toLocaleDateString(language, { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -50,7 +57,10 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
         <div
             ref={ref}
             // Export typography must not inherit the user's rem-based UI zoom.
-            style={{ width: GENERATOR_WIDTH, fontSize: 16, lineHeight: 1.4 }}
+            style={{
+                width: GENERATOR_WIDTH, fontSize: 16, lineHeight: 1.4,
+                backgroundImage: 'linear-gradient(var(--photo-result-tint, transparent), var(--photo-result-tint, transparent))',
+            }}
             className="bg-app-bg text-txt-primary flex flex-col items-stretch overflow-hidden"
         >
             <div className="bg-app-bg-deep relative">
@@ -89,6 +99,17 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 </div>
             </div>
 
+            {isCoop && data.players.length > 0 && (
+                <div
+                    data-score-photo-team={teamWon ? 'win' : teamLost ? 'loss' : 'unknown'}
+                    className="flex items-center justify-center font-bold text-txt-title"
+                    style={{ alignSelf: 'center', padding: '20px 32px 0', gap: 8, fontSize: 32, lineHeight: 1.2 }}
+                >
+                    <span>{teamLabel}</span>
+                    {teamWon && <Crown size={28} className="text-status-warning fill-current" style={{ alignSelf: 'flex-start' }} />}
+                </div>
+            )}
+
             <div
                 data-score-photo-results="true"
                 className="flex flex-wrap justify-center"
@@ -107,15 +128,18 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             key={p.id}
                             data-score-photo-player={p.id}
                             className="flex flex-col items-center justify-between bg-surface-bg border-2 border-surface-border"
-                            style={{ width: playerWidth, minWidth: 0, borderRadius: 12, padding: '8px 12px 12px', gap: 6 }}
+                            style={{
+                                width: playerWidth, minWidth: 0, borderRadius: 12, padding: '8px 12px 12px', gap: 6,
+                                borderColor: 'var(--photo-result-border, rgb(var(--c-surface-border)))',
+                            }}
                         >
                             <div
                                 data-score-photo-identity="true"
                                 className="relative"
                                 // Reserve space within the name box for its superscript crown.
-                                style={{ maxWidth: '100%', minHeight: 50, padding: '10px 28px 0', textAlign: 'center' }}
+                                style={{ maxWidth: '100%', minHeight: 50, padding: isCoop ? '10px 8px 0' : '10px 28px 0', textAlign: 'center' }}
                             >
-                                {isWinner && (
+                                {isWinner && !isCoop && (
                                     <Crown
                                         data-score-photo-winner="true"
                                         size={24}

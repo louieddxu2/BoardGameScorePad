@@ -297,6 +297,9 @@ export const sessionTranslations = {
     voice_negative: "負",
     screenshot_outcome_win: "勝",
     screenshot_outcome_loss: "敗",
+    screenshot_team_win: "團隊勝利",
+    screenshot_team_loss: "團隊落敗",
+    screenshot_team_coop: "合作遊戲",
   },
   'en': {
     // --- Session View ---
@@ -594,6 +597,9 @@ export const sessionTranslations = {
     voice_negative: "minus",
     screenshot_outcome_win: "Win",
     screenshot_outcome_loss: "Loss",
+    screenshot_team_win: "Team victory",
+    screenshot_team_loss: "Team defeat",
+    screenshot_team_coop: "Cooperative game",
   },
 };
 

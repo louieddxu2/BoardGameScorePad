@@ -1,3 +1,5 @@
+import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
+
 interface TitleAppearance {
     color: string;
     shadow: string;
@@ -62,14 +64,23 @@ const waitForPhoto = (image: HTMLImageElement, signal: AbortSignal): Promise<boo
     });
 };
 
-/** Runs only before export. One 48x24 sample of the title area, no full-resolution pixel scan. */
+/** Runs only before export: two 48x24 samples on one canvas, never a full-resolution pixel scan. */
 export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSignal): Promise<void> => {
     const image = root.querySelector<HTMLImageElement>('[data-score-photo-source]');
     const title = root.querySelector<HTMLElement>('[data-score-photo-title]');
     if (!image || !title || !await waitForPhoto(image, signal) || signal.aborted) return;
 
     let appearance = PHOTO_TITLE_FALLBACK;
+    let palette = PHOTO_RESULT_FALLBACK;
     try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 48;
+        canvas.height = 24;
+        const context = image.naturalWidth > 0 && image.naturalHeight > 0 ? canvas.getContext('2d') : null;
+        if (context) {
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data);
+        }
         const imageRect = image.getBoundingClientRect();
         const titleRect = title.getBoundingClientRect();
         if (imageRect.width > 0 && imageRect.height > 0 && titleRect.width > 0 && titleRect.height > 0) {
@@ -79,15 +90,10 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
             const y = Math.max(0, titleRect.top - imageRect.top) * scaleY;
             const width = Math.min(titleRect.width * scaleX, image.naturalWidth - x);
             const height = Math.min(titleRect.height * scaleY, image.naturalHeight - y);
-            if (width > 0 && height > 0) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 48;
-                canvas.height = 24;
-                const context = canvas.getContext('2d');
-                if (context) {
-                    context.drawImage(image, x, y, width, height, 0, 0, canvas.width, canvas.height);
-                    appearance = getPhotoTitleAppearance(context.getImageData(0, 0, canvas.width, canvas.height).data);
-                }
+            if (width > 0 && height > 0 && context) {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.drawImage(image, x, y, width, height, 0, 0, canvas.width, canvas.height);
+                appearance = getPhotoTitleAppearance(context.getImageData(0, 0, canvas.width, canvas.height).data);
             }
         }
     } catch {
@@ -97,4 +103,6 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-title-color', appearance.color);
     root.style.setProperty('--photo-title-shadow', appearance.shadow);
     root.style.setProperty('--photo-title-background', appearance.background);
+    root.style.setProperty('--photo-result-tint', palette.tint);
+    root.style.setProperty('--photo-result-border', palette.border);
 };
