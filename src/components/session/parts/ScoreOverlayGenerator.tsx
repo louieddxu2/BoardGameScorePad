@@ -75,9 +75,11 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     />
                     <h2
                         data-score-photo-title="true"
-                        className="relative font-black"
+                        className="relative font-black line-clamp-2"
                         style={{
                             margin: 0, fontSize: 44, lineHeight: 1.2, overflowWrap: 'anywhere',
+                            // Leave room for the title's 2px outline inside the clipping box.
+                            padding: 2,
                             color: 'var(--photo-title-color, #ffffff)',
                             textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})`,
                         }}

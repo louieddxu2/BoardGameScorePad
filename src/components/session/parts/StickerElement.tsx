@@ -1,6 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Ghost, Cat, Dog, Rabbit, Bird, Bot, VenetianMask, Smile, Zap, Heart, Star } from 'lucide-react';
+import { getPerceivedLuminance } from '../../../utils/ui';
 
 // Crowns are reserved for actual winners, never anonymous identities.
 const ICONS = [Ghost, Cat, Dog, Rabbit, Bird, Bot, VenetianMask, Smile, Zap, Heart, Star];
@@ -50,10 +51,12 @@ const StickerElement: React.FC<StickerElementProps> = ({ id, color, className, i
             rotation: rotationDeg
         };
     }, [id, iconIndex]);
+    // Resolve the actual color, including theme-dependent text-color fallbacks.
+    const outlineColor = getPerceivedLuminance(color) < 128 ? '#f8fafc' : '#0f172a';
 
     return (
         <div 
-            className={`inline-flex items-center justify-center ${className}`}
+            className={`relative inline-flex items-center justify-center ${className}`}
             style={{ 
                 transform: `rotate(${rotation}deg)`,
             }}
@@ -63,15 +66,26 @@ const StickerElement: React.FC<StickerElementProps> = ({ id, color, className, i
                - Large Icon
                - Colored stroke using player color
                - Semi-transparent fill (Jelly look) to make it stand out but not block completely
+               - Contrasting outline beneath the original stroke for either theme
                - Subtle drop shadow to lift it off the background
             */}
+            <Icon
+                data-sticker-outline="true"
+                aria-hidden="true"
+                size={48}
+                color={outlineColor}
+                fill="none"
+                strokeWidth={4.5}
+                className="absolute inset-0"
+            />
             <Icon 
+                data-sticker-icon="true"
                 size={48} 
                 color={color} 
                 fill={color} 
                 fillOpacity={0.25}
                 strokeWidth={2.5}
-                className="filter drop-shadow-sm"
+                className="relative filter drop-shadow-sm"
             />
         </div>
     );

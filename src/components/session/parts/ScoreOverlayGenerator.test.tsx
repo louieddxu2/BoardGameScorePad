@@ -113,7 +113,7 @@ describe('photo-first score export layout', () => {
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');
       expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
-      if (players[index].isAnonymous) expect(identity.querySelector('svg:not([data-score-photo-winner])')).not.toBeNull();
+      if (players[index].isAnonymous) expect(identity.querySelector('[data-sticker-icon]')).not.toBeNull();
       else {
         expect(identity).toHaveTextContent(players[index].name);
         expect(identity.querySelector('span')).toHaveStyle({ fontSize: '32px', overflowWrap: 'anywhere' });
@@ -150,13 +150,26 @@ describe('photo-first score export layout', () => {
     expect(container.firstElementChild).toHaveStyle({ width: '1080px' });
   });
 
+  it('limits long titles to two ellipsized lines without shortening the source name or replacing the photo', () => {
+    const gameName = 'A very long game name 與非常長的桌遊名稱 '.repeat(12);
+    const data = { ...baseData([createPlayer('p1', 'Alice', 12)], ['p1'], 'HIGHEST_WINS'), gameName };
+    const { container } = renderOverlay(data);
+    const title = container.querySelector<HTMLElement>('[data-score-photo-title]')!;
+    expect(title.textContent).toBe(gameName);
+    expect(title).toHaveClass('line-clamp-2');
+    expect(title).toHaveStyle({ padding: '2px' });
+    expect(title).toHaveStyle({ textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})` });
+    expect(container.querySelector('[data-score-photo-source]')).toHaveAttribute('src', 'photo.jpg');
+    expect(data.gameName).toBe(gameName);
+  });
+
   it('keeps colliding anonymous identities distinct and stable across photo, mask and roster-order changes', () => {
     // These IDs have the same hash remainder in the eleven-shape pool.
     const players = ['a', 'l', 'w'].map(id => ({ ...createPlayer(id, `Private ${id}`, 100), isAnonymous: true }));
     const data = baseData(players, ['a'], 'HIGHEST_WINS');
     const { container, rerender } = renderOverlay(data);
     const stickers = () => new Map(Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-player]'))
-      .map(entry => [entry.dataset.scorePhotoPlayer, entry.querySelector('svg:not([data-score-photo-winner])')?.getAttribute('class')]));
+      .map(entry => [entry.dataset.scorePhotoPlayer, entry.querySelector('[data-sticker-icon]')?.getAttribute('class')]));
     const before = stickers();
     expect(new Set(before.values()).size).toBe(3);
     expect(container.querySelectorAll('.lucide-crown')).toHaveLength(1); // Only the actual winner.
