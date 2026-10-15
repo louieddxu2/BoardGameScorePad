@@ -121,16 +121,14 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     const players = [{ ...createPlayer('p1', 'Alice', 12), isForceLost: true }, createPlayer('p2', 'Bob', 9)];
     const data = baseData(players, ['p1', 'p2'], 'COOP_NO_SCORE');
     const { container, rerender } = renderOverlay(data);
-    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('合作(無勝負)');
+    expect(container.querySelector('[data-score-photo-team]')).toBeNull();
     for (const scoringRule of ['COOP_NO_SCORE', 'COMPETITIVE_NO_SCORE'] as const) {
       rerender(<LanguageContext.Provider value={{ language: 'en', setLanguage: () => undefined }}>
         <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, scoringRule }} />
       </LanguageContext.Provider>);
-      const team = container.querySelector('[data-score-photo-team]');
-      if (scoringRule === 'COOP_NO_SCORE') {
-        expect(team).toHaveAttribute('data-score-photo-team', 'none');
-        expect(team).toHaveTextContent('Cooperative (No Win/Loss)');
-      } else expect(team).toBeNull();
+      expect(container.querySelector('[data-score-photo-team]')).toBeNull();
+      const photo = container.querySelector('[data-score-photo-source]')!;
+      expect(photo.parentElement?.nextElementSibling).toBe(container.querySelector('[data-score-photo-results]'));
       expect(container.querySelectorAll('.lucide-crown')).toHaveLength(0);
       expect(container.textContent).not.toContain('Team victory');
       expect(container.textContent).not.toContain('Team defeat');

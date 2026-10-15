@@ -36,8 +36,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     // The caller already applies cooperative rules (or supplies a recorded history result).
     // Do not recompute history outcomes or treat no-win/loss modes as missing results.
     const teamWon = scoringRule === 'COOP' && data.players.some(player => data.winners.includes(player.id));
-    const teamLabel = hasNoOutcome ? t('screenshot_team_no_outcome')
-        : teamWon ? t('screenshot_team_win') : t('screenshot_team_loss');
+    const teamLabel = teamWon ? t('screenshot_team_win') : t('screenshot_team_loss');
     const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
         || scoringRule === 'LOWEST_WINS';
     const showOutcomeForZeroScores = isScoredOutcomeMode
@@ -99,9 +98,9 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 </div>
             </div>
 
-            {isCoop && data.players.length > 0 && (
+            {scoringRule === 'COOP' && data.players.length > 0 && (
                 <div
-                    data-score-photo-team={hasNoOutcome ? 'none' : teamWon ? 'win' : 'loss'}
+                    data-score-photo-team={teamWon ? 'win' : 'loss'}
                     className="flex items-center justify-center font-bold text-txt-title"
                     style={{ alignSelf: 'center', padding: '20px 32px 0', gap: 8, fontSize: 32, lineHeight: 1.2 }}
                 >
