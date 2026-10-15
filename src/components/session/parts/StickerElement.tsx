@@ -1,13 +1,15 @@
 
 import React, { useMemo } from 'react';
-import { Ghost, Cat, Dog, Rabbit, Bird, Bot, VenetianMask, Smile, Crown, Zap, Heart, Star } from 'lucide-react';
+import { Ghost, Cat, Dog, Rabbit, Bird, Bot, VenetianMask, Smile, Zap, Heart, Star } from 'lucide-react';
 
-const ICONS = [Ghost, Cat, Dog, Rabbit, Bird, Bot, VenetianMask, Smile, Crown, Zap, Heart, Star];
+// Crowns are reserved for actual winners, never anonymous identities.
+const ICONS = [Ghost, Cat, Dog, Rabbit, Bird, Bot, VenetianMask, Smile, Zap, Heart, Star];
 
 interface StickerElementProps {
     id: string; // Used for seeding
     color: string; // Player color
     className?: string;
+    iconIndex?: number;
 }
 
 // Simple deterministic hash
@@ -20,19 +22,34 @@ const getHash = (str: string) => {
     return Math.abs(hash);
 };
 
-const StickerElement: React.FC<StickerElementProps> = ({ id, color, className }) => {
+/** Allocate against the whole roster so masking/unmasking or reordering cannot reassign stickers. */
+export const getPlayerStickerIndices = (playerIds: readonly string[]): Map<string, number> => {
+    const indices = new Map<string, number>();
+    const used = new Set<number>();
+    for (const id of Array.from(new Set(playerIds)).sort()) {
+        // More players than shapes must reuse a shape; keep the search bounded.
+        if (used.size === ICONS.length) used.clear();
+        let index = getHash(id) % ICONS.length;
+        while (used.has(index)) index = (index + 1) % ICONS.length;
+        used.add(index);
+        indices.set(id, index);
+    }
+    return indices;
+};
+
+const StickerElement: React.FC<StickerElementProps> = ({ id, color, className, iconIndex }) => {
     const { Icon, rotation } = useMemo(() => {
         const hash = getHash(id);
         
-        const iconIndex = hash % ICONS.length;
+        const selectedIndex = iconIndex ?? hash % ICONS.length;
         // Increase rotation range slightly for more natural sticker look
         const rotationDeg = (hash % 20) - 10; // -10 to 10 deg tilt
         
         return {
-            Icon: ICONS[iconIndex],
+            Icon: ICONS[selectedIndex],
             rotation: rotationDeg
         };
-    }, [id]);
+    }, [id, iconIndex]);
 
     return (
         <div 

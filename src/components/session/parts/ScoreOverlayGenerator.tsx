@@ -1,8 +1,8 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useMemo } from 'react';
 import { Player, ScoringRule } from '../../../types';
 import { Crown } from 'lucide-react';
 import { ContrastText } from '../../shared/ContrastText';
-import StickerElement from './StickerElement';
+import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 
@@ -28,6 +28,7 @@ const MAX_PLAYER_WIDTH = 220;
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime ?? data.date;
     const { t, language } = useSessionTranslation();
+    const stickerIndices = useMemo(() => getPlayerStickerIndices(data.players.map(player => player.id)), [data.players]);
     const scoringRule = data.scoringRule || 'HIGHEST_WINS';
     const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
         || scoringRule === 'LOWEST_WINS'
@@ -110,23 +111,24 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 data-score-photo-identity="true"
                                 className="relative"
                                 // Reserve space within the name box for its superscript crown.
-                                style={{ maxWidth: '100%', minHeight: 42, padding: '8px 24px 0', textAlign: 'center' }}
+                                style={{ maxWidth: '100%', minHeight: 50, padding: '10px 28px 0', textAlign: 'center' }}
                             >
                                 {isWinner && (
                                     <Crown
                                         data-score-photo-winner="true"
-                                        size={20}
+                                        size={24}
                                         className="absolute text-status-warning fill-current"
                                         style={{ top: 0, right: 0 }}
                                     />
                                 )}
                                 {p.isAnonymous ? (
-                                    <StickerElement id={p.id} color={playerColor} className="[&_svg]:w-[30px] [&_svg]:h-[30px]" />
+                                    <StickerElement id={p.id} color={playerColor} iconIndex={stickerIndices.get(p.id)}
+                                        className="[&_svg]:w-[36px] [&_svg]:h-[36px]" />
                                 ) : (
                                     <ContrastText
                                         className="font-bold"
                                         color={playerColor}
-                                        style={{ display: 'block', fontSize: 28, lineHeight: 1.2, overflowWrap: 'anywhere' }}
+                                        style={{ display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere' }}
                                     >
                                         {p.name}
                                     </ContrastText>

@@ -5,6 +5,7 @@ import { LanguageContext } from '../../../i18n';
 import { Player } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
+import { getPlayerStickerIndices } from './StickerElement';
 
 const createPlayer = (id: string, name: string, totalScore: number): Player => ({
   id,
@@ -113,15 +114,19 @@ describe('photo-first score export layout', () => {
       expect(identity).toHaveClass('relative');
       expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
       if (players[index].isAnonymous) expect(identity.querySelector('svg:not([data-score-photo-winner])')).not.toBeNull();
-      else expect(identity).toHaveTextContent(players[index].name);
+      else {
+        expect(identity).toHaveTextContent(players[index].name);
+        expect(identity.querySelector('span')).toHaveStyle({ fontSize: '32px', overflowWrap: 'anywhere' });
+      }
     });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');
     expect(Array.from(crowns).map(crown => crown.closest<HTMLElement>('[data-score-photo-player]')?.dataset.scorePhotoPlayer))
       .toEqual(['p1', 'p3', 'p4']);
     for (const crown of crowns) {
       expect(crown.parentElement).toHaveAttribute('data-score-photo-identity', 'true');
-      expect(crown.parentElement).toHaveStyle({ padding: '8px 24px 0px', maxWidth: '100%' });
+      expect(crown.parentElement).toHaveStyle({ padding: '10px 28px 0px', maxWidth: '100%' });
       expect(crown).toHaveStyle({ top: '0px', right: '0px' });
+      expect(crown).toHaveAttribute('width', '24');
     }
 
     const metadata = container.querySelector('[data-score-photo-metadata]')!;
@@ -143,5 +148,36 @@ describe('photo-first score export layout', () => {
       expect(entry).toHaveStyle({ width: '220px' });
     }
     expect(container.firstElementChild).toHaveStyle({ width: '1080px' });
+  });
+
+  it('keeps colliding anonymous identities distinct and stable across photo, mask and roster-order changes', () => {
+    // These IDs have the same hash remainder in the eleven-shape pool.
+    const players = ['a', 'l', 'w'].map(id => ({ ...createPlayer(id, `Private ${id}`, 100), isAnonymous: true }));
+    const data = baseData(players, ['a'], 'HIGHEST_WINS');
+    const { container, rerender } = renderOverlay(data);
+    const stickers = () => new Map(Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-player]'))
+      .map(entry => [entry.dataset.scorePhotoPlayer, entry.querySelector('svg:not([data-score-photo-winner])')?.getAttribute('class')]));
+    const before = stickers();
+    expect(new Set(before.values()).size).toBe(3);
+    expect(container.querySelectorAll('.lucide-crown')).toHaveLength(1); // Only the actual winner.
+    for (const player of players) expect(container.textContent).not.toContain(player.name);
+
+    rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
+      <ScoreOverlayGenerator imageSrc="another-photo.jpg" data={{ ...data, players: [...players].reverse()
+        .map(player => player.id === 'a' ? { ...player, isAnonymous: false } : player) }} />
+    </LanguageContext.Provider>);
+    const after = stickers();
+    for (const id of ['l', 'w']) expect(after.get(id)).toBe(before.get(id));
+    expect(container.textContent).toContain('Private a');
+    expect(container.textContent).not.toContain('Private l');
+    expect(container.textContent).not.toContain('Private w');
+  });
+
+  it('reuses shapes deterministically without an unbounded collision search when the roster exceeds the pool', () => {
+    const ids = Array.from({ length: 24 }, (_, index) => String(index));
+    const assignments = getPlayerStickerIndices(ids);
+    expect(assignments.size).toBe(ids.length);
+    expect(new Set(assignments.values()).size).toBe(11);
+    expect(getPlayerStickerIndices([...ids].reverse())).toEqual(assignments);
   });
 });
