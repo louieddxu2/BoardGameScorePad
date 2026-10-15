@@ -15,6 +15,9 @@ afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 describe('lightbox rotation control', () => {
   it('blocks duplicate rotations and regenerates scores from the new photo without a render loop', async () => {
     vi.useFakeTimers();
+    // Blob images do not load in JSDOM; model a ready source for real export preparation.
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(1080);
     let urlCount = 0;
     Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => `blob:composed-${++urlCount}`) });
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });

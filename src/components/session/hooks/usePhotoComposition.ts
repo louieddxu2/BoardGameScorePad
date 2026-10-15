@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { toBlob } from 'html-to-image';
 import type { OverlayData } from '../parts/ScoreOverlayGenerator';
+import { prepareScorePhotoTitle } from '../../../utils/photoTitleContrast';
 
 interface Composition {
   imageSrc: string;
@@ -23,10 +24,14 @@ export const usePhotoComposition = (
   useEffect(() => {
     if (!enabled || !data) { setResult(null); return; }
     let active = true;
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         if (!generatorRef.current) throw new Error('Photo generator is unavailable');
-        const blob = await toBlob(generatorRef.current, {
+        const node = generatorRef.current;
+        await prepareScorePhotoTitle(node, controller.signal);
+        if (!active) return;
+        const blob = await toBlob(node, {
           pixelRatio: 1,
           backgroundColor: 'rgb(var(--c-app-bg))',
           skipFonts: true,
@@ -40,7 +45,7 @@ export const usePhotoComposition = (
         onErrorRef.current();
       }
     }, 600);
-    return () => { active = false; clearTimeout(timer); };
+    return () => { active = false; controller.abort(); clearTimeout(timer); };
   }, [enabled, imageSrc, data, generatorRef]);
 
   useEffect(() => () => {

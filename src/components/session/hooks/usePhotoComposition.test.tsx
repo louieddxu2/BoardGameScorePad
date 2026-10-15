@@ -17,6 +17,41 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); });
 
 describe('score photo composition ownership', () => {
+  it('waits for the source photo before capture and cancels an obsolete image wait on rotation', async () => {
+    const oldImage = document.createElement('img');
+    oldImage.dataset.scorePhotoSource = 'true';
+    Object.defineProperty(oldImage, 'complete', { value: false });
+    const title = document.createElement('h2');
+    title.dataset.scorePhotoTitle = 'true';
+    const oldRoot = document.createElement('div');
+    oldRoot.append(oldImage, title);
+    const ref = { current: oldRoot };
+    const onError = vi.fn();
+    vi.mocked(toBlob).mockResolvedValue(new Blob(['current']));
+    const removeListener = vi.spyOn(oldImage, 'removeEventListener');
+    const { result, rerender } = renderHook(({ src }) => usePhotoComposition(true, src, data, ref, onError), {
+      initialProps: { src: 'original' },
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(toBlob).not.toHaveBeenCalled();
+    const newImage = document.createElement('img');
+    newImage.dataset.scorePhotoSource = 'true';
+    Object.defineProperty(newImage, 'complete', { value: false });
+    ref.current = document.createElement('div');
+    ref.current.append(newImage, title.cloneNode());
+    rerender({ src: 'rotated' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    oldImage.dispatchEvent(new Event('load'));
+    expect(toBlob).not.toHaveBeenCalled();
+    await act(async () => { newImage.dispatchEvent(new Event('load')); });
+    expect(toBlob).toHaveBeenCalledExactlyOnceWith(ref.current, expect.any(Object));
+    expect(ref.current.style.getPropertyValue('--photo-title-color')).toBe('#ffffff');
+    expect(removeListener).toHaveBeenCalledWith('load', expect.any(Function));
+    expect(removeListener).toHaveBeenCalledWith('error', expect.any(Function));
+    expect(result.current.isGenerating).toBe(false);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it('regenerates for a rotated source, ignores late old results and never exposes a stale share image', async () => {
     const pending: Array<(blob: Blob) => void> = [];
     vi.mocked(toBlob).mockImplementation(() => new Promise(resolve => { pending.push(resolve); }));

@@ -161,6 +161,9 @@ describe('photo swipe preview', () => {
 
     it('previews original neighbours without regenerating the current score composite during a drag', async () => {
         vi.useFakeTimers();
+        // Blob images do not load in JSDOM; this case starts with a ready export source.
+        vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+        vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(1080);
         let urlCount = 0;
         vi.stubGlobal('URL', class extends URL {
             static createObjectURL = vi.fn(() => `blob:composed-${++urlCount}`);
