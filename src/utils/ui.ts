@@ -78,6 +78,17 @@ export const getPerceivedLuminance = (hex: string): number => {
     return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114);
 };
 
+/** Linear-sRGB luminance for choosing the higher-contrast black/white outline. */
+export const getRelativeLuminance = (color: string): number => {
+    const rgb = hexToRgb(color);
+    if (!rgb) return 0.5;
+    const linear = (channel: number) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+    };
+    return linear(rgb.r) * 0.2126 + linear(rgb.g) * 0.7152 + linear(rgb.b) * 0.0722;
+};
+
 /**
  * Determines if a color is dark enough to be perceived as "dark" on dark backgrounds.
  * Prioritizes COLOR_TONES registry for core palette, fallbacks to calculation.

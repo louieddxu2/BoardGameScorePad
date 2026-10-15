@@ -33,7 +33,8 @@ export const usePhotoComposition = (
         if (!active) return;
         const blob = await toBlob(node, {
           pixelRatio: 1,
-          backgroundColor: 'rgb(var(--c-app-bg))',
+          // html-to-image also paints the capture root: do not overwrite its photo palette.
+          backgroundColor: getComputedStyle(node).backgroundColor,
           skipFonts: true,
         });
         if (!active) return;

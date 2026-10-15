@@ -17,6 +17,18 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); });
 
 describe('score photo composition ownership', () => {
+  it('captures the prepared background instead of replacing the photo palette with the app background', async () => {
+    const node = document.createElement('div');
+    node.style.backgroundColor = 'rgb(76, 31, 31)';
+    const ref = { current: node };
+    vi.mocked(toBlob).mockResolvedValue(new Blob(['composed']));
+    renderHook(() => usePhotoComposition(true, 'photo', data, ref, vi.fn()));
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(toBlob).toHaveBeenCalledExactlyOnceWith(node, {
+      pixelRatio: 1, skipFonts: true, backgroundColor: 'rgb(76, 31, 31)',
+    });
+  });
+
   it('waits for the source photo before capture and cancels an obsolete image wait on rotation', async () => {
     const oldImage = document.createElement('img');
     oldImage.dataset.scorePhotoSource = 'true';

@@ -1,15 +1,17 @@
 interface PhotoResultPalette {
-    tint: string;
+    background: string;
+    card: string;
     border: string;
 }
 
 export const PHOTO_RESULT_FALLBACK: Readonly<PhotoResultPalette> = {
-    tint: 'transparent',
+    background: 'rgb(var(--c-app-bg))',
+    card: 'rgb(var(--c-surface-bg))',
     border: 'rgb(var(--c-surface-border))',
 };
 
 /** Pick a common color from a tiny sample, ignoring transparent/near-gray pixels. */
-export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPalette => {
+export const getPhotoResultPalette = (pixels: Uint8ClampedArray, theme: 'dark' | 'light' = 'dark'): PhotoResultPalette => {
     const buckets = new Map<number, { red: number; green: number; blue: number; count: number }>();
     let dominant: { red: number; green: number; blue: number; count: number } | undefined;
     for (let i = 0; i < pixels.length; i += 4) {
@@ -31,8 +33,20 @@ export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPal
     const red = dominant.red / dominant.count;
     const green = dominant.green / dominant.count;
     const blue = dominant.blue / dominant.count;
-    const brightness = red * 0.299 + green * 0.587 + blue * 0.114;
-    // Keep the hue, but constrain saturation/brightness so neither theme is overwhelmed.
-    const tone = [red, green, blue].map(channel => Math.round(148 + (channel - brightness) * 0.25)).join(',');
-    return { tint: `rgba(${tone},0.12)`, border: `rgba(${tone},0.45)` };
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    const delta = max - min;
+    // Opposite muted colors in the same bin can average back to gray.
+    if (delta < 20) return { ...PHOTO_RESULT_FALLBACK };
+    const sector = max === red ? (green - blue) / delta
+        : max === green ? (blue - red) / delta + 2 : (red - green) / delta + 4;
+    const hue = Math.round((sector * 60 + 360) % 360);
+    const saturation = delta / (255 - Math.abs(max + min - 255));
+    const mutedSaturation = Math.min(44, Math.max(24, saturation * 65));
+    const tone = (scale: number, lightness: number) => `hsl(${hue}, ${Math.round(mutedSaturation * scale)}%, ${lightness}%)`;
+    // Opaque surfaces keep the sampled hue visible instead of diluting it over app gray.
+    // Fixed lightness bounds preserve the existing theme's neutral text contrast.
+    return theme === 'light'
+        ? { background: tone(1, 92), card: tone(0.85, 96), border: tone(1, 64) }
+        : { background: tone(1, 22), card: tone(0.85, 30), border: tone(1, 52) };
 };

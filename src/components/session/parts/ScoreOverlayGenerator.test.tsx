@@ -153,7 +153,7 @@ describe('photo-first score export layout', () => {
     expect(image.parentElement).toBe(title.parentElement?.parentElement);
     expect(image).toHaveStyle({ width: '100%', height: 'auto' });
     expect(root).toHaveStyle({ width: '1080px', fontSize: '16px' });
-    expect(root.style.backgroundImage).toContain('var(--photo-result-tint, transparent)');
+    expect(root.style.backgroundColor).toBe('var(--photo-result-background, rgb(var(--c-app-bg)))');
     expect(container.querySelector('[data-score-photo-team]')).toBeNull();
     expect(getByText(data.gameName)).toHaveStyle({ fontSize: '44px' });
     expect(title).toHaveStyle({ textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})` });
@@ -168,6 +168,7 @@ describe('photo-first score export layout', () => {
       expect(entry).toHaveClass('bg-surface-bg', 'border-2', 'border-surface-border', 'justify-between');
       expect(entry).toHaveStyle({ borderRadius: '12px' });
       expect(entry.style.borderColor).toBe('var(--photo-result-border, rgb(var(--c-surface-border)))');
+      expect(entry.style.backgroundColor).toBe('var(--photo-result-card, rgb(var(--c-surface-bg)))');
       const identity = entry.querySelector('[data-score-photo-identity]')!;
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');
@@ -176,6 +177,8 @@ describe('photo-first score export layout', () => {
       else {
         expect(identity).toHaveTextContent(players[index].name);
         expect(identity.querySelector('span')).toHaveStyle({ fontSize: '32px', overflowWrap: 'anywhere' });
+        expect(identity.querySelector('span')).toHaveStyle({ color: players[index].color });
+        expect(identity.querySelector('span')?.style.textShadow).toContain('1.25px 1.25px 0 #000000');
       }
     });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');

@@ -1,4 +1,6 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
+import { getPhotoTextOutline } from './photoTextContrast';
+import { getCurrentTheme } from './ui';
 
 interface TitleAppearance {
     color: string;
@@ -6,16 +8,8 @@ interface TitleAppearance {
     background: string;
 }
 
-// An eight-direction, blur-free outline protects every edge of the glyph.
-// Use text-shadow rather than a vendor-specific stroke so image export keeps it.
-const outlineShadow = (color: string, softShadow: string) => [
-    `-2px -2px 0 ${color}`, `0 -2px 0 ${color}`, `2px -2px 0 ${color}`,
-    `-2px 0 0 ${color}`, `2px 0 0 ${color}`,
-    `-2px 2px 0 ${color}`, `0 2px 0 ${color}`, `2px 2px 0 ${color}`,
-    softShadow,
-].join(', ');
-const WHITE_SHADOW = outlineShadow('rgba(15,23,42,0.8)', '0 2px 4px rgba(0,0,0,0.3)');
-const DARK_SHADOW = outlineShadow('rgba(248,250,252,0.95)', '0 1px 3px rgba(255,255,255,0.5)');
+const WHITE_SHADOW = getPhotoTextOutline('rgba(15,23,42,0.8)', '0 2px 4px rgba(0,0,0,0.3)');
+const DARK_SHADOW = getPhotoTextOutline('rgba(248,250,252,0.95)', '0 1px 3px rgba(255,255,255,0.5)');
 const localScrim = (light: boolean) => `radial-gradient(ellipse at 30% 35%, ${
     light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.5)'
 }, transparent 80%)`;
@@ -79,7 +73,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         const context = image.naturalWidth > 0 && image.naturalHeight > 0 ? canvas.getContext('2d') : null;
         if (context) {
             context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data);
+            palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data, getCurrentTheme());
         }
         const imageRect = image.getBoundingClientRect();
         const titleRect = title.getBoundingClientRect();
@@ -103,6 +97,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-title-color', appearance.color);
     root.style.setProperty('--photo-title-shadow', appearance.shadow);
     root.style.setProperty('--photo-title-background', appearance.background);
-    root.style.setProperty('--photo-result-tint', palette.tint);
+    root.style.setProperty('--photo-result-background', palette.background);
+    root.style.setProperty('--photo-result-card', palette.card);
     root.style.setProperty('--photo-result-border', palette.border);
 };

@@ -59,7 +59,8 @@ describe('photo title contrast', () => {
         expect(context.drawImage).toHaveBeenNthCalledWith(2, image, 64, 64, 800, 120, 0, 0, 48, 24);
         expect(context.clearRect).toHaveBeenCalledExactlyOnceWith(0, 0, 48, 24);
         expect(context.getImageData).toHaveBeenCalledTimes(2);
-        expect(root.style.getPropertyValue('--photo-result-tint')).toBe(getPhotoResultPalette(photoPixels).tint);
+        expect(root.style.getPropertyValue('--photo-result-background')).toBe(getPhotoResultPalette(photoPixels).background);
+        expect(root.style.getPropertyValue('--photo-result-card')).toBe(getPhotoResultPalette(photoPixels).card);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(getPhotoResultPalette(photoPixels).border);
         expect(root.style.getPropertyValue('--photo-title-color')).toBe('#111827');
         expect(root.style.getPropertyValue('--photo-title-background')).toBe('none');
@@ -67,15 +68,34 @@ describe('photo title contrast', () => {
 
     it('does not break sharing when pixel access is blocked', async () => {
         const { root, context } = setupPhoto();
-        root.style.setProperty('--photo-result-tint', 'rgba(200,100,100,0.12)');
+        root.style.setProperty('--photo-result-background', 'hsl(0, 44%, 22%)');
+        root.style.setProperty('--photo-result-card', 'hsl(0, 37%, 30%)');
         root.style.setProperty('--photo-result-border', 'rgba(200,100,100,0.45)');
         context.getImageData.mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(root.style.getPropertyValue('--photo-title-color')).toBe(PHOTO_TITLE_FALLBACK.color);
         expect(root.style.getPropertyValue('--photo-title-shadow')).toBe(PHOTO_TITLE_FALLBACK.shadow);
         expect(root.style.getPropertyValue('--photo-title-background')).toBe(PHOTO_TITLE_FALLBACK.background);
-        expect(root.style.getPropertyValue('--photo-result-tint')).toBe(PHOTO_RESULT_FALLBACK.tint);
+        expect(root.style.getPropertyValue('--photo-result-background')).toBe(PHOTO_RESULT_FALLBACK.background);
+        expect(root.style.getPropertyValue('--photo-result-card')).toBe(PHOTO_RESULT_FALLBACK.card);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
+    });
+
+    it('uses light surfaces when the active app theme is light', async () => {
+        const { root, context } = setupPhoto();
+        const originalTheme = document.documentElement.getAttribute('data-theme');
+        const photoPixels = new Uint8ClampedArray([200, 40, 20, 255]);
+        try {
+            document.documentElement.setAttribute('data-theme', 'light');
+            context.getImageData.mockReturnValueOnce({ data: photoPixels });
+            await prepareScorePhotoTitle(root, new AbortController().signal);
+            const expected = getPhotoResultPalette(photoPixels, 'light');
+            expect(root.style.getPropertyValue('--photo-result-background')).toBe(expected.background);
+            expect(root.style.getPropertyValue('--photo-result-card')).toBe(expected.card);
+        } finally {
+            if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
+            else document.documentElement.setAttribute('data-theme', originalTheme);
+        }
     });
 
     it('does not apply sampled colors or title styles after the composition has been cancelled', async () => {

@@ -1,10 +1,10 @@
 import React, { forwardRef, useMemo } from 'react';
 import { Player, ScoringRule } from '../../../types';
 import { Crown } from 'lucide-react';
-import { ContrastText } from '../../shared/ContrastText';
 import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
+import { getPhotoPlayerNameShadow } from '../../../utils/photoTextContrast';
 
 export interface OverlayData {
     gameName: string;
@@ -58,7 +58,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
             // Export typography must not inherit the user's rem-based UI zoom.
             style={{
                 width: GENERATOR_WIDTH, fontSize: 16, lineHeight: 1.4,
-                backgroundImage: 'linear-gradient(var(--photo-result-tint, transparent), var(--photo-result-tint, transparent))',
+                backgroundColor: 'var(--photo-result-background, rgb(var(--c-app-bg)))',
             }}
             className="bg-app-bg text-txt-primary flex flex-col items-stretch overflow-hidden"
         >
@@ -129,6 +129,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             className="flex flex-col items-center justify-between bg-surface-bg border-2 border-surface-border"
                             style={{
                                 width: playerWidth, minWidth: 0, borderRadius: 12, padding: '8px 12px 12px', gap: 6,
+                                backgroundColor: 'var(--photo-result-card, rgb(var(--c-surface-bg)))',
                                 borderColor: 'var(--photo-result-border, rgb(var(--c-surface-border)))',
                             }}
                         >
@@ -150,13 +151,15 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                     <StickerElement id={p.id} color={playerColor} iconIndex={stickerIndices.get(p.id)}
                                         className="[&_svg]:w-[36px] [&_svg]:h-[36px]" />
                                 ) : (
-                                    <ContrastText
+                                    <span
                                         className="font-bold"
-                                        color={playerColor}
-                                        style={{ display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere' }}
+                                        style={{
+                                            display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere',
+                                            color: playerColor, textShadow: getPhotoPlayerNameShadow(playerColor),
+                                        }}
                                     >
                                         {p.name}
-                                    </ContrastText>
+                                    </span>
                                 )}
                             </div>
                             <span

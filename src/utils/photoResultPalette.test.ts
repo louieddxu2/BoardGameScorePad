@@ -11,17 +11,27 @@ describe('photo result palette', () => {
         ]);
         const before = source.slice();
         const palette = getPhotoResultPalette(source);
-        expect(palette.tint).toBe('rgba(127,162,129,0.12)');
-        expect(palette.border).toBe('rgba(127,162,129,0.45)');
+        expect(palette.background).toBe('hsl(124, 44%, 22%)');
+        expect(palette.card).toBe('hsl(124, 37%, 30%)');
+        expect(palette.border).toBe('hsl(124, 44%, 52%)');
         expect(source).toEqual(before);
     });
 
-    it('keeps extreme warm and cool photos muted and falls back for monochrome/transparent samples', () => {
-        expect(getPhotoResultPalette(new Uint8ClampedArray([255, 0, 0, 255])).tint)
-            .toBe('rgba(193,129,129,0.12)');
-        expect(getPhotoResultPalette(new Uint8ClampedArray([0, 0, 255, 255])).tint)
-            .toBe('rgba(141,141,204,0.12)');
+    it('gives warm and cool photos distinct opaque surfaces in both themes instead of near-gray transparency', () => {
+        for (const [channels, hue] of [[[255, 0, 0], 0], [[0, 0, 255], 240]] as const) {
+            const pixels = new Uint8ClampedArray([...channels, 255]);
+            const dark = getPhotoResultPalette(pixels, 'dark');
+            const light = getPhotoResultPalette(pixels, 'light');
+            expect(dark.background).toBe(`hsl(${hue}, 44%, 22%)`);
+            expect(dark.card).toBe(`hsl(${hue}, 37%, 30%)`);
+            expect(light.background).toBe(`hsl(${hue}, 44%, 92%)`);
+            expect(light.card).toBe(`hsl(${hue}, 37%, 96%)`);
+            expect(dark.card).not.toBe(dark.background);
+            expect(light.card).not.toBe(light.background);
+        }
         expect(getPhotoResultPalette(new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255, 255, 0, 0, 0])))
+            .toEqual(PHOTO_RESULT_FALLBACK);
+        expect(getPhotoResultPalette(new Uint8ClampedArray([100, 80, 80, 255, 80, 100, 100, 255])))
             .toEqual(PHOTO_RESULT_FALLBACK);
     });
 });
