@@ -81,13 +81,13 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
 });
 
 describe('photo-first score export layout', () => {
-  it('keeps the whole photo, player order, top-right crowns, anonymous names and bottom metadata', () => {
-    const players = [
+  it('groups each identity, its top-right crown and score without exposing anonymous names', () => {
+    const players: OverlayData['players'] = [
       createPlayer('p1', 'Alice', 128), createPlayer('p2', 'Bob', 115),
       { ...createPlayer('p3', 'Private name', 102), isAnonymous: true },
-      createPlayer('p4', 'Dana', 96), createPlayer('p5', 'Eve', 80),
+      createPlayer('p4', 'A longer player name that wraps', 96), createPlayer('p5', 'Eve', 80),
     ];
-    const data = { ...baseData(players, ['p1', 'p4'], 'HIGHEST_WINS'), endTime: 1_760_000_000_000 };
+    const data = { ...baseData(players, ['p1', 'p3', 'p4'], 'HIGHEST_WINS'), endTime: 1_760_000_000_000 };
     const { container, getByText, queryByText } = renderOverlay(data);
     const root = container.firstElementChild as HTMLElement;
     const image = container.querySelector('[data-score-photo-source]') as HTMLImageElement;
@@ -101,9 +101,24 @@ describe('photo-first score export layout', () => {
     const entries = Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-player]'));
     expect(entries.map(entry => entry.dataset.scorePhotoPlayer)).toEqual(players.map(player => player.id));
     expect(entries[0]).toHaveStyle({ width: '328px' });
+    entries.forEach((entry, index) => {
+      expect(entry).toHaveClass('bg-surface-bg', 'border-2', 'border-surface-border', 'justify-between');
+      expect(entry).toHaveStyle({ borderRadius: '12px' });
+      const identity = entry.querySelector('[data-score-photo-identity]')!;
+      expect(identity.parentElement).toBe(entry);
+      expect(identity).toHaveClass('relative');
+      expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
+      if (players[index].isAnonymous) expect(identity.querySelector('svg:not([data-score-photo-winner])')).not.toBeNull();
+      else expect(identity).toHaveTextContent(players[index].name);
+    });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');
-    expect(Array.from(crowns).map(crown => crown.parentElement?.dataset.scorePhotoPlayer)).toEqual(['p1', 'p4']);
-    for (const crown of crowns) expect(crown).toHaveStyle({ top: '4px', right: '4px' });
+    expect(Array.from(crowns).map(crown => crown.closest<HTMLElement>('[data-score-photo-player]')?.dataset.scorePhotoPlayer))
+      .toEqual(['p1', 'p3', 'p4']);
+    for (const crown of crowns) {
+      expect(crown.parentElement).toHaveAttribute('data-score-photo-identity', 'true');
+      expect(crown.parentElement).toHaveStyle({ padding: '8px 24px 0px', maxWidth: '100%' });
+      expect(crown).toHaveStyle({ top: '0px', right: '0px' });
+    }
 
     const metadata = container.querySelector('[data-score-photo-metadata]')!;
     expect(root.lastElementChild).toBe(metadata);

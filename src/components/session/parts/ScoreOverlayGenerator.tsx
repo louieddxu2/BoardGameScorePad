@@ -99,18 +99,23 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         <div
                             key={p.id}
                             data-score-photo-player={p.id}
-                            className="relative flex flex-col items-center"
-                            style={{ width: playerWidth, padding: '8px 32px', gap: 6 }}
+                            className="flex flex-col items-center justify-between bg-surface-bg border-2 border-surface-border"
+                            style={{ width: playerWidth, minWidth: 0, borderRadius: 12, padding: '8px 12px 12px', gap: 6 }}
                         >
-                            {isWinner && (
-                                <Crown
-                                    data-score-photo-winner="true"
-                                    size={24}
-                                    className="absolute text-status-warning fill-current"
-                                    style={{ top: 4, right: 4 }}
-                                />
-                            )}
-                            <div style={{ width: '100%', minHeight: 34, textAlign: 'center' }}>
+                            <div
+                                data-score-photo-identity="true"
+                                className="relative"
+                                // Reserve space within the name box for its superscript crown.
+                                style={{ maxWidth: '100%', minHeight: 42, padding: '8px 24px 0', textAlign: 'center' }}
+                            >
+                                {isWinner && (
+                                    <Crown
+                                        data-score-photo-winner="true"
+                                        size={20}
+                                        className="absolute text-status-warning fill-current"
+                                        style={{ top: 0, right: 0 }}
+                                    />
+                                )}
                                 {p.isAnonymous ? (
                                     <StickerElement id={p.id} color={playerColor} className="[&_svg]:w-[30px] [&_svg]:h-[30px]" />
                                 ) : (
