@@ -4,6 +4,7 @@ import { Crown } from 'lucide-react';
 import { ContrastText } from '../../shared/ContrastText';
 import StickerElement from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
+import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 
 export interface OverlayData {
     gameName: string;
@@ -77,7 +78,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         style={{
                             margin: 0, fontSize: 44, lineHeight: 1.2, overflowWrap: 'anywhere',
                             color: 'var(--photo-title-color, #ffffff)',
-                            textShadow: 'var(--photo-title-shadow, 0 1px 3px rgba(0,0,0,0.45))',
+                            textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})`,
                         }}
                     >
                         {data.gameName}

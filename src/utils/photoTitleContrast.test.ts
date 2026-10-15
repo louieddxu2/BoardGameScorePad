@@ -16,6 +16,10 @@ describe('photo title contrast', () => {
         const appearance = getPhotoTitleAppearance(data);
         expect(appearance.color).toBe(color);
         expect(appearance.background !== 'none').toBe(needsScrim);
+        const outlineColor = color === '#111827' ? 'rgba(248,250,252,0.95)' : 'rgba(15,23,42,0.8)';
+        for (const offset of ['-2px -2px', '0 -2px', '2px -2px', '-2px 0', '2px 0', '-2px 2px', '0 2px', '2px 2px']) {
+            expect(appearance.shadow).toContain(`${offset} 0 ${outlineColor}`);
+        }
     });
 
     it('keeps a readable fallback when there are no opaque pixels', () => {
@@ -57,6 +61,7 @@ describe('photo title contrast', () => {
         context.getImageData.mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(root.style.getPropertyValue('--photo-title-color')).toBe(PHOTO_TITLE_FALLBACK.color);
+        expect(root.style.getPropertyValue('--photo-title-shadow')).toBe(PHOTO_TITLE_FALLBACK.shadow);
         expect(root.style.getPropertyValue('--photo-title-background')).toBe(PHOTO_TITLE_FALLBACK.background);
     });
 });

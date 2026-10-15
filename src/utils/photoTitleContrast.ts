@@ -4,8 +4,16 @@ interface TitleAppearance {
     background: string;
 }
 
-const WHITE_SHADOW = '0 1px 3px rgba(0,0,0,0.45)';
-const DARK_SHADOW = '0 1px 2px rgba(255,255,255,0.5)';
+// An eight-direction, blur-free outline protects every edge of the glyph.
+// Use text-shadow rather than a vendor-specific stroke so image export keeps it.
+const outlineShadow = (color: string, softShadow: string) => [
+    `-2px -2px 0 ${color}`, `0 -2px 0 ${color}`, `2px -2px 0 ${color}`,
+    `-2px 0 0 ${color}`, `2px 0 0 ${color}`,
+    `-2px 2px 0 ${color}`, `0 2px 0 ${color}`, `2px 2px 0 ${color}`,
+    softShadow,
+].join(', ');
+const WHITE_SHADOW = outlineShadow('rgba(15,23,42,0.8)', '0 2px 4px rgba(0,0,0,0.3)');
+const DARK_SHADOW = outlineShadow('rgba(248,250,252,0.95)', '0 1px 3px rgba(255,255,255,0.5)');
 const localScrim = (light: boolean) => `radial-gradient(ellipse at 30% 35%, ${
     light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.5)'
 }, transparent 80%)`;

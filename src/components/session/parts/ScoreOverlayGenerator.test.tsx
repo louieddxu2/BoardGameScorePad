@@ -4,6 +4,7 @@ import { render } from '@testing-library/react';
 import { LanguageContext } from '../../../i18n';
 import { Player } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
+import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 
 const createPlayer = (id: string, name: string, totalScore: number): Player => ({
   id,
@@ -96,6 +97,7 @@ describe('photo-first score export layout', () => {
     expect(image).toHaveStyle({ width: '100%', height: 'auto' });
     expect(root).toHaveStyle({ width: '1080px', fontSize: '16px' });
     expect(getByText(data.gameName)).toHaveStyle({ fontSize: '44px' });
+    expect(title).toHaveStyle({ textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})` });
     expect(queryByText('Private name')).toBeNull();
 
     const entries = Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-player]'));
