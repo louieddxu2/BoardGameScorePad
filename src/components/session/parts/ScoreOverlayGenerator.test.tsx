@@ -100,7 +100,9 @@ describe('photo-first score export layout', () => {
 
     const entries = Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-player]'));
     expect(entries.map(entry => entry.dataset.scorePhotoPlayer)).toEqual(players.map(player => player.id));
-    expect(entries[0]).toHaveStyle({ width: '328px' });
+    expect(entries[0]).toHaveStyle({ width: '220px' });
+    // Five players retain three columns and a centered second row, not 4+1.
+    expect(container.querySelector('[data-score-photo-results]')).toHaveStyle({ width: '756px', alignSelf: 'center' });
     entries.forEach((entry, index) => {
       expect(entry).toHaveClass('bg-surface-bg', 'border-2', 'border-surface-border', 'justify-between');
       expect(entry).toHaveStyle({ borderRadius: '12px' });
@@ -127,5 +129,17 @@ describe('photo-first score export layout', () => {
     }));
     expect(metadata.lastElementChild).toHaveTextContent('萬用桌遊計分板');
     expect(metadata.lastElementChild).toHaveStyle({ marginLeft: 'auto', textAlign: 'right' });
+  });
+
+  it('does not expand a two-player result to fill the photo width', () => {
+    const players = [createPlayer('p1', 'Alice', 128), createPlayer('p2', 'Bob', 115)];
+    const { container } = renderOverlay(baseData(players, ['p1'], 'HIGHEST_WINS'));
+    const results = container.querySelector('[data-score-photo-results]')!;
+    expect(results).toHaveStyle({ width: '520px', alignSelf: 'center', maxWidth: '100%' });
+    expect(results).toHaveClass('justify-center', 'flex-wrap');
+    for (const entry of results.querySelectorAll('[data-score-photo-player]')) {
+      expect(entry).toHaveStyle({ width: '220px' });
+    }
+    expect(container.firstElementChild).toHaveStyle({ width: '1080px' });
   });
 });

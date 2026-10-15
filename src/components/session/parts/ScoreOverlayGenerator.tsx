@@ -22,6 +22,7 @@ interface ScoreOverlayGeneratorProps {
 const GENERATOR_WIDTH = 1080;
 const PADDING_PX = 32;
 const GAP_PX = 16;
+const MAX_PLAYER_WIDTH = 220;
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime ?? data.date;
@@ -39,7 +40,9 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const numRows = Math.max(1, Math.ceil(data.players.length / 4));
     const targetCols = Math.max(1, Math.ceil(data.players.length / numRows));
     const innerWidth = GENERATOR_WIDTH - PADDING_PX * 2;
-    const playerWidth = Math.floor((innerWidth - (targetCols - 1) * GAP_PX) / targetCols);
+    const playerWidth = Math.min(MAX_PLAYER_WIDTH, Math.floor((innerWidth - (targetCols - 1) * GAP_PX) / targetCols));
+    // Bound the whole group as well, so five compact cards still wrap as 3+2.
+    const resultsWidth = targetCols * playerWidth + (targetCols - 1) * GAP_PX + PADDING_PX * 2;
 
     return (
         <div
@@ -85,7 +88,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
             <div
                 data-score-photo-results="true"
                 className="flex flex-wrap justify-center"
-                style={{ padding: `16px ${PADDING_PX}px`, gap: GAP_PX }}
+                style={{ width: resultsWidth, maxWidth: '100%', alignSelf: 'center', padding: `16px ${PADDING_PX}px`, gap: GAP_PX }}
             >
                 {data.players.map(p => {
                     const isWinner = data.winners.includes(p.id);
