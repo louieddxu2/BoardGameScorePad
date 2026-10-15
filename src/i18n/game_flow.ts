@@ -20,8 +20,8 @@ export const gameFlowTranslations = {
     rule_highest: "競爭：最高分贏",
     rule_lowest: "競爭：最低分贏",
     rule_coop: "合作模式",
-    rule_comp_no_score: "競爭(不計勝負)",
-    rule_coop_no_score: "合作(不計勝負)",
+    rule_comp_no_score: "競爭(無勝負)",
+    rule_coop_no_score: "合作(無勝負)",
 
     // Session Exit Modal (Exit Game)
     exit_title: "即將返回目錄",

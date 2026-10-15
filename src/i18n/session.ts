@@ -299,7 +299,7 @@ export const sessionTranslations = {
     screenshot_outcome_loss: "敗",
     screenshot_team_win: "團隊勝利",
     screenshot_team_loss: "團隊落敗",
-    screenshot_team_coop: "合作遊戲",
+    screenshot_team_no_outcome: "合作(無勝負)",
   },
   'en': {
     // --- Session View ---
@@ -599,7 +599,7 @@ export const sessionTranslations = {
     screenshot_outcome_loss: "Loss",
     screenshot_team_win: "Team victory",
     screenshot_team_loss: "Team defeat",
-    screenshot_team_coop: "Cooperative game",
+    screenshot_team_no_outcome: "Cooperative (No Win/Loss)",
   },
 };
 

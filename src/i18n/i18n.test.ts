@@ -11,6 +11,7 @@ import { sessionTranslations } from './session';
 import { commonTranslations } from './common';
 import { cloudTranslations } from './cloud';
 import { historyTranslations } from './history';
+import { historyStatsTranslations } from './history_stats';
 import { setupTranslations } from './setup';
 import { dataManagerTranslations } from './data_manager';
 import { templateEditorTranslations } from './template_editor';
@@ -34,6 +35,23 @@ const expectSameKeysForLanguages = (
 };
 
 describe('i18n 雙語模組結構檢查', () => {
+  it('uses no-win/loss terminology consistently across game modes instead of claiming scores are disabled', () => {
+    const modeLabels = [
+      [commonTranslations, 'rule_competitive_no_score', 'rule_coop_no_score'],
+      [gameFlowTranslations, 'rule_comp_no_score', 'rule_coop_no_score'],
+      [setupTranslations, 'rule_comp_no_score', 'rule_coop_no_score'],
+      [historyTranslations, 'history_mode_comp_no_score', 'history_mode_coop_no_score'],
+      [historyStatsTranslations, 'rule_COMPETITIVE_NO_SCORE', 'rule_COOP_NO_SCORE'],
+    ] as const;
+    for (const [translations, competitiveKey, cooperativeKey] of modeLabels) {
+      const dict = translations as BiTranslations;
+      expect(dict['zh-TW'][competitiveKey]).toBe('競爭(無勝負)');
+      expect(dict['zh-TW'][cooperativeKey]).toBe('合作(無勝負)');
+      expect(dict.en[competitiveKey]).toContain('No Win/Loss');
+      expect(dict.en[cooperativeKey]).toContain('No Win/Loss');
+    }
+  });
+
   it('column_editor 雙語 key 應一致', () => {
     expectSameKeysForLanguages('column_editor', columnEditorTranslations);
   });

@@ -6,6 +6,7 @@ import { Player } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 import { getPlayerStickerIndices } from './StickerElement';
+import { calculateWinners } from '../../../utils/templateUtils';
 
 const createPlayer = (id: string, name: string, totalScore: number): Player => ({
   id,
@@ -68,7 +69,7 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     expect(queryByText('負')).toBeNull();
   });
 
-  it('keeps zero numeric in no-score modes', () => {
+  it('keeps zero numeric in no-win/loss modes', () => {
     const players = [
       createPlayer('p1', 'Alice', 0),
       createPlayer('p2', 'Bob', 0),
@@ -81,12 +82,12 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     expect(queryByText('負')).toBeNull();
   });
 
-  it('shows one shared cooperative outcome, preserves scores and anonymity, and never crowns individual players', () => {
+  it('shares default cooperative victory and a shared forced loss using the existing winner calculation', () => {
     const players: OverlayData['players'] = [
       createPlayer('p1', 'Alice', 12),
       { ...createPlayer('p2', 'Private name', 9), isAnonymous: true },
     ];
-    const data = baseData(players, ['p1', 'p2'], 'COOP');
+    const data = baseData(players, calculateWinners(players, 'COOP'), 'COOP');
     const { container, queryByText, getByText, rerender } = renderOverlay(data);
     const team = container.querySelector('[data-score-photo-team]')!;
     expect(team).toHaveAttribute('data-score-photo-team', 'win');
@@ -98,37 +99,44 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     expect(queryByText('Private name')).toBeNull();
     expect(container.querySelector('[data-sticker-icon]')).not.toBeNull();
 
+    const lostPlayers = players.map(player => ({ ...player, totalScore: 0, isForceLost: player.id === 'p2' }));
     rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
-      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, winners: [],
-        players: players.map(player => ({ ...player, totalScore: 0 })) }} />
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, players: lostPlayers,
+        winners: calculateWinners(lostPlayers, 'COOP') }} />
     </LanguageContext.Provider>);
     expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('團隊落敗');
     expect(container.querySelector('[data-score-photo-team]')).toHaveAttribute('data-score-photo-team', 'loss');
     expect(container.querySelectorAll('.lucide-crown')).toHaveLength(0);
     expect(Array.from(container.querySelectorAll('[data-score-photo-player]')).map(entry => entry.lastElementChild?.textContent))
       .toEqual(['0', '0']);
-  });
 
-  it('does not invent a team loss for unrecorded no-score or inconsistent cooperative outcomes', () => {
-    const players = [createPlayer('p1', 'Alice', 0), createPlayer('p2', 'Bob', 0)];
-    const data = baseData(players, [], 'COOP_NO_SCORE');
-    const { container, rerender } = renderOverlay(data);
-    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('合作遊戲');
-    expect(container.querySelector('[data-score-photo-team]')).toHaveAttribute('data-score-photo-team', 'unknown');
-    rerender(<LanguageContext.Provider value={{ language: 'en', setLanguage: () => undefined }}>
-      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, winners: ['p1', 'p2'] }} />
-    </LanguageContext.Provider>);
-    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('Team victory');
+    // Imported history can record a team defeat without carrying local forced-loss flags.
     rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
-      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, scoringRule: 'COOP', winners: ['p1'] }} />
-    </LanguageContext.Provider>);
-    expect(container.querySelector('[data-score-photo-team]')).toHaveAttribute('data-score-photo-team', 'unknown');
-    expect(container.querySelectorAll('.lucide-crown')).toHaveLength(0);
-    rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
-      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data,
-        players: players.map(player => ({ ...player, isForceLost: true })) }} />
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, winners: [] }} />
     </LanguageContext.Provider>);
     expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('團隊落敗');
+  });
+
+  it('ignores supplied winners and forced losses in both no-win/loss modes while retaining scores', () => {
+    const players = [{ ...createPlayer('p1', 'Alice', 12), isForceLost: true }, createPlayer('p2', 'Bob', 9)];
+    const data = baseData(players, ['p1', 'p2'], 'COOP_NO_SCORE');
+    const { container, rerender } = renderOverlay(data);
+    expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('合作(無勝負)');
+    for (const scoringRule of ['COOP_NO_SCORE', 'COMPETITIVE_NO_SCORE'] as const) {
+      rerender(<LanguageContext.Provider value={{ language: 'en', setLanguage: () => undefined }}>
+        <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, scoringRule }} />
+      </LanguageContext.Provider>);
+      const team = container.querySelector('[data-score-photo-team]');
+      if (scoringRule === 'COOP_NO_SCORE') {
+        expect(team).toHaveAttribute('data-score-photo-team', 'none');
+        expect(team).toHaveTextContent('Cooperative (No Win/Loss)');
+      } else expect(team).toBeNull();
+      expect(container.querySelectorAll('.lucide-crown')).toHaveLength(0);
+      expect(container.textContent).not.toContain('Team victory');
+      expect(container.textContent).not.toContain('Team defeat');
+      expect(Array.from(container.querySelectorAll('[data-score-photo-player]')).map(entry => entry.lastElementChild?.textContent))
+        .toEqual(['12', '9']);
+    }
   });
 });
 

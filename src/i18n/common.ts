@@ -84,8 +84,8 @@ export const commonTranslations = {
     rule_highest_wins: "Highest Wins",
     rule_lowest_wins: "Lowest Wins",
     rule_coop: "Cooperative",
-    rule_competitive_no_score: "Competitive (No Score)",
-    rule_coop_no_score: "Cooperative (No Score)",
+    rule_competitive_no_score: "Competitive (No Win/Loss)",
+    rule_coop_no_score: "Cooperative (No Win/Loss)",
   }
 };
 

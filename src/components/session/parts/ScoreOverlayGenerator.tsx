@@ -31,13 +31,13 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const stickerIndices = useMemo(() => getPlayerStickerIndices(data.players.map(player => player.id)), [data.players]);
     const scoringRule = data.scoringRule || 'HIGHEST_WINS';
     const isCoop = scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE';
-    const teamWon = isCoop && data.players.length > 0 && data.players.every(player => data.winners.includes(player.id));
-    // No-score records may never have recorded an outcome. Do not invent a loss for them.
-    const teamLost = isCoop && !teamWon && data.players.length > 0
-        && !data.players.some(player => data.winners.includes(player.id))
-        && (scoringRule === 'COOP' || data.players.some(player => player.isForceLost));
-    const teamLabel = teamWon ? t('screenshot_team_win')
-        : teamLost ? t('screenshot_team_loss') : t('screenshot_team_coop');
+    // Legacy *_NO_SCORE identifiers mean no win/loss, not disabled score input.
+    const hasNoOutcome = scoringRule === 'COOP_NO_SCORE' || scoringRule === 'COMPETITIVE_NO_SCORE';
+    // The caller already applies cooperative rules (or supplies a recorded history result).
+    // Do not recompute history outcomes or treat no-win/loss modes as missing results.
+    const teamWon = scoringRule === 'COOP' && data.players.some(player => data.winners.includes(player.id));
+    const teamLabel = hasNoOutcome ? t('screenshot_team_no_outcome')
+        : teamWon ? t('screenshot_team_win') : t('screenshot_team_loss');
     const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
         || scoringRule === 'LOWEST_WINS';
     const showOutcomeForZeroScores = isScoredOutcomeMode
@@ -101,7 +101,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
 
             {isCoop && data.players.length > 0 && (
                 <div
-                    data-score-photo-team={teamWon ? 'win' : teamLost ? 'loss' : 'unknown'}
+                    data-score-photo-team={hasNoOutcome ? 'none' : teamWon ? 'win' : 'loss'}
                     className="flex items-center justify-center font-bold text-txt-title"
                     style={{ alignSelf: 'center', padding: '20px 32px 0', gap: 8, fontSize: 32, lineHeight: 1.2 }}
                 >
@@ -116,7 +116,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 style={{ width: resultsWidth, maxWidth: '100%', alignSelf: 'center', padding: `16px ${PADDING_PX}px`, gap: GAP_PX }}
             >
                 {data.players.map(p => {
-                    const isWinner = data.winners.includes(p.id);
+                    const isWinner = !hasNoOutcome && data.winners.includes(p.id);
                     const displayScore = showOutcomeForZeroScores
                         ? (isWinner ? t('screenshot_outcome_win') : t('screenshot_outcome_loss'))
                         : p.totalScore;
