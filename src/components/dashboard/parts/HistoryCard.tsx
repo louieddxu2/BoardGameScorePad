@@ -4,10 +4,6 @@ import { HistorySummary } from '../../../utils/extractDataSummaries';
 import { Crown, Calendar, Trash2, MapPin } from 'lucide-react';
 import { ContrastText } from '../../shared/ContrastText';
 import { useCommonTranslation } from '../../../i18n/common';
-import { useTouchAction } from '../../shared/useTouchAction';
-
-// Dashboard flicks beyond 10px switch views, so they must not open a record.
-const CARD_TOUCH_MOVE_THRESHOLD = 10;
 
 interface HistoryCardProps {
     record: HistoryRecord | HistorySummary;
@@ -17,18 +13,13 @@ interface HistoryCardProps {
 
 const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) => {
     const { language } = useCommonTranslation();
-    const cardTouchHandlers = useTouchAction<HTMLDivElement>(onClick, { moveThreshold: CARD_TOUCH_MOVE_THRESHOLD });
-    const deleteTouchHandlers = useTouchAction<HTMLButtonElement>((event) => {
-        event.stopPropagation();
-        if (record.id) onDelete(record.id);
-    }, { moveThreshold: CARD_TOUCH_MOVE_THRESHOLD });
     const date = new Date(record.endTime);
     const dateStr = date.toLocaleDateString(language, { year: 'numeric', month: '2-digit', day: '2-digit' });
     const timeStr = date.toLocaleTimeString(language, { hour: '2-digit', minute: '2-digit', hour12: false });
 
     return (
         <div
-            {...cardTouchHandlers}
+            onClick={onClick}
             className="bg-surface-bg rounded-xl border border-surface-border shadow-md p-4 relative group hover:bg-surface-hover hover:border-surface-border-hover transition-all duration-200 w-full cursor-pointer"
         >
             {/* Header: Date & Title */}
@@ -52,7 +43,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                 </div>
 
                 <button
-                    {...deleteTouchHandlers}
+                    onClick={(e) => { e.stopPropagation(); if (record.id) onDelete(record.id); }}
                     className="p-2 text-txt-muted hover:text-status-danger hover:bg-status-danger/10 rounded-lg transition-colors -mr-2 -mt-2 shrink-0"
                 >
                     <Trash2 size={16} />

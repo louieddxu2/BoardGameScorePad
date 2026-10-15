@@ -39,8 +39,8 @@ export const usePullAction = (
   const callbacksRef = useRef({ onTriggerSearch, onTriggerCloud });
   callbacksRef.current = { onTriggerSearch, onTriggerCloud };
   
-  // [New] 軸向鎖定 Ref ('h' = Horizontal, 'v' = Vertical, null = 未定)
-  const axisLockRef = useRef<'h' | 'v' | null>(null);
+  // Distinguish owned horizontal/pull gestures from native vertical scrolling.
+  const axisLockRef = useRef<'horizontal' | 'pull' | 'scroll' | null>(null);
 
   const reset = useCallback(() => {
     isTouchingRef.current = false;
@@ -85,8 +85,6 @@ export const usePullAction = (
         reset();
         return;
       }
-      if (!isTopStartRef.current) return;
-
       const touch = e.touches[0];
       const deltaY = touch.clientY - startYRef.current;
       const deltaX = touch.clientX - startXRef.current;
@@ -105,16 +103,21 @@ export const usePullAction = (
               // 2. 水平偏移量小於垂直偏移量 * tan(15°)
               const isStrictDown = deltaY > 0 && Math.abs(deltaX) < (Math.abs(deltaY) * TAN_15_DEG);
 
-              if (isStrictDown) {
-                  axisLockRef.current = 'v'; // 判定為垂直下拉 (Pull Action)
-              } else {
-                  axisLockRef.current = 'h'; // 判定為其他方向 (Horizontal / Diagonal)，忽略下拉
-              }
+              axisLockRef.current = Math.abs(deltaX) > Math.abs(deltaY)
+                  ? 'horizontal' : isStrictDown ? 'pull' : 'scroll';
           }
       }
 
+      if (axisLockRef.current === 'horizontal') {
+          // React's passive touchmove cannot stop native panning. Use this
+          // existing non-passive listener, including away from the scroll top.
+          if (e.cancelable) e.preventDefault();
+          return;
+      }
+      if (!isTopStartRef.current) return;
+
       // 2. 只有鎖定為「垂直」且方向向下時，才啟動 Pull Action
-      if (axisLockRef.current === 'v') {
+      if (axisLockRef.current === 'pull') {
           // 啟動 Pulling 狀態
           if (!isPullingRef.current && deltaY > 0 && container.scrollTop < 1) { 
                isPullingRef.current = true;
@@ -150,14 +153,6 @@ export const usePullAction = (
               // 更新 UI
               setPullY(dampedY);
               setPullX(effectiveX);
-          }
-      } else if (axisLockRef.current === 'h') {
-          // 如果鎖定為水平(或其他斜向)，確保不觸發 Pull Action，讓 Swipe Hook 或原生捲動接手
-          if (isPullingRef.current) {
-              isPullingRef.current = false;
-              setIsPulling(false);
-              setPullY(0);
-              setPullX(0);
           }
       }
     };

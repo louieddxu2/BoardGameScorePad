@@ -1,10 +1,15 @@
 import React from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n';
 import { GameSession, GameTemplate } from '../../../types';
 import { LibraryView } from './LibraryView';
 import { useDebugGestures } from '../hooks/useDebugGestures';
+import { useMobileZoom } from '../../../hooks/useMobileZoom';
+import { usePullAction } from '../../../hooks/usePullAction';
+import { suppressInvalidTouchClick } from '../../../utils/touchGesture';
+import HistoryCard from '../parts/HistoryCard';
+import type { HistorySummary } from '../../../utils/extractDataSummaries';
 
 const activeSession: GameSession = {
     id: 'session-1',
@@ -62,39 +67,109 @@ const makeProps = (): React.ComponentProps<typeof LibraryView> => ({
     onSystemRestore: vi.fn()
 });
 
-const SwipeLibraryHarness: React.FC<{ props: React.ComponentProps<typeof LibraryView> }> = ({ props }) => {
+const historyRecord: HistorySummary = {
+    id: 'history-one', templateId: pinnedTemplate.id, gameName: 'History Game', endTime: 1,
+    players: [], winnerIds: [], _playerNames: '', _dateStr: '', _compactDate: '', _rocDate: '',
+};
+
+const SwipeLibraryHarness: React.FC<{
+    props: React.ComponentProps<typeof LibraryView>;
+    onSearch?: () => void;
+    onHistorySelect?: () => void;
+}> = ({ props, onSearch = () => undefined, onHistorySelect = () => undefined }) => {
+    useMobileZoom();
+    const scrollRef = React.useRef<HTMLDivElement>(null);
     const [viewMode, setViewMode] = React.useState<'library' | 'history'>('library');
     const gestures = useDebugGestures({ viewMode, setViewMode, onTriggerInspector: vi.fn() });
+    usePullAction(scrollRef, { onTriggerSearch: onSearch, onTriggerCloud: () => undefined });
+    React.useEffect(() => {
+        window.addEventListener('click', suppressInvalidTouchClick, true);
+        return () => window.removeEventListener('click', suppressInvalidTouchClick, true);
+    }, []);
     return (
         <div
+            ref={scrollRef}
+            data-testid="dashboard-scroll"
             onTouchStart={gestures.handleDebugTouchStart}
             onTouchMove={gestures.handleDebugTouchMove}
             onTouchEnd={gestures.handleDebugTouchEnd}
+            onTouchCancel={gestures.handleDebugTouchCancel}
         >
-            <LanguageProvider><LibraryView {...props} /></LanguageProvider>
+            <LanguageProvider>{viewMode === 'library' ? <LibraryView {...props} />
+                : <HistoryCard record={historyRecord} onClick={onHistorySelect} onDelete={() => undefined} />}</LanguageProvider>
             <output>{viewMode}</output>
         </div>
     );
 };
 
 describe('LibraryView compact active and pinned rows', () => {
-    beforeEach(() => localStorage.setItem('app_language', 'zh-TW'));
+    let previousStyle: string | null;
+    let previousZoom: string | null;
+    let previousLanguage: string | null;
+    beforeEach(() => {
+        previousStyle = document.documentElement.getAttribute('style');
+        previousZoom = localStorage.getItem('app_zoom_level');
+        previousLanguage = localStorage.getItem('app_language');
+        localStorage.setItem('app_language', 'zh-TW');
+    });
+    afterEach(() => {
+        cleanup();
+        if (previousStyle === null) document.documentElement.removeAttribute('style');
+        else document.documentElement.setAttribute('style', previousStyle);
+        if (previousZoom === null) localStorage.removeItem('app_zoom_level');
+        else localStorage.setItem('app_zoom_level', previousZoom);
+        if (previousLanguage === null) localStorage.removeItem('app_language');
+        else localStorage.setItem('app_language', previousLanguage);
+    });
 
-    it.each(['Pinned Game', 'Recent Game'])('switches to history on a quick swipe from %s', name => {
+    it.each([{ name: 'Pinned Game', scrollTop: 0 }, { name: 'Recent Game', scrollTop: 120 }])(
+        'cancels native swiping from $name before switching, then accepts the first history tap', ({ name, scrollTop }) => {
         const props = makeProps();
-        render(<SwipeLibraryHarness props={props} />);
+        const onHistorySelect = vi.fn();
+        render(<SwipeLibraryHarness props={props} onHistorySelect={onHistorySelect} />);
+        screen.getByTestId('dashboard-scroll').scrollTop = scrollTop;
         const button = screen.getByRole('button', { name: `開始新遊戲: ${name}` });
-        const start = { clientX: 120, clientY: 80 };
-        const end = { clientX: 60, clientY: 80 };
+        const start = { identifier: 1, target: button, clientX: 120, clientY: 80 };
+        const end = { ...start, clientX: 60, clientY: 82 };
+        const move = createEvent.touchMove(button, { touches: [end], changedTouches: [end], cancelable: true });
 
         act(() => {
             fireEvent.touchStart(button, { touches: [start], targetTouches: [start] });
-            fireEvent.touchMove(button, { touches: [end], targetTouches: [end] });
-            fireEvent.touchEnd(button, { changedTouches: [end] });
+            fireEvent(button, move);
+            fireEvent.touchEnd(button, { touches: [], changedTouches: [end] });
         });
 
+        // Assert the native event, not React's synthetic defaultPrevented flag:
+        // passive React touchmove listeners cannot cancel native panning.
+        expect(move.defaultPrevented).toBe(true);
         expect(screen.getByText('history')).toBeInTheDocument();
         expect(props.onTemplateSelect).not.toHaveBeenCalled();
+        expect(props.onRecentTemplateSelect).not.toHaveBeenCalled();
+
+        const card = screen.getByText('History Game');
+        const tap = { identifier: 2, target: card, clientX: 100, clientY: 100 };
+        fireEvent.touchStart(card, { touches: [tap], changedTouches: [tap] });
+        fireEvent.touchEnd(card, { touches: [], changedTouches: [tap] });
+        fireEvent.click(card);
+        expect(onHistorySelect).toHaveBeenCalledOnce();
+    });
+
+    it('accepts the existing pull-search gesture from a quick-start button without launching its game', () => {
+        const props = makeProps();
+        const onSearch = vi.fn();
+        render(<SwipeLibraryHarness props={props} onSearch={onSearch} />);
+        const button = screen.getByRole('button', { name: '開始新遊戲: Recent Game' });
+        const start = { identifier: 1, target: button, clientX: 100, clientY: 80 };
+        const down = { ...start, clientY: 130 };
+        const right = { ...down, clientX: 140 };
+        fireEvent.touchStart(button, { touches: [start], changedTouches: [start] });
+        const move = createEvent.touchMove(button, { touches: [down], changedTouches: [down], cancelable: true });
+        fireEvent(button, move);
+        expect(move.defaultPrevented).toBe(true);
+        fireEvent.touchMove(button, { touches: [right], changedTouches: [right] });
+        fireEvent.touchEnd(button, { touches: [], changedTouches: [right] });
+        expect(onSearch).toHaveBeenCalledOnce();
+        expect(screen.getByText('library')).toBeInTheDocument();
         expect(props.onRecentTemplateSelect).not.toHaveBeenCalled();
     });
 
@@ -110,12 +185,12 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(activeButton.parentElement).toHaveClass('h-12');
         expect(pinnedButton.parentElement).toHaveClass('h-12');
         expect(recentButton.parentElement).toHaveClass('h-12');
-        expect(activeButton.parentElement).toHaveClass('touch-pan-y');
-        expect(pinnedButton.parentElement).toHaveClass('touch-pan-y');
-        expect(recentButton.parentElement).toHaveClass('touch-pan-y');
-        expect(activeButton).toHaveClass('touch-pan-y');
-        expect(pinnedButton).toHaveClass('touch-pan-y');
-        expect(recentButton).toHaveClass('touch-pan-y');
+        // Compact rows share the dashboard's native touch policy with grid cards.
+        // Per-row pan-y must not opt them into a competing native gesture.
+        for (const button of [activeButton, pinnedButton, recentButton]) {
+            expect(button.parentElement).not.toHaveClass('touch-pan-y');
+            expect(button).not.toHaveClass('touch-pan-y');
+        }
         expect(activeButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(pinnedButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(recentButton.closest('.grid')).toHaveClass('grid-cols-1');

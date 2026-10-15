@@ -81,12 +81,12 @@ const GameCard: React.FC<GameCardProps> = ({
     return (
       <div
         onClick={onClick}
-        className={`flex h-12 touch-pan-y cursor-pointer items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}
+        className={`flex h-12 cursor-pointer items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}
       >
         <button
           type="button"
           aria-label={`${t(isActive ? 'card_resume' : 'card_start_new')}: ${template.name}`}
-          className="flex h-full min-w-0 flex-1 touch-pan-y items-center rounded-l-xl px-3 text-left text-sm font-bold text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+          className="flex h-full min-w-0 flex-1 items-center rounded-l-xl px-3 text-left text-sm font-bold text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
         >
           <span className="truncate">{template.name}</span>
         </button>
