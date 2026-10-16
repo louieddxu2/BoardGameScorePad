@@ -19,11 +19,14 @@ afterEach(() => document.documentElement.style.removeProperty('--c-txt-secondary
 describe('photo name and surface contrast', () => {
     it('keeps neutral scores legible and gives colored names a strong edge even when they match the card', () => {
         for (const channels of [[255, 0, 0], [0, 255, 0], [0, 0, 255]]) {
-            for (const theme of ['dark', 'light'] as const) {
-                const palette = getPhotoResultPalette(new Uint8ClampedArray([...channels, 255]), theme);
-                const text = theme === 'dark' ? 1 : luminance('#0f172a');
+            for (const bright of [false, true]) {
+                const sample = bright ? channels.map(value => 200 + value * 55 / 255) : channels;
+                const palette = getPhotoResultPalette(new Uint8ClampedArray([...sample, 255]));
+                const text = luminance(palette.text);
                 expect(contrast(text, luminance(palette.card))).toBeGreaterThan(4.5);
                 expect(contrast(text, luminance(palette.background))).toBeGreaterThan(4.5);
+                expect(contrast(luminance(palette.muted), luminance(palette.background))).toBeGreaterThan(4.5);
+                expect(contrast(luminance(palette.winner), luminance(palette.card))).toBeGreaterThan(3);
                 // Test the difficult case: exactly the same name and card color.
                 const element = document.createElement('span');
                 element.style.color = palette.card;

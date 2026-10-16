@@ -1,6 +1,5 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoTextOutline } from './photoTextContrast';
-import { getCurrentTheme } from './ui';
+import { getPhotoPlayerNameShadow, getPhotoPlayerOutlineColor, getPhotoTextOutline } from './photoTextContrast';
 
 interface TitleAppearance {
     color: string;
@@ -77,7 +76,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
             const sampleHeight = Math.max(1, Math.round(image.naturalHeight * RESULT_SAMPLE_RATIO));
             context.drawImage(image, 0, image.naturalHeight - sampleHeight, image.naturalWidth, sampleHeight,
                 0, 0, canvas.width, canvas.height);
-            palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data, getCurrentTheme());
+            palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data);
         }
         const imageRect = image.getBoundingClientRect();
         const titleRect = title.getBoundingClientRect();
@@ -104,4 +103,9 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-result-background', palette.background);
     root.style.setProperty('--photo-result-card', palette.card);
     root.style.setProperty('--photo-result-border', palette.border);
+    root.style.setProperty('--photo-result-text', palette.text);
+    root.style.setProperty('--photo-result-muted', palette.muted);
+    root.style.setProperty('--photo-result-winner', palette.winner);
+    root.style.setProperty('--photo-result-name-shadow', getPhotoPlayerNameShadow(palette.text));
+    root.style.setProperty('--photo-result-name-outline', getPhotoPlayerOutlineColor(palette.text));
 };

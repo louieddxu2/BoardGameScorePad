@@ -5,6 +5,7 @@ import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 import { getPhotoPlayerNameShadow } from '../../../utils/photoTextContrast';
+import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
 
 export interface OverlayData {
     gameName: string;
@@ -24,6 +25,8 @@ const GENERATOR_WIDTH = 1080;
 const PADDING_PX = 32;
 const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 220;
+const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
+const DEFAULT_NAME_SHADOW = `var(--photo-result-name-shadow, ${getPhotoPlayerNameShadow(PHOTO_RESULT_FALLBACK.text)})`;
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime ?? data.date;
@@ -58,11 +61,12 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
             // Export typography must not inherit the user's rem-based UI zoom.
             style={{
                 width: GENERATOR_WIDTH, fontSize: 16, lineHeight: 1.4,
-                backgroundColor: 'var(--photo-result-background, rgb(var(--c-app-bg)))',
+                backgroundColor: `var(--photo-result-background, ${PHOTO_RESULT_FALLBACK.background})`,
+                color: RESULT_TEXT,
             }}
             className="bg-app-bg text-txt-primary flex flex-col items-stretch overflow-hidden"
         >
-            <div className="bg-app-bg-deep relative">
+            <div className="relative">
                 <img
                     data-score-photo-source="true"
                     src={imageSrc}
@@ -102,10 +106,11 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 <div
                     data-score-photo-team={teamWon ? 'win' : 'loss'}
                     className="flex items-center justify-center font-bold text-txt-title"
-                    style={{ alignSelf: 'center', padding: '20px 32px 0', gap: 8, fontSize: 32, lineHeight: 1.2 }}
+                    style={{ alignSelf: 'center', padding: '20px 32px 0', gap: 8, fontSize: 32, lineHeight: 1.2, color: RESULT_TEXT }}
                 >
                     <span>{teamLabel}</span>
-                    {teamWon && <Crown size={28} className="text-status-warning fill-current" style={{ alignSelf: 'flex-start' }} />}
+                    {teamWon && <Crown size={28} className="text-status-warning fill-current"
+                        style={{ alignSelf: 'flex-start', color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})` }} />}
                 </div>
             )}
 
@@ -119,7 +124,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     const displayScore = showOutcomeForZeroScores
                         ? (isWinner ? t('screenshot_outcome_win') : t('screenshot_outcome_loss'))
                         : p.totalScore;
-                    const playerColor = !p.color || p.color === 'transparent' ? 'rgb(var(--c-txt-secondary))' : p.color;
+                    const hasDefaultColor = !p.color || p.color === 'transparent';
+                    const playerColor = hasDefaultColor ? RESULT_TEXT : p.color;
                     const scoreFontSize = Math.min(56, (playerWidth - 64) / (String(displayScore).length * 0.65));
 
                     return (
@@ -129,8 +135,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             className="flex flex-col items-center justify-between bg-surface-bg border-2 border-surface-border"
                             style={{
                                 width: playerWidth, minWidth: 0, borderRadius: 12, padding: '8px 12px 12px', gap: 6,
-                                backgroundColor: 'var(--photo-result-card, rgb(var(--c-surface-bg)))',
-                                borderColor: 'var(--photo-result-border, rgb(var(--c-surface-border)))',
+                                backgroundColor: `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`,
+                                borderColor: `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
                             }}
                         >
                             <div
@@ -144,18 +150,19 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                         data-score-photo-winner="true"
                                         size={24}
                                         className="absolute text-status-warning fill-current"
-                                        style={{ top: 0, right: 0 }}
+                                        style={{ top: 0, right: 0, color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})` }}
                                     />
                                 )}
                                 {p.isAnonymous ? (
                                     <StickerElement id={p.id} color={playerColor} iconIndex={stickerIndices.get(p.id)}
+                                        outlineColor={hasDefaultColor ? 'var(--photo-result-name-outline, #000000)' : undefined}
                                         className="[&_svg]:w-[36px] [&_svg]:h-[36px]" />
                                 ) : (
                                     <span
                                         className="font-bold"
                                         style={{
                                             display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere',
-                                            color: playerColor, textShadow: getPhotoPlayerNameShadow(playerColor),
+                                            color: playerColor, textShadow: hasDefaultColor ? DEFAULT_NAME_SHADOW : getPhotoPlayerNameShadow(playerColor),
                                         }}
                                     >
                                         {p.name}
@@ -164,7 +171,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             </div>
                             <span
                                 className="font-black font-mono text-txt-title"
-                                style={{ fontSize: scoreFontSize, lineHeight: 1.05, whiteSpace: 'nowrap' }}
+                                style={{ fontSize: scoreFontSize, lineHeight: 1.05, whiteSpace: 'nowrap', color: RESULT_TEXT }}
                             >
                                 {displayScore}
                             </span>
@@ -176,7 +183,11 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
             <div
                 data-score-photo-metadata="true"
                 className="border-t border-surface-border text-txt-secondary flex flex-wrap items-baseline justify-between"
-                style={{ padding: `12px ${PADDING_PX}px`, gap: '8px 24px', fontSize: 24, lineHeight: 1.4 }}
+                style={{
+                    padding: `12px ${PADDING_PX}px`, gap: '8px 24px', fontSize: 24, lineHeight: 1.4,
+                    color: `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})`,
+                    borderColor: `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                }}
             >
                 <span className="font-mono">{dateStr} {timeStr}</span>
                 <span style={{ marginLeft: 'auto', textAlign: 'right' }}>{t('ss_app_title')}</span>

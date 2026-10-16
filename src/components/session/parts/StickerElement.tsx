@@ -11,6 +11,7 @@ interface StickerElementProps {
     color: string; // Player color
     className?: string;
     iconIndex?: number;
+    outlineColor?: string;
 }
 
 // Simple deterministic hash
@@ -38,7 +39,7 @@ export const getPlayerStickerIndices = (playerIds: readonly string[]): Map<strin
     return indices;
 };
 
-const StickerElement: React.FC<StickerElementProps> = ({ id, color, className, iconIndex }) => {
+const StickerElement: React.FC<StickerElementProps> = ({ id, color, className, iconIndex, outlineColor }) => {
     const { Icon, rotation } = useMemo(() => {
         const hash = getHash(id);
         
@@ -52,7 +53,7 @@ const StickerElement: React.FC<StickerElementProps> = ({ id, color, className, i
         };
     }, [id, iconIndex]);
     // Resolve the actual color, including theme-dependent text-color fallbacks.
-    const outlineColor = getPerceivedLuminance(color) < 128 ? '#f8fafc' : '#0f172a';
+    const resolvedOutlineColor = outlineColor ?? (getPerceivedLuminance(color) < 128 ? '#f8fafc' : '#0f172a');
 
     return (
         <div 
@@ -73,7 +74,7 @@ const StickerElement: React.FC<StickerElementProps> = ({ id, color, className, i
                 data-sticker-outline="true"
                 aria-hidden="true"
                 size={48}
-                color={outlineColor}
+                color={resolvedOutlineColor}
                 fill="none"
                 strokeWidth={4.5}
                 className="absolute inset-0"

@@ -17,11 +17,11 @@ describe('photo result palette', () => {
         expect(source).toEqual(before);
     });
 
-    it('gives warm and cool photos distinct opaque surfaces in both themes instead of near-gray transparency', () => {
+    it('chooses warm and cool surfaces from photo brightness instead of an app-theme parameter', () => {
         for (const [channels, hue] of [[[255, 0, 0], 0], [[0, 0, 255], 240]] as const) {
             const pixels = new Uint8ClampedArray([...channels, 255]);
-            const dark = getPhotoResultPalette(pixels, 'dark');
-            const light = getPhotoResultPalette(pixels, 'light');
+            const dark = getPhotoResultPalette(pixels);
+            const light = getPhotoResultPalette(new Uint8ClampedArray([...channels.map(value => 200 + value * 55 / 255), 255]));
             expect(dark.background).toBe(`hsl(${hue}, 44%, 22%)`);
             expect(dark.card).toBe(`hsl(${hue}, 37%, 30%)`);
             expect(light.background).toBe(`hsl(${hue}, 44%, 92%)`);
@@ -33,5 +33,14 @@ describe('photo result palette', () => {
             .toEqual(PHOTO_RESULT_FALLBACK);
         expect(getPhotoResultPalette(new Uint8ClampedArray([100, 80, 80, 255, 80, 100, 100, 255])))
             .toEqual(PHOTO_RESULT_FALLBACK);
+    });
+
+    it('also selects matching neutral surfaces and text for monochrome photos, ignoring transparent pixels', () => {
+        const bright = getPhotoResultPalette(new Uint8ClampedArray([240, 240, 240, 255, 0, 0, 0, 0]));
+        expect(bright.background).toBe('#f1f5f9');
+        expect(bright.text).toBe('#0f172a');
+        const dark = getPhotoResultPalette(new Uint8ClampedArray([30, 30, 30, 255, 255, 255, 255, 0]));
+        expect(dark).toEqual(PHOTO_RESULT_FALLBACK);
+        expect(getPhotoResultPalette(new Uint8ClampedArray())).toEqual(PHOTO_RESULT_FALLBACK);
     });
 });

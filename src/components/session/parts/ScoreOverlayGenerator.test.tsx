@@ -153,7 +153,8 @@ describe('photo-first score export layout', () => {
     expect(image.parentElement).toBe(title.parentElement?.parentElement);
     expect(image).toHaveStyle({ width: '100%', height: 'auto' });
     expect(root).toHaveStyle({ width: '1080px', fontSize: '16px' });
-    expect(root.style.backgroundColor).toBe('var(--photo-result-background, rgb(var(--c-app-bg)))');
+    expect(root.style.backgroundColor).toBe('var(--photo-result-background, #1e293b)');
+    expect(root.style.color).toBe('var(--photo-result-text, #f8fafc)');
     expect(container.querySelector('[data-score-photo-team]')).toBeNull();
     expect(getByText(data.gameName)).toHaveStyle({ fontSize: '44px' });
     expect(title).toHaveStyle({ textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})` });
@@ -167,8 +168,9 @@ describe('photo-first score export layout', () => {
     entries.forEach((entry, index) => {
       expect(entry).toHaveClass('bg-surface-bg', 'border-2', 'border-surface-border', 'justify-between');
       expect(entry).toHaveStyle({ borderRadius: '12px' });
-      expect(entry.style.borderColor).toBe('var(--photo-result-border, rgb(var(--c-surface-border)))');
-      expect(entry.style.backgroundColor).toBe('var(--photo-result-card, rgb(var(--c-surface-bg)))');
+      expect(entry.style.borderColor).toBe('var(--photo-result-border, #64748b)');
+      expect(entry.style.backgroundColor).toBe('var(--photo-result-card, #334155)');
+      expect((entry.lastElementChild as HTMLElement).style.color).toBe('var(--photo-result-text, #f8fafc)');
       const identity = entry.querySelector('[data-score-photo-identity]')!;
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');
@@ -188,16 +190,32 @@ describe('photo-first score export layout', () => {
       expect(crown.parentElement).toHaveAttribute('data-score-photo-identity', 'true');
       expect(crown.parentElement).toHaveStyle({ padding: '10px 28px 0px', maxWidth: '100%' });
       expect(crown).toHaveStyle({ top: '0px', right: '0px' });
+      expect((crown as SVGElement).style.color).toBe('var(--photo-result-winner, #fbbf24)');
       expect(crown).toHaveAttribute('width', '24');
     }
 
     const metadata = container.querySelector('[data-score-photo-metadata]')!;
     expect(root.lastElementChild).toBe(metadata);
+    expect((metadata as HTMLElement).style.color).toBe('var(--photo-result-muted, #cbd5e1)');
     expect(metadata.firstElementChild?.textContent).toContain(new Date(data.endTime).toLocaleDateString('zh-TW', {
       year: 'numeric', month: '2-digit', day: '2-digit',
     }));
     expect(metadata.lastElementChild).toHaveTextContent('萬用桌遊計分板');
     expect(metadata.lastElementChild).toHaveStyle({ marginLeft: 'auto', textAlign: 'right' });
+  });
+
+  it('uses the photo palette for default identities but preserves explicitly chosen player colors', () => {
+    const players: OverlayData['players'] = [
+      { ...createPlayer('p1', 'Default name', 10), color: 'transparent' },
+      { ...createPlayer('p2', 'Private name', 20), color: '', isAnonymous: true },
+      createPlayer('p3', 'Chosen color', 30),
+    ];
+    const { container, getByText } = renderOverlay(baseData(players, ['p3'], 'HIGHEST_WINS'));
+    expect(getByText('Default name').style.color).toBe('var(--photo-result-text, #f8fafc)');
+    expect(getByText('Default name').style.textShadow).toContain('var(--photo-result-name-shadow,');
+    expect(container.querySelector('[data-sticker-icon]')).toHaveAttribute('stroke', 'var(--photo-result-text, #f8fafc)');
+    expect(container.querySelector('[data-sticker-outline]')).toHaveAttribute('stroke', 'var(--photo-result-name-outline, #000000)');
+    expect(getByText('Chosen color')).toHaveStyle({ color: '#ef4444' });
   });
 
   it('does not expand a two-player result to fill the photo width', () => {

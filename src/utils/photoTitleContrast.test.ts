@@ -92,17 +92,27 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
     });
 
-    it('uses light surfaces when the active app theme is light', async () => {
+    it('uses the photo brightness for surfaces and all neutral text regardless of the app theme', async () => {
         const { root, context } = setupPhoto();
         const originalTheme = document.documentElement.getAttribute('data-theme');
-        const photoPixels = new Uint8ClampedArray([200, 40, 20, 255]);
         try {
-            document.documentElement.setAttribute('data-theme', 'light');
-            context.getImageData.mockReturnValueOnce({ data: photoPixels });
-            await prepareScorePhotoTitle(root, new AbortController().signal);
-            const expected = getPhotoResultPalette(photoPixels, 'light');
-            expect(root.style.getPropertyValue('--photo-result-background')).toBe(expected.background);
-            expect(root.style.getPropertyValue('--photo-result-card')).toBe(expected.card);
+            for (const photoPixels of [new Uint8ClampedArray([220, 205, 180, 255]), new Uint8ClampedArray([30, 20, 10, 255])]) {
+                let firstStyles: string | undefined;
+                for (const appTheme of ['dark', 'light']) {
+                    document.documentElement.setAttribute('data-theme', appTheme);
+                    context.getImageData.mockReturnValueOnce({ data: photoPixels });
+                    await prepareScorePhotoTitle(root, new AbortController().signal);
+                    const expected = getPhotoResultPalette(photoPixels);
+                    for (const [key, value] of Object.entries(expected)) {
+                        expect(root.style.getPropertyValue(`--photo-result-${key}`)).toBe(value);
+                    }
+                    if (firstStyles) expect(root.style.cssText).toBe(firstStyles);
+                    firstStyles = root.style.cssText;
+                    expect(root.style.getPropertyValue('--photo-result-name-shadow')).not.toBe('');
+                    expect(root.style.getPropertyValue('--photo-result-name-outline'))
+                        .toBe(expected.text === '#0f172a' ? '#ffffff' : '#000000');
+                }
+            }
         } finally {
             if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
             else document.documentElement.setAttribute('data-theme', originalTheme);
