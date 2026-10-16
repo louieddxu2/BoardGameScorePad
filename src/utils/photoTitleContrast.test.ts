@@ -92,7 +92,7 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
     });
 
-    it('uses the photo brightness for surfaces and all neutral text regardless of the app theme', async () => {
+    it('uses the photo brightness for result surfaces and score text regardless of the app theme', async () => {
         const { root, context } = setupPhoto();
         const originalTheme = document.documentElement.getAttribute('data-theme');
         try {
@@ -108,9 +108,8 @@ describe('photo title contrast', () => {
                     }
                     if (firstStyles) expect(root.style.cssText).toBe(firstStyles);
                     firstStyles = root.style.cssText;
-                    expect(root.style.getPropertyValue('--photo-result-name-shadow')).not.toBe('');
-                    expect(root.style.getPropertyValue('--photo-result-name-outline'))
-                        .toBe(expected.text === '#0f172a' ? '#ffffff' : '#000000');
+                    expect(root.style.getPropertyValue('--photo-result-name-shadow')).toBe('');
+                    expect(root.style.getPropertyValue('--photo-result-name-outline')).toBe('');
                 }
             }
         } finally {

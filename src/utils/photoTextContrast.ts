@@ -9,7 +9,7 @@ export const getPhotoTextOutline = (color: string, softShadow: string, width = 2
 ].join(', ');
 
 /** Preserve the player's fill color, with a legible edge even on a similarly colored card. */
-export const getPhotoPlayerOutlineColor = (color: string): string => {
+const getPhotoPlayerOutlineColor = (color: string): string => {
     const luminance = getRelativeLuminance(color);
     const whiteContrast = 1.05 / (luminance + 0.05);
     const blackContrast = (luminance + 0.05) / 0.05;

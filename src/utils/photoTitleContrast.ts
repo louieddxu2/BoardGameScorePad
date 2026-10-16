@@ -1,5 +1,5 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoPlayerNameShadow, getPhotoPlayerOutlineColor, getPhotoTextOutline } from './photoTextContrast';
+import { getPhotoTextOutline } from './photoTextContrast';
 
 interface TitleAppearance {
     color: string;
@@ -106,6 +106,4 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-result-text', palette.text);
     root.style.setProperty('--photo-result-muted', palette.muted);
     root.style.setProperty('--photo-result-winner', palette.winner);
-    root.style.setProperty('--photo-result-name-shadow', getPhotoPlayerNameShadow(palette.text));
-    root.style.setProperty('--photo-result-name-outline', getPhotoPlayerOutlineColor(palette.text));
 };

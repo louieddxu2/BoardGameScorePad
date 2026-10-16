@@ -174,6 +174,8 @@ describe('photo-first score export layout', () => {
       const identity = entry.querySelector('[data-score-photo-identity]')!;
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');
+      expect(identity).toHaveStyle({ backgroundColor: 'rgb(var(--c-surface-bg))', borderRadius: '8px' });
+      expect((identity as HTMLElement).style.boxShadow).toContain('rgb(var(--c-surface-border))');
       expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
       if (players[index].isAnonymous) expect(identity.querySelector('[data-sticker-icon]')).not.toBeNull();
       else {
@@ -188,9 +190,10 @@ describe('photo-first score export layout', () => {
       .toEqual(['p1', 'p3', 'p4']);
     for (const crown of crowns) {
       expect(crown.parentElement).toHaveAttribute('data-score-photo-identity', 'true');
-      expect(crown.parentElement).toHaveStyle({ padding: '10px 28px 0px', maxWidth: '100%' });
+      expect(crown.parentElement).toHaveStyle({ padding: '10px 28px 6px', maxWidth: '100%' });
       expect(crown).toHaveStyle({ top: '0px', right: '0px' });
-      expect((crown as SVGElement).style.color).toBe('var(--photo-result-winner, #fbbf24)');
+      expect(crown).toHaveClass('text-status-warning');
+      expect((crown as SVGElement).style.color).toBe(''); // Follows the neutral UI plate, not the photo.
       expect(crown).toHaveAttribute('width', '24');
     }
 
@@ -204,17 +207,17 @@ describe('photo-first score export layout', () => {
     expect(metadata.lastElementChild).toHaveStyle({ marginLeft: 'auto', textAlign: 'right' });
   });
 
-  it('uses the photo palette for default identities but preserves explicitly chosen player colors', () => {
+  it('keeps default identities on the neutral UI surface and preserves explicitly chosen player colors', () => {
     const players: OverlayData['players'] = [
       { ...createPlayer('p1', 'Default name', 10), color: 'transparent' },
       { ...createPlayer('p2', 'Private name', 20), color: '', isAnonymous: true },
       createPlayer('p3', 'Chosen color', 30),
     ];
     const { container, getByText } = renderOverlay(baseData(players, ['p3'], 'HIGHEST_WINS'));
-    expect(getByText('Default name').style.color).toBe('var(--photo-result-text, #f8fafc)');
-    expect(getByText('Default name').style.textShadow).toContain('var(--photo-result-name-shadow,');
-    expect(container.querySelector('[data-sticker-icon]')).toHaveAttribute('stroke', 'var(--photo-result-text, #f8fafc)');
-    expect(container.querySelector('[data-sticker-outline]')).toHaveAttribute('stroke', 'var(--photo-result-name-outline, #000000)');
+    expect(getByText('Default name').style.color).toBe('rgb(var(--c-txt-secondary))');
+    expect(getByText('Default name').style.textShadow).not.toContain('--photo-result');
+    expect(container.querySelector('[data-sticker-icon]')).toHaveAttribute('stroke', 'rgb(var(--c-txt-secondary))');
+    expect(container.querySelector('[data-sticker-outline]')?.getAttribute('stroke')).not.toContain('--photo-result');
     expect(getByText('Chosen color')).toHaveStyle({ color: '#ef4444' });
   });
 

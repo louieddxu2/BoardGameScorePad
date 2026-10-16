@@ -26,7 +26,6 @@ const PADDING_PX = 32;
 const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 220;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
-const DEFAULT_NAME_SHADOW = `var(--photo-result-name-shadow, ${getPhotoPlayerNameShadow(PHOTO_RESULT_FALLBACK.text)})`;
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime ?? data.date;
@@ -125,7 +124,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         ? (isWinner ? t('screenshot_outcome_win') : t('screenshot_outcome_loss'))
                         : p.totalScore;
                     const hasDefaultColor = !p.color || p.color === 'transparent';
-                    const playerColor = hasDefaultColor ? RESULT_TEXT : p.color;
+                    const playerColor = hasDefaultColor ? 'rgb(var(--c-txt-secondary))' : p.color;
                     const scoreFontSize = Math.min(56, (playerWidth - 64) / (String(displayScore).length * 0.65));
 
                     return (
@@ -143,26 +142,30 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 data-score-photo-identity="true"
                                 className="relative"
                                 // Reserve space within the name box for its superscript crown.
-                                style={{ maxWidth: '100%', minHeight: 50, padding: isCoop ? '10px 8px 0' : '10px 28px 0', textAlign: 'center' }}
+                                style={{
+                                    maxWidth: '100%', minHeight: 50, padding: isCoop ? '10px 8px 6px' : '10px 28px 6px', textAlign: 'center',
+                                    // Keep colored identities on the familiar opaque UI surface, not the photo hue.
+                                    backgroundColor: 'rgb(var(--c-surface-bg))', borderRadius: 8,
+                                    boxShadow: 'inset 0 0 0 1px rgb(var(--c-surface-border))',
+                                }}
                             >
                                 {isWinner && !isCoop && (
                                     <Crown
                                         data-score-photo-winner="true"
                                         size={24}
                                         className="absolute text-status-warning fill-current"
-                                        style={{ top: 0, right: 0, color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})` }}
+                                        style={{ top: 0, right: 0 }}
                                     />
                                 )}
                                 {p.isAnonymous ? (
                                     <StickerElement id={p.id} color={playerColor} iconIndex={stickerIndices.get(p.id)}
-                                        outlineColor={hasDefaultColor ? 'var(--photo-result-name-outline, #000000)' : undefined}
                                         className="[&_svg]:w-[36px] [&_svg]:h-[36px]" />
                                 ) : (
                                     <span
                                         className="font-bold"
                                         style={{
                                             display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere',
-                                            color: playerColor, textShadow: hasDefaultColor ? DEFAULT_NAME_SHADOW : getPhotoPlayerNameShadow(playerColor),
+                                            color: playerColor, textShadow: getPhotoPlayerNameShadow(playerColor),
                                         }}
                                     >
                                         {p.name}
