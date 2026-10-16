@@ -10,6 +10,7 @@ interface TitleAppearance {
 
 const WHITE_SHADOW = getPhotoTextOutline('rgba(15,23,42,0.8)', '0 2px 4px rgba(0,0,0,0.3)');
 const DARK_SHADOW = getPhotoTextOutline('rgba(248,250,252,0.95)', '0 1px 3px rgba(255,255,255,0.5)');
+const RESULT_SAMPLE_RATIO = 0.3;
 const localScrim = (light: boolean) => `radial-gradient(ellipse at 30% 35%, ${
     light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.5)'
 }, transparent 80%)`;
@@ -72,7 +73,10 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         canvas.height = 24;
         const context = image.naturalWidth > 0 && image.naturalHeight > 0 ? canvas.getContext('2d') : null;
         if (context) {
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            // Match the photo edge adjacent to the results, not colors higher in the scene.
+            const sampleHeight = Math.max(1, Math.round(image.naturalHeight * RESULT_SAMPLE_RATIO));
+            context.drawImage(image, 0, image.naturalHeight - sampleHeight, image.naturalWidth, sampleHeight,
+                0, 0, canvas.width, canvas.height);
             palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data, getCurrentTheme());
         }
         const imageRect = image.getBoundingClientRect();

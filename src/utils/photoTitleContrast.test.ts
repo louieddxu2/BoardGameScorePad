@@ -49,13 +49,13 @@ describe('photo title contrast', () => {
         return { root, image, context };
     };
 
-    it('takes two bounded samples on one canvas for independent whole-photo color and title contrast', async () => {
+    it('takes only the bottom 30 percent for result colors and independently samples the title rectangle', async () => {
         const { root, image, context } = setupPhoto();
         const photoPixels = new Uint8ClampedArray([200, 40, 20, 255]);
         context.getImageData.mockReturnValueOnce({ data: photoPixels });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(context.drawImage).toHaveBeenCalledTimes(2);
-        expect(context.drawImage).toHaveBeenNthCalledWith(1, image, 0, 0, 48, 24);
+        expect(context.drawImage).toHaveBeenNthCalledWith(1, image, 0, 1008, 2160, 432, 0, 0, 48, 24);
         expect(context.drawImage).toHaveBeenNthCalledWith(2, image, 64, 64, 800, 120, 0, 0, 48, 24);
         expect(context.clearRect).toHaveBeenCalledExactlyOnceWith(0, 0, 48, 24);
         expect(context.getImageData).toHaveBeenCalledTimes(2);
@@ -64,6 +64,17 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(getPhotoResultPalette(photoPixels).border);
         expect(root.style.getPropertyValue('--photo-title-color')).toBe('#111827');
         expect(root.style.getPropertyValue('--photo-title-background')).toBe('none');
+    });
+
+    it('keeps a neutral bottom edge neutral rather than looking elsewhere for a photo color', async () => {
+        const { root, context } = setupPhoto();
+        context.getImageData.mockReturnValueOnce({ data: pixels(80, 90) })
+            .mockReturnValueOnce({ data: new Uint8ClampedArray([200, 40, 20, 255]) });
+        await prepareScorePhotoTitle(root, new AbortController().signal);
+        expect(root.style.getPropertyValue('--photo-result-background')).toBe(PHOTO_RESULT_FALLBACK.background);
+        expect(root.style.getPropertyValue('--photo-result-card')).toBe(PHOTO_RESULT_FALLBACK.card);
+        expect(context.drawImage).toHaveBeenCalledTimes(2);
+        expect(context.getImageData).toHaveBeenCalledTimes(2);
     });
 
     it('does not break sharing when pixel access is blocked', async () => {
