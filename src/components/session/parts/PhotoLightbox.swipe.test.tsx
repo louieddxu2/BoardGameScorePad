@@ -49,11 +49,12 @@ describe('photo swipe preview', () => {
     it.each([
         { side: 'previous', other: 'next', sign: 1, target: 1 },
         { side: 'next', other: 'previous', sign: -1, target: 3 },
-    ])('slides the full-size $side photo across a black gap and keeps its DOM node on arrival', ({ side, other, sign, target }) => {
+    ])('slides the full-size $side photo across a theme-aware gap and keeps its DOM node on arrival', ({ side, other, sign, target }) => {
         const viewport = renderViewer();
         const current = screen.getByAltText('Full view');
         const arriving = preview(viewport, side)!.querySelector('img');
-        expect(viewport).toHaveClass('bg-black');
+        expect(viewport).toHaveClass('bg-app-bg-deep');
+        expect(viewport).not.toHaveClass('bg-black');
         expect(preview(viewport, side)!.style.transform).toBe(position(side));
         expect(preview(viewport, other)!.style.transform).toBe(position(other));
         start(viewport);
