@@ -107,14 +107,49 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('團隊落敗');
     expect(container.querySelector('[data-score-photo-team]')).toHaveAttribute('data-score-photo-team', 'loss');
     expect(container.querySelectorAll('.lucide-crown')).toHaveLength(0);
-    expect(Array.from(container.querySelectorAll('[data-score-photo-player]')).map(entry => entry.lastElementChild?.textContent))
-      .toEqual(['0', '0']);
+    const sharedResult = container.querySelector('[data-score-photo-shared-result="true"]')!;
+    expect(sharedResult).toContainElement(container.querySelector('[data-score-photo-team]') as HTMLElement);
+    expect(sharedResult.querySelectorAll('[data-score-photo-player]')).toHaveLength(2);
+    expect(sharedResult.querySelectorAll('[data-score-photo-score]')).toHaveLength(0);
+    expect(queryByText('0')).toBeNull();
 
     // Imported history can record a team defeat without carrying local forced-loss flags.
     rerender(<LanguageContext.Provider value={{ language: 'zh-TW', setLanguage: () => undefined }}>
       <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, winners: [] }} />
     </LanguageContext.Provider>);
     expect(container.querySelector('[data-score-photo-team]')).toHaveTextContent('團隊落敗');
+  });
+
+  it('shows one shared victory with names and anonymous identities when a cooperative game has no score inputs', () => {
+    const players: OverlayData['players'] = [
+      createPlayer('p1', 'Alice', 0),
+      { ...createPlayer('p2', 'Private name', 0), isAnonymous: true, scores: { cleared: { parts: [] } } },
+    ];
+    const { container, getByText, queryByText } = renderOverlay(baseData(players, calculateWinners(players, 'COOP'), 'COOP'));
+    const shared = container.querySelector('[data-score-photo-shared-result="true"]')!;
+    expect(shared.querySelectorAll('[data-score-photo-team="win"]')).toHaveLength(1);
+    expect(shared).toContainElement(getByText('團隊勝利'));
+    expect(shared).toContainElement(getByText('Alice'));
+    expect(shared.querySelectorAll('.lucide-crown')).toHaveLength(1);
+    expect(shared.querySelector('[data-sticker-icon]')).not.toBeNull();
+    expect(shared.querySelectorAll('[data-score-photo-score]')).toHaveLength(0);
+    expect(queryByText('0')).toBeNull();
+    expect(queryByText('Private name')).toBeNull();
+  });
+
+  it.each<{ label: string; scores: Player['scores']; totalScore: number; bonusScore?: number }>([
+    { label: 'an explicit zero', scores: { points: { parts: [0] } }, totalScore: 0 },
+    { label: 'offsetting inputs', scores: { points: { parts: [5, -5] } }, totalScore: 0 },
+    { label: 'a selected zero-value option', scores: { points: { parts: [], optionId: 'zero' } }, totalScore: 0 },
+    { label: 'an imported nonzero total', scores: {}, totalScore: 12 },
+    { label: 'a bonus offset by score', scores: {}, totalScore: 0, bonusScore: -5 },
+  ])('retains individual cooperative scores for $label', ({ label: _label, ...input }) => {
+    const players = [{ ...createPlayer('p1', 'Alice', 0), ...input }, createPlayer('p2', 'Bob', 0)];
+    const { container } = renderOverlay(baseData(players, calculateWinners(players, 'COOP'), 'COOP'));
+    expect(container.querySelector('[data-score-photo-shared-result]')).toBeNull();
+    expect(container.querySelectorAll('[data-score-photo-team="win"]')).toHaveLength(1);
+    expect(Array.from(container.querySelectorAll('[data-score-photo-score]')).map(score => score.textContent))
+      .toEqual([String(input.totalScore), '0']);
   });
 
   it('ignores supplied winners and forced losses in both no-win/loss modes while retaining scores', () => {

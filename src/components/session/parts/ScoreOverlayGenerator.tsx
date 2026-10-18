@@ -39,6 +39,14 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     // Do not recompute history outcomes or treat no-win/loss modes as missing results.
     const teamWon = scoringRule === 'COOP' && data.players.some(player => data.winners.includes(player.id));
     const teamLabel = teamWon ? t('screenshot_team_win') : t('screenshot_team_loss');
+    // Zero is a valid entered score. Only collapse genuinely empty team scores;
+    // totals/bonuses also preserve imported records without per-cell inputs.
+    const shareTeamResult = useMemo(() => scoringRule === 'COOP' && data.players.length > 0
+        && !data.players.some(player => player.totalScore !== 0 || (player.bonusScore ?? 0) !== 0
+            || Object.values(player.scores).some(value => value != null && (
+                !Array.isArray(value.parts) || value.parts.length > 0
+                || !!value.optionId || (value.multiOptionIds?.length ?? 0) > 0
+            ))), [data.players, scoringRule]);
     const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
         || scoringRule === 'LOWEST_WINS';
     const showOutcomeForZeroScores = isScoredOutcomeMode
@@ -101,23 +109,31 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 </div>
             </div>
 
-            {scoringRule === 'COOP' && data.players.length > 0 && (
-                <div
-                    data-score-photo-team={teamWon ? 'win' : 'loss'}
-                    className="flex items-center justify-center font-bold text-txt-title"
-                    style={{ alignSelf: 'center', padding: '20px 32px 0', gap: 8, fontSize: 32, lineHeight: 1.2, color: RESULT_TEXT }}
-                >
-                    <span>{teamLabel}</span>
-                    {teamWon && <Crown size={28} className="text-status-warning fill-current"
-                        style={{ alignSelf: 'flex-start', color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})` }} />}
-                </div>
-            )}
-
             <div
                 data-score-photo-results="true"
+                data-score-photo-shared-result={shareTeamResult ? 'true' : undefined}
                 className="flex flex-wrap justify-center"
-                style={{ width: resultsWidth, maxWidth: '100%', alignSelf: 'center', padding: `16px ${PADDING_PX}px`, gap: GAP_PX }}
+                style={{
+                    width: resultsWidth, maxWidth: '100%', alignSelf: 'center', padding: `16px ${PADDING_PX}px`, gap: GAP_PX,
+                    ...(shareTeamResult ? {
+                        margin: '16px 0', borderRadius: 12,
+                        backgroundColor: `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`,
+                        // An inset outline preserves the available row width.
+                        boxShadow: `inset 0 0 0 2px var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                    } : {}),
+                }}
             >
+                {scoringRule === 'COOP' && data.players.length > 0 && (
+                    <div
+                        data-score-photo-team={teamWon ? 'win' : 'loss'}
+                        className="flex items-center justify-center font-bold text-txt-title"
+                        style={{ width: '100%', gap: 8, fontSize: shareTeamResult ? 44 : 32, lineHeight: 1.2, color: RESULT_TEXT }}
+                    >
+                        <span>{teamLabel}</span>
+                        {teamWon && <Crown size={28} className="text-status-warning fill-current"
+                            style={{ alignSelf: 'flex-start', color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})` }} />}
+                    </div>
+                )}
                 {data.players.map(p => {
                     const isWinner = !hasNoOutcome && data.winners.includes(p.id);
                     const displayScore = showOutcomeForZeroScores
@@ -131,11 +147,13 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         <div
                             key={p.id}
                             data-score-photo-player={p.id}
-                            className="flex flex-col items-center justify-between bg-surface-bg border-2 border-surface-border"
+                            className={`flex flex-col items-center justify-between${shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border'}`}
                             style={{
                                 width: playerWidth, minWidth: 0, borderRadius: 12, padding: '8px 12px 12px', gap: 6,
-                                backgroundColor: `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`,
-                                borderColor: `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                                ...(!shareTeamResult ? {
+                                    backgroundColor: `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`,
+                                    borderColor: `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                                } : {}),
                             }}
                         >
                             <div
@@ -172,12 +190,13 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                     </span>
                                 )}
                             </div>
-                            <span
+                            {!shareTeamResult && <span
+                                data-score-photo-score="true"
                                 className="font-black font-mono text-txt-title"
                                 style={{ fontSize: scoreFontSize, lineHeight: 1.05, whiteSpace: 'nowrap', color: RESULT_TEXT }}
                             >
                                 {displayScore}
-                            </span>
+                            </span>}
                         </div>
                     );
                 })}
