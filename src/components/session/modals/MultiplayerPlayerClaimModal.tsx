@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Check, UsersRound, X } from 'lucide-react';
 import { Player } from '../../../types';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
@@ -20,7 +20,15 @@ const MultiplayerPlayerClaimModal: React.FC<MultiplayerPlayerClaimModalProps> = 
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'multiplayer-player-claim');
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
   const initialSelectionKey = initialSelectedIds.join('|');
-  useEffect(() => { if (isOpen) setSelectedIds(initialSelectedIds); }, [initialSelectionKey, isOpen]);
+  const prevOpenRef = useRef(isOpen);
+  const prevKeyRef = useRef(initialSelectionKey);
+  useEffect(() => {
+    if ((!prevOpenRef.current && isOpen) || prevKeyRef.current !== initialSelectionKey) {
+      setSelectedIds(initialSelectedIds);
+    }
+    prevOpenRef.current = isOpen;
+    prevKeyRef.current = initialSelectionKey;
+  }, [initialSelectionKey, isOpen]);
   if (!isOpen) return null;
   const toggle = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   const isClaim = variant === 'claim';
