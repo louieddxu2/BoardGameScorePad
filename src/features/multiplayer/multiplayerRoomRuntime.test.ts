@@ -1,83 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { util } from 'peerjs';
 import { DEFAULT_TEMPLATES } from '../../data/templates';
 import { migrateTemplate } from '../../utils/dataMigration';
 import { applyScoreInputValue } from '../../components/session/scoreInputUpdate';
 import { createMultiplayerHostSession } from './multiplayerSession';
-import { GameSession, GameTemplate, MultiplayerParticipantBindingRecord, MultiplayerRoomRecord, ScoreColumn, ScoreValue } from '../../types';
+import { GameSession, GameTemplate, ScoreColumn, ScoreValue } from '../../types';
 import { getEffectiveIds } from '../../utils/scoring';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
-import { MultiplayerParticipantBindingStore, saveParticipantBinding } from './multiplayerParticipantBinding';
-import { MultiplayerPlayerRoomStore, MultiplayerRoomRecoveryStore, MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
+import { saveParticipantBinding } from './multiplayerParticipantBinding';
+import { MultiplayerRoomRuntimeTransport, createMultiplayerHostRoomRuntime, createMultiplayerPlayerRoomRuntime, restoreMultiplayerHostRoomRuntime, restoreMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
 import { routeMultiplayerSessionUpdate } from './multiplayerSessionUpdateRouter';
 import { isScoreValuePatchMessage } from './protocol';
+import { createRuntimeStore, createDeliveryStore, createBindingStore, throughPeerJs } from '../../test/multiplayerRuntimeFixture';
 
 const column: ScoreColumn = { id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true, rounding: 'none' };
 const template: GameTemplate = { id: 'template-1', name: 'Template', columns: [column], createdAt: 1, updatedAt: 1 };
 const session: GameSession = {
   id: 'session-1', templateId: 'template-1', name: 'Template', startTime: 1, status: 'active',
   players: [{ id: 'p1', name: 'P1', color: '#fff', scores: {}, totalScore: 0 }],
-};
-
-const createRuntimeStore = (withSession = false): MultiplayerRoomRecoveryStore & MultiplayerPlayerRoomStore & {
-  deleteSession(id: string): Promise<void>;
-  releaseRoomOwnership(options: { roomId: string; session: GameSession; template?: GameTemplate }): Promise<boolean>;
-} => {
-  const templates = new Map<string, GameTemplate>();
-  const sessions = new Map<string, GameSession>(withSession ? [[session.id, session]] : []);
-  const rooms = new Map<string, MultiplayerRoomRecord>();
-  return {
-    getTemplate: async (id) => templates.get(id),
-    getRoom: async (id) => rooms.get(id),
-    getSession: async (id) => sessions.get(id),
-    putTemplate: async (value) => { templates.set(value.id, value); },
-    putSession: async (value) => { sessions.set(value.id, value); },
-    putRoom: async (value) => { rooms.set(value.roomId, value); },
-    persistBootstrap: async ({ template: bootstrapTemplate, session: bootstrapSession, room: bootstrapRoom, requireExistingSession, shouldPersist }) => {
-      if (shouldPersist?.() === false || (requireExistingSession && !sessions.has(bootstrapSession.id))) return false;
-      if (bootstrapTemplate) templates.set(bootstrapTemplate.id, bootstrapTemplate);
-      sessions.set(bootstrapSession.id, bootstrapSession);
-      rooms.set(bootstrapRoom.roomId, bootstrapRoom);
-      return true;
-    },
-    releaseRoomOwnership: async ({ roomId, session: value, template: nextTemplate }) => {
-      const exists = sessions.has(value.id);
-      if (exists) {
-        sessions.set(value.id, value);
-        if (nextTemplate) templates.set(nextTemplate.id, nextTemplate);
-      }
-      rooms.delete(roomId);
-      return exists;
-    },
-    deleteSession: async (id) => { sessions.delete(id); },
-    updateRoomRevision: async (roomId, revision, updatedAt) => { const room = rooms.get(roomId); if (room) rooms.set(roomId, { ...room, revision, updatedAt }); },
-    deleteRoom: async (id) => { rooms.delete(id); },
-  };
-};
-
-const createDeliveryStore = (): MultiplayerDeliveryStore => {
-  const outbox = new Map<string, any>(); const receipts = new Map<string, any>(); const sequences = new Map<string, any>();
-  return {
-    getDevice: async () => undefined, putDevice: async () => undefined,
-    getSequence: async (id) => sequences.get(id), putSequence: async (record) => { sequences.set(record.id, record); },
-    putOutbox: async (record) => { outbox.set(record.id, record); },
-    listOutbox: async (roomId, sessionId) => [...outbox.values()].filter((record) => record.roomId === roomId && record.sessionId === sessionId),
-    deleteOutbox: async (id) => { outbox.delete(id); },
-    getReceipt: async (id) => receipts.get(id), putReceipt: async (record) => { receipts.set(record.id, record); },
-  };
-};
-
-const createBindingStore = (): MultiplayerParticipantBindingStore => {
-  const records = new Map<string, MultiplayerParticipantBindingRecord>();
-  return { get: async (id) => records.get(id), put: async (record) => { records.set(record.id, record); }, delete: async (id) => { records.delete(id); } };
-};
-
-// These JSON-shaped fixtures use PeerJS's real binary codec, not a transport
-// mock which accidentally preserves undefined properties across the network.
-const throughPeerJs = <T,>(message: T): T => {
-  const bytes = util.pack(message as Parameters<typeof util.pack>[0]);
-  if (!(bytes instanceof ArrayBuffer)) throw new Error('Unexpected async codec fixture');
-  return util.unpack(bytes) as unknown as T;
 };
 
 describe('multiplayer room runtime', () => {
