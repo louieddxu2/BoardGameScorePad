@@ -7,12 +7,14 @@ import { LanguageProvider } from './i18n';
 import { ToastProvider } from './hooks/useToast';
 import { ConfirmationProvider } from './hooks/useConfirm';
 import { _resetActiveCountForTesting } from './hooks/useModalBackHandler';
+import { applyScoreInputValue } from './components/session/scoreInputUpdate';
 import { DEFAULT_TEMPLATES } from './data/templates';
 import { migrateTemplate } from './utils/dataMigration';
 import { createMultiplayerHostRoomRuntime } from './features/multiplayer/multiplayerRoomRuntime';
 import { createMultiplayerP2PRuntimeTransport } from './features/multiplayer/multiplayerP2PRuntimeTransport';
 import { createScoreStateSyncAdapter } from './features/multiplayer/scoreStateSyncAdapter';
 import { multiplayerSessionManager } from './features/multiplayer/multiplayerSessionManager';
+import { routeMultiplayerSessionUpdate } from './features/multiplayer/multiplayerSessionUpdateRouter';
 import { createRuntimeStore, createDeliveryStore } from './test/multiplayerRuntimeFixture';
 import { createHeadlessParticipant } from './test/multiplayerPeerFixture';
 import type { createPeerNetwork } from './test/peerNetworkFixture';
@@ -91,7 +93,7 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-it.each(['mouse', 'touch'] as const)('four-device exit/discard/delete/start through real UI (%s)', async activation => {
+it.each(['mouse', 'touch'] as const)('four-device missing-board join, score sync, exit/discard/delete/start through real UI (%s)', async activation => {
   let touchId = 0;
   const tap = (element: Element) => {
     if (activation === 'touch') {
@@ -103,9 +105,18 @@ it.each(['mouse', 'touch'] as const)('four-device exit/discard/delete/start thro
   };
   const builtin = migrateTemplate(structuredClone(DEFAULT_TEMPLATES.find(row => row.id === 'Built-in-Sweet-Lands')!));
   const board = { ...builtin, id: 'a0b1c2d3', name: 'Shared Sweet Lands' };
-  await db.builtins.put(builtin);
+  // Keep normal startup from seeding every builtin, without providing any of
+  // the host board's contents or game metadata to the participant.
+  const unrelatedBuiltin = { id: 'unrelated-builtin', name: 'Unrelated Built-in', createdAt: 1, updatedAt: 1,
+    columns: [{ id: 'unrelated', name: 'Unrelated', formula: 'a1', inputType: 'keypad' as const, isScoring: true }] };
+  await db.builtins.put(unrelatedBuiltin);
   await db.templates.put({ id: 'other-board', name: 'Other board', createdAt: 1, updatedAt: 1,
     columns: [{ id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true }] });
+  expect(await db.templates.get(board.id)).toBeUndefined();
+  expect(await db.builtins.get(builtin.id)).toBeUndefined();
+  const localBoards = [...await db.templates.toArray(), ...await db.builtins.toArray()];
+  expect(localBoards.some(row => row.id === board.id || row.id === builtin.id
+    || JSON.stringify(row.columns) === JSON.stringify(board.columns))).toBe(false);
   const store = createRuntimeStore();
   const adapter = createScoreStateSyncAdapter({ roomId: 'exit-test-room', role: 'host', store: {
     ...store, applyRemoteBootstrap: async () => { throw new Error('host_must_not_import'); },
@@ -131,6 +142,11 @@ it.each(['mouse', 'touch'] as const)('four-device exit/discard/delete/start thro
   await screen.findByRole('button', { name: 'Multiplayer room' });
   await waitFor(() => expect(host!.getParticipantClaims()).toEqual({ p2: 1, p3: 1, p4: 1 }));
   const inputColumn = board.columns.find(column => column.name === '當前分數')!;
+  await act(async () => {
+    const previous = host!.session.session;
+    const next = applyScoreInputValue(previous, inputColumn, 'p1', 5);
+    await routeMultiplayerSessionUpdate({ previous, next, runtime: host! });
+  });
   const cell = document.querySelector(`[data-score-cell="p2:${inputColumn.id}"]`)!;
   tap(cell.firstElementChild!);
   const inputPanel = document.querySelector('[data-session-input-panel="true"]') as HTMLElement;
@@ -142,10 +158,23 @@ it.each(['mouse', 'touch'] as const)('four-device exit/discard/delete/start thro
       colId: inputColumn.id, scoreValue: { parts: [9 + index * 2] },
     })));
   });
-  await waitFor(() => expect(multiplayerSessionManager.get('exit-test-room')?.session?.players.slice(1)
-    .map(player => player.scores[inputColumn.id]?.parts)).toEqual([[7], [9], [11]]));
+  await act(async () => {
+    const previous = host!.session.session;
+    const next = applyScoreInputValue(previous, inputColumn, 'p1', 6);
+    await routeMultiplayerSessionUpdate({ previous, next, runtime: host! });
+  });
+  const expectedScores = [[6], [7], [9], [11]];
+  await waitFor(() => expect(host!.session.session.players.map(player => player.scores[inputColumn.id]?.parts))
+    .toEqual(expectedScores));
+  await waitFor(() => expect(multiplayerSessionManager.get('exit-test-room')?.session?.players
+    .map(player => player.scores[inputColumn.id]?.parts)).toEqual(expectedScores));
+  await waitFor(() => expect(headless.map(participant => participant.runtime!.session.session.players
+    .map(player => player.scores[inputColumn.id]?.parts))).toEqual([expectedScores, expectedScores]));
+  await waitFor(async () => expect((await db.sessions.get('shared-session'))?.players
+    .map(player => player.scores[inputColumn.id]?.parts)).toEqual(expectedScores));
   // The real SessionView and input panel are retained; no direct discard/start calls.
-  expect(await db.templates.get(board.id)).toBeDefined();
+  expect(await db.templates.get(board.id)).toMatchObject({ id: board.id, name: board.name });
+  expect(await db.builtins.get(builtin.id)).toBeUndefined();
   tap(screen.getByRole('button', { name: 'Multiplayer room' }));
   tap(screen.getByRole('button', { name: 'Leave multiplayer room' }));
   await waitFor(() => expect(multiplayerSessionManager.get('exit-test-room')).toBeNull());
