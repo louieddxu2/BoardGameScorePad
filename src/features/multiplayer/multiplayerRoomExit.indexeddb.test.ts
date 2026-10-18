@@ -45,6 +45,33 @@ beforeEach(async () => { await db.open(); });
 afterEach(async () => { await db.delete(); });
 
 describe('participant room exit with real Dexie transactions', () => {
+  it('does not overwrite received scores with the ordinary resume autosave', async () => {
+    const template: GameTemplate = { id: 'autosave-board', name: 'Board', createdAt: 1,
+      columns: [{ id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true }] };
+    const session: GameSession = { id: 'autosave-game', templateId: template.id, name: template.name,
+      startTime: 1, status: 'active', players: [{ id: 'p1', name: 'A', color: 'transparent', scores: {}, totalScore: 0 }] };
+    await db.templates.put(template);
+    await db.sessions.put(session);
+    await db.multiplayerRooms.put({ roomId: 'autosave-room', sessionId: session.id, templateId: template.id,
+      role: 'player', hostDeviceId: 'host', status: 'active', revision: 1, createdAt: 1, updatedAt: 1 });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { result, unmount } = renderHook(() => useSessionManager({
+      getTemplate: async id => (await multiplayerLocalStore.getTemplate(id)) ?? null,
+      activeSessions: [session], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+    try {
+      await act(async () => { await result.current.resumeSessionById(session.id); });
+      const confirmed = { ...session, players: [{ ...session.players[0], scores: { points: { parts: [7] } }, totalScore: 7 }] };
+      await multiplayerLocalStore.persistSnapshot!({ session: confirmed, roomId: 'autosave-room', revision: 2, updatedAt: 2 });
+      expect((await db.sessions.get(session.id))?.players[0].scores.points?.parts).toEqual([7]);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      expect((await db.sessions.get(session.id))?.players[0].scores.points?.parts).toEqual([7]);
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it('can delete a board while its old room row is still awaiting cleanup', async () => {
     await db.templates.put({ id: 'board', name: 'Board', columns: [], createdAt: 1 });
     await db.multiplayerRooms.put({ roomId: 'room', sessionId: 'game', templateId: 'board',
