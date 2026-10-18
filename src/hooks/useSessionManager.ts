@@ -199,6 +199,7 @@ export const useSessionManager = ({
 
     const activateSession = async (session: GameSession): Promise<boolean> => {
         try {
+            session = { ...session };
             let template = await getTemplate(session.templateId);
 
             // [Fail-Safe Reader]
@@ -245,6 +246,11 @@ export const useSessionManager = ({
                 }
             }
 
+            // Resume is a read, not an edit. Another owner (multiplayer) may
+            // already be persisting newer snapshots of this same session.
+            // Keep compatibility migrations in memory until an edit or save.
+            cancelPendingAutosave();
+            persistedSessionRef.current = session;
             setSessionImage(loadedImageUrl);
             setActiveTemplate(template);
             setCurrentSession(session);

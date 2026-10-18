@@ -339,6 +339,44 @@ describe('useSessionManager', () => {
     }
   });
 
+  it('resumes legacy data without rewriting storage, then saves migrated fields on a local edit', async () => {
+    vi.useFakeTimers();
+    const template: GameTemplate = {
+      id: 'legacy-board', name: 'Legacy Board', bggId: '123', createdAt: 1,
+      columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }],
+    };
+    const saved: GameSession = {
+      id: 'legacy-game', templateId: template.id, name: '', startTime: 1, status: 'active',
+      players: [{ id: 'p1', name: 'A', color: 'transparent', scores: { score: 7 as any }, totalScore: 7 }],
+    };
+    hoisted.sessionStore.set(saved.id, saved);
+    const { result, unmount } = renderHook(() => useSessionManager({
+      getTemplate: async () => template, activeSessions: [saved], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+    try {
+      await act(async () => { expect(await result.current.resumeSessionById(saved.id)).toBe(true); });
+      expect(result.current.currentSession).toMatchObject({
+        name: template.name, bggId: '123', winnerIds: ['p1'], lastUpdatedAt: expect.any(Number),
+        players: [{ scores: { score: { parts: [7] } } }],
+      });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      expect(hoisted.dbMock.sessions.put).not.toHaveBeenCalled();
+      expect(hoisted.sessionStore.get(saved.id)).toEqual(saved);
+      expect(saved.players[0].scores.score).toBe(7);
+      expect(saved.name).toBe('');
+
+      act(() => { result.current.updateSession({ ...result.current.currentSession!, note: 'Local edit' }); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      expect(hoisted.dbMock.sessions.put).toHaveBeenCalledExactlyOnceWith(result.current.currentSession);
+      expect(hoisted.sessionStore.get(saved.id)).toMatchObject({
+        name: template.name, bggId: '123', note: 'Local edit', players: [{ scores: { score: { parts: [7] } } }],
+      });
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it('resumes the requested active session by ID when multiple sessions use one template', async () => {
     const template: GameTemplate = {
       id: 'tpl_1', name: 'Test Game', columns: [], createdAt: Date.now(),

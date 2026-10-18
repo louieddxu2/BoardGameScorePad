@@ -21,7 +21,6 @@ import { createHeadlessParticipant } from './test/multiplayerPeerFixture';
 import type { createPeerNetwork } from './test/peerNetworkFixture';
 import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
 import type { GameSession } from './types';
-import Dexie from 'dexie';
 
 const fixtures = vi.hoisted(() => ({ network: null as ReturnType<typeof createPeerNetwork> | null }));
 
@@ -157,28 +156,12 @@ async function openFourDeviceRoom(tap: (element: Element) => void, extraFormula?
     store, deliveryStore: createDeliveryStore(), transport });
   host.start();
   headless = ['p3', 'p4'].map(id => createHeadlessParticipant(fixtures.network!.Peer, 'exit-test-room', id));
-  // Isolate the exit fault from the separate resume-autosave overwrite defect
-  // reproduced in multiplayerRoomExit.indexeddb.test.ts. Observe its real write
-  // finishing before entering scores; do not suppress or replace persistence.
-  let resolveResumeAutosave!: () => void;
-  let rejectResumeAutosave!: (error: unknown) => void;
-  const resumeAutosave = new Promise<void>((resolve, reject) => {
-    resolveResumeAutosave = resolve;
-    rejectResumeAutosave = reject;
-  });
-  const originalPut = db.sessions.put.bind(db.sessions);
-  const resumeSaveSpy = vi.spyOn(db.sessions, 'put').mockImplementation((value, key) => {
-    const isResumeSave = value.id === 'shared-session' && !Dexie.currentTransaction;
-    const write = originalPut(value, key);
-    if (isResumeSave) void write.then(() => resolveResumeAutosave(), rejectResumeAutosave);
-    return write;
-  });
   render(<LanguageProvider><ToastProvider><ConfirmationProvider><App /></ConfirmationProvider></ToastProvider></LanguageProvider>);
   await waitFor(() => expect(fixtures.network!.peerCount).toBe(4));
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Player 2' })).not.toBeNull(), { timeout: 3_000 });
-  tap(screen.getByRole('button', { name: 'Player 2' }));
+  await act(async () => { tap(screen.getByRole('button', { name: 'Player 2' })); });
   const enter = screen.getByRole('button', { name: 'Enter score sheet' });
-  expect(enter).toBeEnabled();
+  await waitFor(() => expect(enter).toBeEnabled());
   tap(enter);
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Multiplayer room' })).not.toBeNull(), {
     timeout: 3_000,
@@ -191,8 +174,6 @@ async function openFourDeviceRoom(tap: (element: Element) => void, extraFormula?
     })}`),
   });
   renderedRuntime = multiplayerSessionManager.get('exit-test-room')?.runtime ?? undefined;
-  await act(async () => { await resumeAutosave; });
-  resumeSaveSpy.mockRestore();
   await waitFor(() => expect(host!.getParticipantClaims()).toEqual({ p2: 1, p3: 1, p4: 1 }));
   const scoreColumn = board.columns.find(column => column.name === '當前分數')!;
   await act(async () => {
