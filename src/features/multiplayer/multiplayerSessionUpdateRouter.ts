@@ -25,12 +25,14 @@ export const routeMultiplayerSessionUpdate = async (options: {
     if (!previousPlayer) continue;
     const scoreKeys = new Set([...Object.keys(previousPlayer.scores), ...Object.keys(nextPlayer.scores)]);
     for (const colId of scoreKeys) {
+      if (!options.runtime.controller.isActive()) return null;
       if (sameJson(previousPlayer.scores[colId], nextPlayer.scores[colId])) continue;
       await options.runtime.controller.queueScoreValuePatch({
         actor: { role: 'player', playerId: nextPlayer.id }, targetPlayerId: nextPlayer.id,
         colId, scoreValue: (nextPlayer.scores[colId] ?? null) as ScoreValue | null,
       });
     }
+    if (!options.runtime.controller.isActive()) return null;
     if ((previousPlayer.bonusScore ?? 0) !== (nextPlayer.bonusScore ?? 0)) {
       const baseTotal = previousPlayer.totalScore - (previousPlayer.bonusScore ?? 0);
       await options.runtime.controller.queueTotalAdjustment({

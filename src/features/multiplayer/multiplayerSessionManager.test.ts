@@ -73,7 +73,7 @@ describe('multiplayer session manager', () => {
     }
   });
 
-  it('drains a participant runtime before purging its room data', async () => {
+  it('releases the caller immediately but tracks draining before room cleanup', async () => {
     let resolveIdle!: () => void;
     const idle = new Promise<void>((resolve) => { resolveIdle = resolve; });
     const purgeSpy = vi.spyOn(multiplayerLocalStore, 'purgeRoomData').mockResolvedValue();
@@ -84,14 +84,39 @@ describe('multiplayer session manager', () => {
       manager.register('room-1', runtime);
 
       const closing = manager.closeRoom('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });
+      let released = false;
+      void closing.then(() => { released = true; });
+      let cleaned = false;
+      const cleanup = manager.waitForRoomCleanup('room-1').then(() => { cleaned = true; });
+      await Promise.resolve();
       await Promise.resolve();
       expect(runtime.stop).toHaveBeenCalledOnce();
       expect(purgeSpy).not.toHaveBeenCalled();
-
+      expect(released).toBe(true);
+      expect(cleaned).toBe(false);
       resolveIdle();
-      await closing;
+      await Promise.all([closing, cleanup]);
       expect(runtime.whenIdle).toHaveBeenCalledOnce();
       expect(purgeSpy).toHaveBeenCalledWith('room-1');
+    } finally {
+      purgeSpy.mockRestore();
+    }
+  });
+
+  it('does not purge a new join after the old runtime finishes draining', async () => {
+    let resolveIdle!: () => void;
+    const purgeSpy = vi.spyOn(multiplayerLocalStore, 'purgeRoomData').mockResolvedValue();
+    try {
+      const manager = createMultiplayerSessionManager();
+      const runtime = createRuntime('player');
+      runtime.whenIdle = () => new Promise<void>(resolve => { resolveIdle = resolve; });
+      manager.register('room-1', runtime);
+      const closing = manager.closeRoom('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });
+      manager.supersedeRoomCleanup('room-1');
+      resolveIdle();
+      await closing;
+      await manager.waitForRoomCleanup('room-1');
+      expect(purgeSpy).not.toHaveBeenCalled();
     } finally {
       purgeSpy.mockRestore();
     }

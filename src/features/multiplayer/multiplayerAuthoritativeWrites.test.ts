@@ -52,7 +52,7 @@ describe('authoritative multiplayer writes', () => {
       players: [{ ...previous.players[0], scores: { a: { parts: [9] } }, totalScore: 9 }],
     };
     const queueScoreValuePatch = vi.fn(async () => undefined);
-    const runtime = { role: 'player', controller: { queueScoreValuePatch, queueTotalAdjustment: vi.fn() } } as any;
+    const runtime = { role: 'player', controller: { isActive: () => true, queueScoreValuePatch, queueTotalAdjustment: vi.fn() } } as any;
 
     const result = await routeMultiplayerSessionUpdate({ previous, next: staleWholeSession, claimedPlayerIds: ['p1'], runtime });
 

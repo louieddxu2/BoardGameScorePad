@@ -485,21 +485,28 @@ export const useMultiplayerRoomLifecycle = ({
     setIsMultiplayerParticipantRoomModalOpen(false);
   }, [clearMultiplayerJoinTimeout, clearPendingRoomJoin, clearRoomUrlQuery, setActiveRoom]);
 
-  const releaseParticipantMultiplayerRoom = useCallback(async (options?: { deleteLocalRoom?: boolean; awaitLocalCleanup?: boolean }) => {
+  const releaseParticipantMultiplayerRoom = useCallback(async () => {
     const activeRoom = activeMultiplayerRoomRef.current;
     if (!activeRoom || activeRoom.role !== 'player') return;
     const managedRoom = multiplayerSessionManager.get(activeRoom.roomId);
-    if (managedRoom?.runtime?.role === 'player') {
-      managedRoom.runtime.leaveRoom();
-    }
-    await multiplayerSessionManager.closeRoom(activeRoom.roomId, {
-      deleteLocalRoom: options?.deleteLocalRoom,
-      awaitLocalCleanup: options?.awaitLocalCleanup,
-    });
+    const transport = participantTransportRef.current;
     participantTransportRef.current = null;
     releaseParticipantTabClaim(activeRoom.roomId);
     clearVisibleMultiplayerRoomState();
-  }, [clearVisibleMultiplayerRoomState, releaseParticipantTabClaim]);
+    setPendingJoin(null);
+    setPendingMultiplayerClaimIds(null);
+    setIsMultiplayerTransitioning(false);
+    try {
+      if (managedRoom?.runtime?.role === 'player') managedRoom.runtime.leaveRoom();
+      else transport?.stop?.();
+    } catch (err) {
+      console.warn('[multiplayer] Failed to stop participant transport:', err);
+    }
+    await multiplayerSessionManager.closeRoom(activeRoom.roomId, {
+      deleteLocalRoom: true,
+      awaitLocalCleanup: false,
+    });
+  }, [clearVisibleMultiplayerRoomState, releaseParticipantTabClaim, setPendingJoin]);
 
   const releaseMultiplayerRoomForSession = useCallback(async (sessionId: string) => {
     const room = await multiplayerLocalStore.getRoomBySessionId(sessionId);

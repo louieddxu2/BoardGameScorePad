@@ -12,8 +12,23 @@ describe('multiplayer session update router', () => {
     const previous = session();
     const next = { ...previous, players: previous.players.map((player) => player.id === 'p1' ? { ...player, scores: { points: { parts: [7] } }, totalScore: 7 } : player) };
     const queueScoreValuePatch = vi.fn(async () => undefined);
-    await routeMultiplayerSessionUpdate({ previous, next, claimedPlayerIds: ['p1'], runtime: { role: 'player', controller: { queueScoreValuePatch, queueTotalAdjustment: vi.fn() } } as any });
+    await routeMultiplayerSessionUpdate({ previous, next, claimedPlayerIds: ['p1'], runtime: { role: 'player', controller: { isActive: () => true, queueScoreValuePatch, queueTotalAdjustment: vi.fn() } } as any });
     expect(queueScoreValuePatch).toHaveBeenCalledWith(expect.objectContaining({ targetPlayerId: 'p1', colId: 'points', scoreValue: { parts: [7] } }));
+  });
+
+  it('does not admit later cell or total edits after leaving during an earlier write', async () => {
+    const previous = session();
+    const next = { ...previous, players: [{ ...previous.players[0],
+      scores: { first: { parts: [1] }, second: { parts: [2] } }, bonusScore: 3,
+    }] };
+    let active = true;
+    const queueScoreValuePatch = vi.fn(async () => { active = false; });
+    const queueTotalAdjustment = vi.fn();
+    await routeMultiplayerSessionUpdate({ previous, next, claimedPlayerIds: ['p1'], runtime: {
+      role: 'player', controller: { isActive: () => active, queueScoreValuePatch, queueTotalAdjustment },
+    } as any });
+    expect(queueScoreValuePatch).toHaveBeenCalledTimes(1);
+    expect(queueTotalAdjustment).not.toHaveBeenCalled();
   });
 
   it('lets the host publish a complete authoritative session update', async () => {

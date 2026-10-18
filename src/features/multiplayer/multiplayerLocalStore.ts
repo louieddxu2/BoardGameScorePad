@@ -116,10 +116,12 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
     // transactional cleanup; external deletion paths use sessionDeletionEvents.
     return db.sessions.delete(sessionId);
   },
-  async releaseRoomOwnership({ roomId, session, template }: { roomId: string; session: GameSession; template?: GameTemplate }): Promise<boolean> {
+  async releaseRoomOwnership({ roomId, session, template, shouldPersist }: { roomId: string; session: GameSession; template?: GameTemplate; shouldPersist?: () => boolean }): Promise<boolean> {
     const tables = [db.sessions, ...multiplayerRoomCleanupTables, ...(template ? [db.templates] : [])];
     return db.transaction('rw', tables, async () => {
-      const count = await replaceExistingSession(session);
+      if (shouldPersist?.() === false) return false;
+      const count = await replaceExistingSession(session, shouldPersist);
+      if (shouldPersist?.() === false) return false;
       if (count > 0 && template) await db.templates.put(template);
       await purgeMultiplayerRoomData(roomId);
       return count > 0;

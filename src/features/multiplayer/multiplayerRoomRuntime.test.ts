@@ -772,4 +772,31 @@ describe('multiplayer room runtime', () => {
     expect(released).toBe(false);
     expect(transport.stop).toHaveBeenCalledTimes(1);
   });
+
+  it('cancels an ownership handoff already reading data when the participant explicitly leaves', async () => {
+    const store = createRuntimeStore();
+    const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
+    const onOwnershipReturned = vi.fn();
+    const participant = await createMultiplayerPlayerRoomRuntime({
+      bootstrapMessage: host.createBootstrapMessage(), deviceId: 'guest', store,
+      deliveryStore: createDeliveryStore(), bindingStore: createBindingStore(), onOwnershipReturned,
+      transport: { sendToHost: () => true, sendToConnection: () => false, broadcastLocalChanges: async () => undefined },
+    });
+    let startRead!: () => void;
+    let finishRead!: () => void;
+    const started = new Promise<void>(resolve => { startRead = resolve; });
+    const gate = new Promise<void>(resolve => { finishRead = resolve; });
+    const readTemplate = store.getTemplate;
+    vi.spyOn(store, 'getTemplate').mockImplementationOnce(async id => { startRead(); await gate; return readTemplate(id); });
+    const releaseOwnership = vi.spyOn(store, 'releaseRoomOwnership');
+    const receiving = participant.receive(host.complete());
+    await started;
+    participant.leaveRoom();
+    finishRead();
+    await receiving;
+    await participant.whenIdle?.();
+    expect(releaseOwnership).not.toHaveBeenCalled();
+    expect(onOwnershipReturned).not.toHaveBeenCalled();
+    expect(await store.getSession(session.id)).toMatchObject({ status: 'active', players: session.players });
+  });
 });

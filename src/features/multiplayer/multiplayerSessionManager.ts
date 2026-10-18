@@ -192,33 +192,40 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       await cleanupTasks.get(roomId);
     },
     async closeRoom(roomId, options) {
+      const cleanupGeneration = cleanupGenerations.get(roomId) ?? 0;
+      const previousCleanup = cleanupTasks.get(roomId) ?? Promise.resolve();
+      let drain = Promise.resolve();
       const state = rooms.get(roomId);
       if (state) {
         const runtime = state.runtime;
-        runtime?.stop();
         rooms.delete(roomId);
+        try {
+          runtime?.stop();
+        } catch (err) {
+          console.warn('[multiplayerSessionManager] Failed to stop runtime during close:', err);
+        }
         notify();
         try {
-          await runtime?.whenIdle?.();
+          drain = Promise.resolve(runtime?.whenIdle?.()).catch((err) => {
+            console.warn('[multiplayerSessionManager] Failed to drain runtime during close:', err);
+          });
         } catch (err) {
           console.warn('[multiplayerSessionManager] Failed to drain runtime during close:', err);
         }
       }
-      if (options?.deleteLocalRoom) {
-        const cleanupGeneration = cleanupGenerations.get(roomId) ?? 0;
-        const previousCleanup = cleanupTasks.get(roomId) ?? Promise.resolve();
-        const cleanup = previousCleanup.then(() => {
-          if ((cleanupGenerations.get(roomId) ?? 0) !== cleanupGeneration) return;
-          return multiplayerLocalStore.purgeRoomData(roomId);
-        }).catch((err) => {
-          console.warn('[multiplayerSessionManager] Failed to purge local room data on close:', err);
-        });
-        const trackedCleanup = cleanup.finally(() => {
-          if (cleanupTasks.get(roomId) === trackedCleanup) cleanupTasks.delete(roomId);
-        });
-        cleanupTasks.set(roomId, trackedCleanup);
-        if (options.awaitLocalCleanup !== false) await trackedCleanup;
-      }
+      // Track the entire drain before yielding. Non-blocking leave must not hold
+      // UI guards, and a fresh QR join must be able to supersede this purge.
+      const cleanup = Promise.all([previousCleanup, drain]).then(() => {
+        if (!options?.deleteLocalRoom || (cleanupGenerations.get(roomId) ?? 0) !== cleanupGeneration) return;
+        return multiplayerLocalStore.purgeRoomData(roomId);
+      }).catch((err) => {
+        console.warn('[multiplayerSessionManager] Failed to purge local room data on close:', err);
+      });
+      const trackedCleanup = cleanup.finally(() => {
+        if (cleanupTasks.get(roomId) === trackedCleanup) cleanupTasks.delete(roomId);
+      });
+      cleanupTasks.set(roomId, trackedCleanup);
+      if (options?.awaitLocalCleanup !== false) await trackedCleanup;
     },
     subscribe(listener) {
       listeners.add(listener);

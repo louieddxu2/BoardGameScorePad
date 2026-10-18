@@ -119,7 +119,7 @@ export const useAppSessionActions = ({
     if (isMultiplayerTransitioning || multiplayerRoomTransitionInFlightRef.current) return;
     multiplayerRoomTransitionInFlightRef.current = true;
     try {
-      await releaseParticipantMultiplayerRoom({ deleteLocalRoom: true, awaitLocalCleanup: false });
+      await releaseParticipantMultiplayerRoom();
     } catch (err) {
       console.warn('[multiplayer] Failed to leave participant room:', err);
     } finally {

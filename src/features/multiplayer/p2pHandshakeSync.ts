@@ -98,7 +98,8 @@ export const createP2PHandshakeSync = (options: {
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
   let forceInitialSync = options.forceInitialSync === true;
-  let stopping = true;
+  let stopping = false;
+  let transportGeneration = 0;
   let disposing = false;
   let visibilityBound = false;
 
@@ -117,7 +118,7 @@ export const createP2PHandshakeSync = (options: {
   };
 
   const send = (connection: P2PDataConnection, message: unknown) => {
-    if (!connection.open) return false;
+    if (stopping || !connections.has(connection) || !connection.open) return false;
     try {
       connection.send(message);
       return true;
@@ -129,7 +130,7 @@ export const createP2PHandshakeSync = (options: {
 
   const itemSendQueues = new Map<P2PDataConnection, Promise<void>>();
   const transferItem = async (connection: P2PDataConnection, item: SyncItem): Promise<boolean> => {
-    if (!connection.open) return false;
+    if (stopping || !connections.has(connection) || !connection.open) return false;
     const buffer = await item.payload.arrayBuffer();
     const total = Math.max(1, Math.ceil(buffer.byteLength / chunkSize));
     if (!send(connection, {
@@ -153,6 +154,7 @@ export const createP2PHandshakeSync = (options: {
   };
 
   const sendItem = (connection: P2PDataConnection, item: SyncItem): Promise<boolean> => {
+    if (stopping || !connections.has(connection)) return Promise.resolve(false);
     // Initial/reconnect handshakes and automatic publishing share the same item
     // ID. Never interleave their chunks on a peer; score messages stay immediate.
     const task = (itemSendQueues.get(connection) ?? Promise.resolve()).then(() => transferItem(connection, item));
@@ -164,6 +166,7 @@ export const createP2PHandshakeSync = (options: {
 
   const requestMissing = async (connection: P2PDataConnection, remote: Array<{ id: string; version: number }>) => {
     const local = await options.adapter.listMetas();
+    if (stopping || !connections.has(connection)) return;
     const localVersions = new Map(local.map((meta) => [meta.id, meta.version]));
     const shouldForce = forceInitialSync;
     forceInitialSync = false;
@@ -203,18 +206,21 @@ export const createP2PHandshakeSync = (options: {
 
   const disposeTransport = () => {
     disposing = true;
+    transportGeneration += 1;
     const oldPeer = peer;
     peer = null;
     hostConnection = null;
     const oldConnections = Array.from(connections);
     connections.clear();
     clearAllIncoming();
+    itemSendQueues.clear();
     try {
       oldPeer?.destroy();
     } catch (error) {
       log(`Failed to destroy peer: ${String(error)}`, 'error');
     }
     for (const connection of oldConnections) {
+      connectionCleanups.get(connection)?.();
       try {
         connection.close();
       } catch (error) {
@@ -282,6 +288,7 @@ export const createP2PHandshakeSync = (options: {
   };
 
   const setupConnection = (connection: P2PDataConnection) => {
+    if (stopping) { connection.close(); return; }
     connections.add(connection);
     let closed = false;
     let openTimeoutId: number | null = null;
@@ -291,7 +298,7 @@ export const createP2PHandshakeSync = (options: {
       openTimeoutId = null;
     };
     connection.on('open', () => {
-      if (closed) return;
+      if (closed || stopping || !connections.has(connection)) return;
       clearOpenTimeout();
       reconnectAttempt = 0;
       clearReconnectTimer();
@@ -301,12 +308,14 @@ export const createP2PHandshakeSync = (options: {
     });
     connection.on('data', (message: unknown) => {
       void (async () => {
+        if (closed || stopping || !connections.has(connection)) return;
         if (!isRecord(message) || typeof message.type !== 'string') {
           await options.onMessage?.(message, connection);
           return;
         }
         if (message.type === 'HELLO') {
           await requestMissing(connection, Array.isArray(message.metas) ? message.metas as Array<{ id: string; version: number }> : []);
+          if (closed || stopping || !connections.has(connection)) return;
           send(connection, { type: 'MY_METAS', metas: await options.adapter.listMetas() });
           return;
         }
@@ -316,6 +325,7 @@ export const createP2PHandshakeSync = (options: {
         }
         if (message.type === 'REQUEST_ITEMS') {
           for (const id of Array.isArray(message.ids) ? message.ids : []) {
+            if (closed || stopping || !connections.has(connection)) return;
             if (typeof id !== 'string') continue;
             const item = await options.adapter.getItem(id);
             if (item) await sendItem(connection, item);
@@ -368,8 +378,10 @@ export const createP2PHandshakeSync = (options: {
       }
       connections.delete(connection);
       if (hostConnection === connection) hostConnection = null;
-      void options.onConnectionClose?.(connection);
-      void options.onConnectionChange?.(getOpenConnectionCount());
+      if (!stopping) {
+        void options.onConnectionClose?.(connection);
+        void options.onConnectionChange?.(getOpenConnectionCount());
+      }
       if (!disposing && desiredMode === 'client' && getOpenConnectionCount() === 0) scheduleReconnect('connection-closed');
     };
     connectionCleanups.set(connection, cleanup);
@@ -443,14 +455,19 @@ export const createP2PHandshakeSync = (options: {
       return true;
     },
     async broadcastLocalChanges(frozenItem) {
+      if (stopping) return;
+      const generation = transportGeneration;
       const metas = frozenItem ? [{ id: frozenItem.id, version: frozenItem.version }] : await options.adapter.listMetas();
       let failed = false;
       for (const meta of metas) {
+        if (stopping || generation !== transportGeneration) return;
         if ((broadcastedVersions.get(meta.id) ?? 0) >= meta.version) continue;
         const item = frozenItem ?? await options.adapter.getItem(meta.id);
+        if (stopping || generation !== transportGeneration) return;
         if (!item) continue;
         let sentToAll = true;
         for (const connection of connections) {
+          if (stopping || generation !== transportGeneration) return;
           if (!connection.open) continue;
           try {
             sentToAll = (await sendItem(connection, item)) && sentToAll;
@@ -459,6 +476,7 @@ export const createP2PHandshakeSync = (options: {
             log(`Broadcast failed for ${item.id}: ${String(error)}`, 'error');
           }
         }
+        if (stopping || generation !== transportGeneration) return;
         if (sentToAll) broadcastedVersions.set(item.id, item.version);
         else failed = true;
       }

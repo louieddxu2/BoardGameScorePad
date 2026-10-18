@@ -202,6 +202,7 @@ export const createMultiplayerPlayerRoomController = (options: {
     return messages;
   };
   return {
+    isActive,
     async queueScoreValuePatch(input: {
       actor: ScorePatchActor;
       targetPlayerId: string;

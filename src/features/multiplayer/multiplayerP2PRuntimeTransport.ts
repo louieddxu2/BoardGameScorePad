@@ -15,6 +15,7 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
   forceInitialSync?: boolean;
   logger?: (message: string, level?: 'info' | 'error') => void;
 }): MultiplayerRoomRuntimeTransport => {
+  let stopped = false;
   let receiver: ((message: unknown, connection?: unknown) => void | Promise<void>) | undefined;
   let connectionOpenHandler: (() => void | Promise<void>) | undefined;
   let connectionChangeHandler: ((connectionCount: number) => void | Promise<void>) | undefined;
@@ -27,9 +28,11 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
     onConnectionClose: (connection) => connectionCloseHandler?.(connection),
   });
   return {
-    startHost: (roomId) => handshake.startHost(roomId),
-    joinRoom: (roomId) => handshake.joinRoom(roomId),
+    startHost: (roomId) => { if (!stopped) return handshake.startHost(roomId); },
+    joinRoom: (roomId) => { if (!stopped) return handshake.joinRoom(roomId); },
     stop: () => {
+      if (stopped) return;
+      stopped = true;
       receiver = undefined;
       connectionOpenHandler = undefined;
       connectionChangeHandler = undefined;
@@ -45,16 +48,17 @@ export const createMultiplayerP2PRuntimeTransport = (options: {
     closeConnection: (connection) => handshake.closeConnection(connection as P2PDataConnection),
     broadcastLocalChanges: (item) => handshake.broadcastLocalChanges(item),
     broadcastMessage: (message, exceptConnection) => handshake.broadcast(message, exceptConnection as P2PDataConnection | undefined),
-    setMessageReceiver: (nextReceiver) => { receiver = nextReceiver; },
-    setConnectionOpenHandler: (nextHandler) => { connectionOpenHandler = nextHandler; },
+    setMessageReceiver: (nextReceiver) => { if (!stopped) receiver = nextReceiver; },
+    setConnectionOpenHandler: (nextHandler) => { if (!stopped) connectionOpenHandler = nextHandler; },
     setConnectionChangeHandler: (nextHandler) => {
+      if (stopped) return;
       connectionChangeHandler = nextHandler;
       // A QR join can attach the room runtime after the transport is already
       // open. Synchronize the current count so the handoff does not lose the
       // first connection state transition.
       nextHandler?.(handshake.getConnectionCount());
     },
-    setConnectionCloseHandler: (nextHandler) => { connectionCloseHandler = nextHandler; },
+    setConnectionCloseHandler: (nextHandler) => { if (!stopped) connectionCloseHandler = nextHandler; },
     getConnectionCount: () => handshake.getConnectionCount(),
   };
 };

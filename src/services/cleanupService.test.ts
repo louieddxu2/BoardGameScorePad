@@ -8,6 +8,7 @@ import { googleDriveService } from './googleDrive';
 vi.mock('../db', () => ({
     db: {
         sessions: {
+            schema: { primKey: { keyPath: 'id' } },
             where: vi.fn(() => ({
                 equals: vi.fn(() => ({
                     toArray: vi.fn(async () => [
@@ -24,11 +25,19 @@ vi.mock('../db', () => ({
         },
         templatePrefs: { delete: vi.fn() },
         templateShareCache: { delete: vi.fn() },
+        multiplayerRooms: {
+            schema: { primKey: { keyPath: 'roomId' } },
+            where: vi.fn(() => ({ equals: vi.fn(() => ({
+                toArray: vi.fn(async () => [{ roomId: 'room-1', templateId: 'tpl_123' }]),
+            })) })),
+            bulkDelete: vi.fn(),
+        },
         history: { delete: vi.fn() }, // [NEW] Add history mock to verify it's NOT called
         templateRegistry: {
             templates: null,
             templatePrefs: null,
             templateShareCache: null,
+            multiplayerRooms: 'templateId',
             sessions: 'templateId',
         }
     }
@@ -64,6 +73,7 @@ describe('cleanupService.fullTemplateCleanup', () => {
         expect(imageService.deleteImagesByRelatedId).toHaveBeenCalledWith('s2');
         expect(googleDriveService.softDeleteFolder).toHaveBeenCalledWith('c1', 'active');
         expect(db.sessions.bulkDelete).toHaveBeenCalledWith(['s1', 's2']);
+        expect(db.multiplayerRooms.bulkDelete).toHaveBeenCalledWith(['room-1']);
 
         // 2. Verify Template Tables
         expect(db.templates.delete).toHaveBeenCalledWith(templateId);

@@ -467,6 +467,23 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     expect(mocks.closeRoom).toHaveBeenCalledTimes(1);
     expect(result.current.activeMultiplayerRoom).toBeNull();
     expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
+    expect(mocks.closeRoom).toHaveBeenCalledWith('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });
+  });
+
+  it('clears participant UI and join intent before slow cleanup finishes', async () => {
+    const result = await startPendingJoin();
+    await act(async () => { await result.current.handleConfirmMultiplayerPlayers(['p1']); });
+    let finishCleanup!: () => void;
+    mocks.closeRoom.mockImplementationOnce(() => new Promise<void>(resolve => { finishCleanup = resolve; }));
+    act(() => result.current.setIsMultiplayerParticipantRoomModalOpen(true));
+    let leaving!: Promise<void>;
+    act(() => { leaving = result.current.releaseParticipantMultiplayerRoom(); });
+    expect(result.current.activeMultiplayerRoom).toBeNull();
+    expect(result.current.isMultiplayerParticipantRoomModalOpen).toBe(false);
+    expect(result.current.isJoiningMultiplayer).toBe(false);
+    expect(sessionStorage.getItem('boardgame-scorepad-pending-room-join')).toBeNull();
+    await act(async () => { finishCleanup(); await leaving; });
+    expect(result.current.activeMultiplayerRoom).toBeNull();
   });
 
   it('closes a confirmed participant room when its session is deleted', async () => {

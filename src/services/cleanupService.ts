@@ -93,7 +93,10 @@ export const cleanupService = {
           }
 
           // 批量刪除
-          await table.bulkDelete(relatedItems.map((item: any) => item.id));
+          const keyPath = table.schema.primKey.keyPath;
+          await table.bulkDelete(relatedItems.map((item: any) => Array.isArray(keyPath)
+            ? keyPath.map((key: string) => item[key])
+            : item[keyPath]));
         }
       }
 

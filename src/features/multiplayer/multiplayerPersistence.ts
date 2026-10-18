@@ -39,7 +39,7 @@ export interface MultiplayerHistoryStore {
 export interface MultiplayerCompletionReleaseStore extends MultiplayerHistoryStore {
   putSession(session: GameSession): Promise<unknown>;
   putTemplate?(template: GameTemplate): Promise<unknown>;
-  releaseRoomOwnership?(options: { roomId: string; session: GameSession; template?: GameTemplate }): Promise<unknown>;
+  releaseRoomOwnership?(options: { roomId: string; session: GameSession; template?: GameTemplate; shouldPersist?: () => boolean }): Promise<unknown>;
 }
 
 export interface MultiplayerSnapshotStore {
@@ -289,7 +289,9 @@ export const releaseMultiplayerRoomOwnership = async (options: {
   session: GameSession;
   template?: GameTemplate;
   completedAt: number;
+  shouldPersist?: () => boolean;
 }): Promise<GameSession | null> => {
+  if (options.shouldPersist?.() === false) return null;
   const localSession: GameSession = {
     ...cloneJson(options.session),
     status: 'active',
@@ -297,10 +299,13 @@ export const releaseMultiplayerRoomOwnership = async (options: {
   };
   if (options.store.releaseRoomOwnership) {
     if (await options.store.releaseRoomOwnership({ roomId: options.roomId, session: localSession,
+      ...(options.shouldPersist ? { shouldPersist: options.shouldPersist } : {}),
       ...(options.template ? { template: options.template } : {}) }) === false) return null;
   } else {
     if (options.template) await options.store.putTemplate?.(options.template);
+    if (options.shouldPersist?.() === false) return null;
     await options.store.putSession(localSession);
+    if (options.shouldPersist?.() === false) return null;
     await options.store.deleteRoom(options.roomId);
   }
   return localSession;

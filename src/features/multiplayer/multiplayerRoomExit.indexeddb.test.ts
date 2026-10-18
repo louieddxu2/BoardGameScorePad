@@ -10,6 +10,7 @@ import { MULTIPLAYER_PROTOCOL_VERSION } from './protocol';
 import { act, renderHook } from '@testing-library/react';
 import { useSessionManager } from '../../hooks/useSessionManager';
 import { cleanupService } from '../../services/cleanupService';
+import Dexie from 'dexie';
 
 // Keep Dexie's actual transaction and promise-zone implementation. Only the
 // browser storage backend is simulated; no production/user database is opened.
@@ -44,6 +45,45 @@ beforeEach(async () => { await db.open(); });
 afterEach(async () => { await db.delete(); });
 
 describe('participant room exit with real Dexie transactions', () => {
+  it('can delete a board while its old room row is still awaiting cleanup', async () => {
+    await db.templates.put({ id: 'board', name: 'Board', columns: [], createdAt: 1 });
+    await db.multiplayerRooms.put({ roomId: 'room', sessionId: 'game', templateId: 'board',
+      role: 'player', hostDeviceId: 'host', status: 'active', revision: 1, createdAt: 1, updatedAt: 1 });
+    await cleanupService.fullTemplateCleanup('board');
+    expect(await db.templates.get('board')).toBeUndefined();
+    expect(await db.multiplayerRooms.get('room')).toBeUndefined();
+  });
+
+  it('does not commit a cancelled ownership handoff after waiting for a database writer', async () => {
+    const session: GameSession = { id: 'game', templateId: 'board', name: 'Local', startTime: 1,
+      status: 'active', players: [] };
+    await db.sessions.put(session);
+    await db.multiplayerRooms.put({ roomId: 'room', sessionId: session.id, templateId: session.templateId,
+      role: 'player', hostDeviceId: 'host', status: 'active', revision: 1, createdAt: 1, updatedAt: 1 });
+    let startWriter!: () => void;
+    let finishWriter!: () => void;
+    const started = new Promise<void>(resolve => { startWriter = resolve; });
+    const gate = new Promise<void>(resolve => { finishWriter = resolve; });
+    const writer = db.transaction('rw', db.sessions, async () => {
+      startWriter();
+      await Dexie.waitFor(gate);
+    });
+    await started;
+    let active = true;
+    const handoff = Dexie.ignoreTransaction(() => multiplayerLocalStore.releaseRoomOwnership!({
+      roomId: 'room', session: { ...session, name: 'Late host result' }, shouldPersist: () => active,
+    }));
+    active = false;
+    finishWriter();
+    const [, persisted] = await Promise.all([writer, handoff]);
+    expect(persisted).toBe(false);
+    const [saved, room] = await Dexie.ignoreTransaction(() => Promise.all([
+      db.sessions.get(session.id), db.multiplayerRooms.get('room'),
+    ]));
+    expect(saved).toEqual(session);
+    expect(room).toBeDefined();
+  });
+
   it.each([false, true])('can leave, discard, delete and start again (writes pending: %s)', async (writesPending) => {
     const template: GameTemplate = { id: 'board', name: 'Board', createdAt: 1,
       columns: [{ id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true }] };

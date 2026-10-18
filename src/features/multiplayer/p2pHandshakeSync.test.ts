@@ -213,6 +213,15 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
     expect(source.sent).toEqual([acknowledgement, hostSnapshot]);
     transport.stop?.();
     expect(adapter.stop).toHaveBeenCalledOnce();
+    const peerCount = FakePeer.instances.length;
+    const lateHandler = vi.fn();
+    transport.setConnectionChangeHandler?.(lateHandler);
+    transport.joinRoom?.('room-1');
+    transport.startHost?.('room-1');
+    transport.stop?.();
+    expect(lateHandler).not.toHaveBeenCalled();
+    expect(FakePeer.instances).toHaveLength(peerCount);
+    expect(adapter.stop).toHaveBeenCalledOnce();
   });
 
   it('reconnects a client, repeats HELLO, and preserves raw message routing', async () => {
@@ -287,6 +296,35 @@ describe('createP2PHandshakeSync reconnect lifecycle', () => {
     sync.stop();
     await vi.advanceTimersByTimeAsync(10);
     expect(FakePeer.instances).toHaveLength(1);
+  });
+
+  it('ignores late data and open events even if closing the channel emits no close event', async () => {
+    vi.useFakeTimers();
+    const adapter = { ...createAdapter(), listMetas: vi.fn(async () => []), upsertRemoteItem: vi.fn() };
+    const onMessage = vi.fn();
+    const onConnectionOpen = vi.fn();
+    const sync = createP2PHandshakeSync({ Peer: FakePeer, adapter, onMessage, onConnectionOpen });
+    sync.joinRoom('room-1');
+    const connection = await openClientConnection(FakePeer.instances[0]);
+    vi.spyOn(connection, 'close').mockImplementation(() => {});
+    sync.stop();
+    adapter.listMetas.mockClear();
+    onConnectionOpen.mockClear();
+    const sentCount = connection.sent.length;
+    connection.emit('open');
+    connection.emit('data', { type: 'score:valuePatch', opId: 'late' });
+    connection.emit('data', { type: 'HELLO', metas: [] });
+    connection.emit('data', { type: 'ITEM_START', itemId: 'late', totalChunks: 1, metadata: { id: 'late', version: 1 } });
+    connection.emit('data', { type: 'ITEM_CHUNK', itemId: 'late', index: 0, chunk: new ArrayBuffer(1) });
+    await vi.runAllTimersAsync();
+    expect(onMessage).not.toHaveBeenCalled();
+    expect(onConnectionOpen).not.toHaveBeenCalled();
+    expect(adapter.listMetas).not.toHaveBeenCalled();
+    expect(adapter.upsertRemoteItem).not.toHaveBeenCalled();
+    expect(connection.sent).toHaveLength(sentCount);
+    expect(sync.sendToConnection(connection, { type: 'late' })).toBe(false);
+    expect(FakePeer.instances).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('closes a specific connection and updates the connection count', async () => {

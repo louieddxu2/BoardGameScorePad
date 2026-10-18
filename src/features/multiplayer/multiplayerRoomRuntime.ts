@@ -175,6 +175,9 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   let pendingReplayClaims = new Set<string>();
   const pendingRuntimeTasks = new Set<Promise<unknown>>();
   let stopped = false;
+  // A host completion stops the transport but may still return local ownership.
+  // Explicit stop/leave also cancels that in-flight handoff.
+  let abandoned = false;
   const stopRuntime = () => {
     if (stopped) return;
     stopped = true;
@@ -237,7 +240,11 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
       // connected to a room that the host has already closed.
       stopRuntime();
       await options.onCompletionReceived?.();
+      if (abandoned) return;
       await controller.waitForPendingWrites();
+      if (abandoned) return;
+      const localTemplate = await options.store.getTemplate(message.template.id);
+      if (abandoned) return;
       const resolved = resolveBootstrapImport({
         version: MULTIPLAYER_PROTOCOL_VERSION,
         room: playerSession.room,
@@ -245,19 +252,21 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
         session: message.finalSession,
         revision: message.revision,
         exportedAt: message.completedAt,
-      }, await options.store.getTemplate(message.template.id), playerSession);
+      }, localTemplate, playerSession);
       const localSession = await releaseMultiplayerRoomOwnership({
         store: options.store,
         roomId: playerSession.room.roomId,
         session: resolved.session,
         template: resolved.templateForSession,
         completedAt: message.completedAt,
+        shouldPersist: () => !abandoned,
       });
-      if (!localSession) return;
+      if (!localSession || abandoned) return;
       const pending = await options.deliveryStore.listOutbox(playerSession.room.roomId, playerSession.session.id);
+      if (abandoned) return;
       await Promise.all(pending.map((record) => options.deliveryStore.deleteOutbox(record.id)));
       await options.bindingStore.delete(participantBindingKey(playerSession.room.roomId, options.deviceId));
-      await options.onOwnershipReturned?.(localSession);
+      if (!abandoned) await options.onOwnershipReturned?.(localSession);
     },
     onSnapshot: async (snapshot) => { await options.onSessionSnapshot?.(snapshot.session); },
     onLocalSession: (session) => { void options.onSessionSnapshot?.(session); },
@@ -304,8 +313,9 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
   return {
     role: 'player', session: playerSession, controller,
     start: () => { if (!stopped) options.transport.joinRoom?.(playerSession.room.roomId); },
-    stop: stopRuntime,
+    stop: () => { abandoned = true; stopRuntime(); },
     leaveRoom: () => {
+      abandoned = true;
       if (stopped) return false;
       let sent = false;
       try {
