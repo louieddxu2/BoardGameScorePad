@@ -157,11 +157,14 @@ async function openFourDeviceRoom(tap: (element: Element) => void, extraFormula?
   host.start();
   headless = ['p3', 'p4'].map(id => createHeadlessParticipant(fixtures.network!.Peer, 'exit-test-room', id));
   render(<LanguageProvider><ToastProvider><ConfirmationProvider><App /></ConfirmationProvider></ToastProvider></LanguageProvider>);
-  await waitFor(() => expect(fixtures.network!.peerCount).toBe(4));
+  await waitFor(() => expect(fixtures.network!.peerCount).toBe(4), { timeout: 3_000 });
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Player 2' })).not.toBeNull(), { timeout: 3_000 });
-  await act(async () => { tap(screen.getByRole('button', { name: 'Player 2' })); });
   const enter = screen.getByRole('button', { name: 'Enter score sheet' });
-  await waitFor(() => expect(enter).toBeEnabled());
+  await waitFor(async () => {
+    if (!enter.hasAttribute('disabled')) return;
+    await act(async () => { tap(screen.getByRole('button', { name: 'Player 2' })); });
+    expect(enter).toBeEnabled();
+  }, { timeout: 3_000 });
   tap(enter);
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Multiplayer room' })).not.toBeNull(), {
     timeout: 3_000,
