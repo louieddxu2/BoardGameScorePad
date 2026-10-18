@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { GameTemplate, GameSession } from '../../../types';
 import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud, Zap } from 'lucide-react';
 import DashboardSection from '../parts/DashboardSection';
@@ -101,6 +101,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
     const animClass = "animate-in fade-in slide-in-from-top-2 duration-300";
     const newSystemTemplatesCount = newBadgeIds.length;
+    const pinnedTemplateIds = useMemo(() => new Set(pinnedTemplates.map(template => template.id)), [pinnedTemplates]);
 
     return (
         <>
@@ -138,7 +139,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </DashboardSection>
             )}
 
-            {(pinnedTemplates.length > 0 || recentTemplates.length > 0) && (
+            {!searchQuery.trim() && (pinnedTemplates.length > 0 || recentTemplates.length > 0) && (
                 <DashboardSection
                     title={t('dash_quick_start')}
                     icon={<Zap size={16} />}
@@ -221,6 +222,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                             key={tData.id}
                             template={tData}
                             mode="user"
+                            isPinned={pinnedTemplateIds.has(tData.id)}
                             onClick={() => onTemplateSelect(tData)}
                             onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
                             onDelete={(e) => { e.stopPropagation(); onDeleteTemplate(tData.id); }}
@@ -263,6 +265,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                 <GameCard
                                     template={tData}
                                     mode="system"
+                                    isPinned={pinnedTemplateIds.has(tData.id)}
                                     onClick={() => onTemplateSelect(tData)}
                                     onPin={(e) => { e.stopPropagation(); onPin(tData.id); }}
                                     onCopyLink={(e) => {

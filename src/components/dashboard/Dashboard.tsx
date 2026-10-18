@@ -182,6 +182,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
     systemTemplatesToShow,
     allVisibleTemplates
   } = useDashboardData({
+    searchQuery,
     userTemplates,
     systemTemplates,
     pinnedIds,

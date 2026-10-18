@@ -284,6 +284,36 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(screen.queryByText('快速開始')).not.toBeInTheDocument();
     });
 
+    it('hides quick start while searching and restores its previous collapsed state when cleared', () => {
+        const props = makeProps();
+        const view = (searchQuery: string) => <LanguageProvider><LibraryView {...props} searchQuery={searchQuery}
+            userTemplates={searchQuery.trim() ? [pinnedTemplate] : []} /></LanguageProvider>;
+        const { rerender } = render(view(''));
+        expect(screen.getByRole('button', { name: '開始新遊戲: Pinned Game' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '開始新遊戲: Recent Game' })).toBeInTheDocument();
+
+        rerender(view('Pinned'));
+        expect(screen.queryByText('快速開始')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '開始新遊戲: Pinned Game' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '開始新遊戲: Recent Game' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '繼續遊戲: Active Game' })).toBeInTheDocument();
+        expect(screen.getByText('Pinned Game')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '取消釘選' }).querySelector('svg')).toHaveAttribute('fill', 'currentColor');
+
+        rerender(view(''));
+        expect(screen.getByRole('button', { name: '開始新遊戲: Pinned Game' })).toBeInTheDocument();
+        fireEvent.click(screen.getByText('快速開始'));
+        rerender(view('Pinned'));
+        expect(screen.queryByText('快速開始')).not.toBeInTheDocument();
+        rerender(view(' \t '));
+        expect(screen.getByText('快速開始')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: '開始新遊戲: Pinned Game' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByText('快速開始'));
+        expect(screen.getByRole('button', { name: '開始新遊戲: Recent Game' })).toBeInTheDocument();
+        expect(props.onTemplateSelect).not.toHaveBeenCalled();
+        expect(props.onRecentTemplateSelect).not.toHaveBeenCalled();
+    });
+
     it('keeps primary and secondary actions separate', () => {
         const props = makeProps();
         render(<LanguageProvider><LibraryView {...props} /></LanguageProvider>);

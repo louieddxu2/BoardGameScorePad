@@ -20,6 +20,7 @@ interface UseDashboardDataProps {
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined; 
   getSessionPreview: (templateId: string) => GameSession | null;
+  searchQuery?: string;
 }
 
 export const useDashboardData = ({
@@ -28,7 +29,9 @@ export const useDashboardData = ({
   pinnedIds,
   recentlyPlayedGames,
   activeSessions, 
+  searchQuery = '',
 }: UseDashboardDataProps) => {
+  const isSearching = searchQuery.trim().length > 0;
 
   const allTemplates = useMemo(() => [...userTemplates, ...systemTemplates], [userTemplates, systemTemplates]);
   const templatesById = useMemo(() => new Map(allTemplates.map(template => [template.id, template])), [allTemplates]);
@@ -75,17 +78,17 @@ export const useDashboardData = ({
   // 3. User Library (Filtered & Sliced for UI)
   const userTemplatesToShow = useMemo(() => {
     const filtered = userTemplates.filter(t => 
-        !pinnedIds.includes(t.id) && 
+        (isSearching || !pinnedIds.includes(t.id)) &&
         !t.sourceTemplateId
     );
     return filtered.slice(0, DATA_LIMITS.QUERY.USER_TEMPLATES);
-  }, [userTemplates, pinnedIds]);
+  }, [userTemplates, pinnedIds, isSearching]);
 
   // 4. System Library (Filtered & Sliced for UI)
   const systemTemplatesToShow = useMemo(() => {
-    const filtered = systemTemplates.filter(t => !pinnedIds.includes(t.id));
+    const filtered = systemTemplates.filter(t => isSearching || !pinnedIds.includes(t.id));
     return filtered.slice(0, DATA_LIMITS.QUERY.BUILTIN_TEMPLATES);
-  }, [systemTemplates, pinnedIds]);
+  }, [systemTemplates, pinnedIds, isSearching]);
 
   // 5. Merged list for Search/StartGamePanel (Full List)
   const allVisibleTemplates = useMemo(() => {

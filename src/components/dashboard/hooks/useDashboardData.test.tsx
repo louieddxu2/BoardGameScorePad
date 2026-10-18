@@ -17,6 +17,30 @@ const recentOption = (overrides: Partial<GameOption> = {}): GameOption => ({
 });
 
 describe('useDashboardData recent shortcuts', () => {
+  it('includes pinned games in the ordinary library during search, then restores their exclusion', () => {
+    const user = { id: 'pinned-user', name: 'Pinned Game', columns: [], createdAt: 1 };
+    const builtin = { ...user, id: 'Built-in-pinned' };
+    const props = {
+      userTemplates: [user], systemTemplates: [builtin], pinnedIds: [user.id, builtin.id],
+      recentlyPlayedGames: [], activeSessionIds: [], activeSessions: [], getSessionPreview: vi.fn(() => null),
+    };
+    const { result, rerender } = renderHook(
+      ({ searchQuery }) => useDashboardData({ ...props, searchQuery }),
+      { initialProps: { searchQuery: '' } },
+    );
+    expect(result.current.userTemplatesToShow).toEqual([]);
+    expect(result.current.systemTemplatesToShow).toEqual([]);
+
+    rerender({ searchQuery: 'Pinned' });
+    expect(result.current.userTemplatesToShow).toEqual([user]);
+    expect(result.current.systemTemplatesToShow).toEqual([builtin]);
+
+    rerender({ searchQuery: ' \t ' });
+    expect(result.current.userTemplatesToShow).toEqual([]);
+    expect(result.current.systemTemplatesToShow).toEqual([]);
+    expect(result.current.pinnedTemplates).toEqual([user, builtin]);
+  });
+
   it('creates a lightweight simple-template fallback for a missing recent game', () => {
     const { result } = renderHook(() => useDashboardData({
       userTemplates: [],

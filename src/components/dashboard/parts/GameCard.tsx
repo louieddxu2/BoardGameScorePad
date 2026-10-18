@@ -16,6 +16,7 @@ interface GameCardProps {
   onSystemCopy?: (e: React.MouseEvent) => void;
   onSystemRestore?: (e: React.MouseEvent) => void;
   isShareable?: boolean;
+  isPinned?: boolean;
   // State
   isCopied?: boolean;
   systemOverride?: boolean;
@@ -36,6 +37,7 @@ const GameCard: React.FC<GameCardProps> = ({
   onSystemCopy,
   onSystemRestore,
   isShareable,
+  isPinned: isPinnedInLibrary = false,
   isCopied,
   systemOverride,
   isConnected,
@@ -151,9 +153,10 @@ const GameCard: React.FC<GameCardProps> = ({
       {onPin && (
         <button
           onClick={onPin}
-          className="absolute top-1 right-1 p-1.5 rounded-md text-txt-muted transition-colors hover:bg-surface-hover hover:text-status-warning"
+          aria-label={t(isPinnedInLibrary ? 'card_unpin' : 'card_pin')}
+          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors hover:bg-surface-hover hover:text-status-warning ${isPinnedInLibrary ? 'text-status-warning' : 'text-txt-muted'}`}
         >
-          <Pin size={16} fill="none" />
+          <Pin size={16} fill={isPinnedInLibrary ? 'currentColor' : 'none'} />
         </button>
       )}
 
