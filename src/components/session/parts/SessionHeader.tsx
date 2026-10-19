@@ -1,9 +1,11 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Share2, Edit2, Lock, Unlock, DownloadCloud, RefreshCw, UsersRound } from 'lucide-react';
+import { ArrowLeft, Share2, Edit2, Lock, Unlock, DownloadCloud } from 'lucide-react';
 import ShareMenu from '../modals/ShareMenu';
 import { useSessionTranslation } from '../../../i18n/session';
 import { MultiplayerConnectionStatus } from '../../../features/multiplayer/multiplayerSessionManager';
+import type { BoardSyncStatus } from '../../../features/multiplayer/multiplayerRoomController';
+import MultiplayerConnectionButton from './MultiplayerConnectionButton';
 
 interface SessionHeaderProps {
   templateName: string;
@@ -33,7 +35,7 @@ interface SessionHeaderProps {
   multiplayerPreviewPlayerNumber?: number | null;
   onOpenMultiplayerRoom?: () => void;
   multiplayerConnectionCount?: number;
-  hasUnpublishedBoardUpdate?: boolean;
+  multiplayerBoardSyncStatus?: BoardSyncStatus;
   onOpenMultiplayerParticipantRoom?: () => void;
   multiplayerConnectionStatus?: MultiplayerConnectionStatus;
 }
@@ -66,7 +68,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   multiplayerPreviewPlayerNumber,
   onOpenMultiplayerRoom,
   multiplayerConnectionCount,
-  hasUnpublishedBoardUpdate = false,
+  multiplayerBoardSyncStatus,
   onOpenMultiplayerParticipantRoom,
   multiplayerConnectionStatus,
 }) => {
@@ -90,12 +92,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
     }
   };
 
-  const multiplayerButtonClass = onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined
-    ? hasUnpublishedBoardUpdate
-      ? 'border-status-warning/60 bg-status-warning/10 text-status-warning hover:bg-status-warning/20'
-      : 'border-status-info/60 bg-status-info/10 text-status-info hover:bg-status-info/20'
-    : 'border-surface-border text-txt-muted hover:text-brand-primary hover:bg-surface-hover';
-  const isParticipantReconnecting = onOpenMultiplayerParticipantRoom && multiplayerConnectionStatus === 'reconnecting';
+  const onMultiplayerClick = onOpenMultiplayerRoom ?? onOpenMultiplayerParticipantRoom ?? onCycleMultiplayerPreview;
 
   // Helper to prevent input blur when clicking buttons
   const preventBlur = (e: React.MouseEvent) => {
@@ -146,27 +143,17 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         )}
       </div>
       <div className="flex items-center gap-1 relative shrink-0">
-        {(onOpenMultiplayerRoom || onOpenMultiplayerParticipantRoom || onCycleMultiplayerPreview) && (
-          <button
+        {onMultiplayerClick && (
+          <MultiplayerConnectionButton
             onMouseDown={preventBlur}
-            onClick={onOpenMultiplayerRoom ?? onOpenMultiplayerParticipantRoom ?? onCycleMultiplayerPreview}
-            className={`relative p-2 rounded-lg transition-colors border ${isParticipantReconnecting ? 'border-status-warning/60 bg-status-warning/10 text-status-warning hover:bg-status-warning/20' : multiplayerButtonClass}`}
-            title={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? (isParticipantReconnecting ? t('multiplayer_reconnecting') : t('multiplayer_connection_title')) : multiplayerPreviewLabel}
-            aria-label={onOpenMultiplayerRoom ? t('multiplayer_open_room') : onOpenMultiplayerParticipantRoom ? (isParticipantReconnecting ? t('multiplayer_reconnecting') : t('multiplayer_connection_title')) : multiplayerPreviewLabel}
-          >
-            <UsersRound size={20} />
-            {isParticipantReconnecting && <RefreshCw size={11} className="absolute -right-1 -top-1 rounded-full border border-modal-bg bg-status-warning p-0.5 text-modal-bg animate-spin" />}
-            {onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined && (
-              <span className={`absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full text-[10px] font-bold leading-none border border-modal-bg ${hasUnpublishedBoardUpdate ? 'bg-status-warning text-modal-bg' : 'bg-status-info text-white'}`} title={t('multiplayer_connected_count', { count: multiplayerConnectionCount })}>
-                {multiplayerConnectionCount > 99 ? '99+' : multiplayerConnectionCount}
-              </span>
-            )}
-            {!onOpenMultiplayerRoom && !onOpenMultiplayerParticipantRoom && multiplayerPreviewPlayerNumber !== null && multiplayerPreviewPlayerNumber !== undefined && (
-              <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
-                {multiplayerPreviewPlayerNumber}
-              </span>
-            )}
-          </button>
+            onClick={onMultiplayerClick}
+            role={onOpenMultiplayerRoom && multiplayerConnectionCount !== undefined ? 'host' : onOpenMultiplayerParticipantRoom ? 'player' : undefined}
+            status={multiplayerConnectionStatus}
+            connectionCount={multiplayerConnectionCount}
+            boardSyncStatus={multiplayerBoardSyncStatus}
+            idleLabel={onOpenMultiplayerRoom ? t('multiplayer_open_room') : multiplayerPreviewLabel}
+            previewPlayerNumber={multiplayerPreviewPlayerNumber}
+          />
         )}
         {/* Cloud Download Shortcut */}
         {canUseMediaTools && hasCloudImage && onCloudDownload && (
