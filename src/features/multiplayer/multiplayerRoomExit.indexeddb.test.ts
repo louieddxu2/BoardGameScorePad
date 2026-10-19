@@ -21,6 +21,9 @@ import { cleanupService } from '../../services/cleanupService';
 import Dexie from 'dexie';
 import type { SessionSnapshotMessage } from './protocol';
 import { persistMultiplayerSnapshot } from './multiplayerPersistence';
+import { applyMultiplayerParticipantBootstrap } from './multiplayerParticipantJoin';
+import { multiplayerSessionManager } from './multiplayerSessionManager';
+import { imageService } from '../../services/imageService';
 
 // Keep Dexie's actual transaction and promise-zone implementation. Only the
 // browser storage backend is simulated; no production/user database is opened.
@@ -55,6 +58,188 @@ beforeEach(async () => { await db.open(); });
 afterEach(async () => { await db.delete(); });
 
 describe('participant room exit with real Dexie transactions', () => {
+  const makeBootstrap = (roomId: string, template: GameTemplate, session: GameSession, revision = 1) => ({
+    type: 'room:bootstrap' as const,
+    roomId,
+    package: {
+      version: MULTIPLAYER_PROTOCOL_VERSION,
+      room: { roomId, hostDeviceId: 'host', createdAt: 1 },
+      template, session, revision, exportedAt: revision,
+    },
+  });
+
+  const makePlayerRuntime = (roomId: string, template: GameTemplate, session: GameSession) =>
+    createMultiplayerPlayerRoomRuntime({
+      bootstrapMessage: makeBootstrap(roomId, template, session),
+      deviceId: 'guest', store: multiplayerLocalStore,
+      deliveryStore: multiplayerDeliveryStore, bindingStore: multiplayerParticipantBindingStore,
+      transport: { sendToHost: vi.fn(() => true), sendToConnection: vi.fn(() => true),
+        broadcastLocalChanges: vi.fn(async () => {}), stop: vi.fn() },
+    });
+
+  const gatedTemplateRead = () => {
+    let finish!: () => void;
+    let entered!: () => void;
+    const gate = new Promise<void>(resolve => { finish = resolve; });
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    let reads = 0;
+    const getTemplate = async (id: string) => {
+      reads += 1;
+      const template = (await db.templates.get(id)) ?? null;
+      if (reads === 2) {
+        entered();
+        await gate;
+      }
+      return template;
+    };
+    return { getTemplate, started, release: finish };
+  };
+
+  it('does not reactivate a departed session after discard and starting another board', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const roomId = 'late-bootstrap-room';
+    const template: GameTemplate = { id: 'late-bootstrap-board', name: 'Board', createdAt: 1,
+      columns: [{ id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true }] };
+    const updatedTemplate: GameTemplate = { ...template,
+      columns: [{ ...template.columns[0], formula: '2*a1' }] };
+    const session: GameSession = { id: 'late-bootstrap-game', templateId: template.id, name: template.name,
+      startTime: 1, status: 'active', players: [{ id: 'p1', name: 'A', color: 'transparent', scores: {}, totalScore: 0 }] };
+    const runtime = await makePlayerRuntime(roomId, template, session);
+    multiplayerSessionManager.register(roomId, runtime);
+    const gate = gatedTemplateRead();
+    const { result, unmount } = renderHook(() => useSessionManager({
+      getTemplate: gate.getTemplate, activeSessions: [session], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+    let resume: Promise<boolean> | undefined;
+    try {
+      await act(async () => { await result.current.resumeSessionById(session.id); });
+      resume = applyMultiplayerParticipantBootstrap({
+        roomId, bootstrapMessage: makeBootstrap(roomId, updatedTemplate, session, 2),
+        resumeSession: (id, shouldActivate) => result.current.resumeSessionById(id, shouldActivate),
+      });
+      await gate.started;
+      expect(runtime.session.template.columns[0].formula).toBe('2*a1');
+
+      runtime.leaveRoom();
+      act(() => { result.current.updateSession({ ...runtime.session.session, note: 'ordinary projection' }, { template: runtime.session.template }); });
+      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true, awaitLocalCleanup: false });
+      await act(async () => { await result.current.discardSessionById(session.id); });
+      const otherBoard: GameTemplate = { id: 'other-board', name: 'Other Board', createdAt: 3, columns: [] };
+      await db.templates.put(otherBoard);
+      await act(async () => { expect(await result.current.startSession(otherBoard, 1)).toBeTruthy(); });
+      const newSessionId = result.current.currentSession!.id;
+      act(() => { result.current.updateSession({ ...result.current.currentSession!, note: 'autosave survives stale resume' }); });
+
+      gate.release();
+      await act(async () => { await resume; });
+      expect(result.current.currentSession?.id).toBe(newSessionId);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      expect(await db.sessions.get(newSessionId)).toMatchObject({ note: 'autosave survives stale resume' });
+      expect(await db.sessions.get(session.id)).toBeUndefined();
+    } finally {
+      gate.release();
+      await act(async () => { await resume?.catch(() => false); });
+      unmount();
+      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true, awaitLocalCleanup: false });
+      await multiplayerSessionManager.waitForRoomCleanup(roomId);
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not replace a participant projection when a template reload finishes after leave', async () => {
+    const roomId = 'late-reload-room';
+    const template: GameTemplate = { id: 'late-reload-board', name: 'Board', createdAt: 1,
+      columns: [{ id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true }] };
+    const updatedTemplate: GameTemplate = { ...template,
+      columns: [{ ...template.columns[0], formula: 'a1×c1', constants: { c1: 2 } }] };
+    const session: GameSession = { id: 'late-reload-game', templateId: template.id, name: template.name,
+      startTime: 1, status: 'active', players: [{ id: 'p1', name: 'A', color: 'transparent', scores: {}, totalScore: 0 }] };
+    const confirmedSession: GameSession = { ...session,
+      players: [{ ...session.players[0], scores: { points: { parts: [7] } }, totalScore: 14 }] };
+    const runtime = await makePlayerRuntime(roomId, template, session);
+    multiplayerSessionManager.register(roomId, runtime);
+    const gate = gatedTemplateRead();
+    const { result, unmount } = renderHook(() => useSessionManager({
+      getTemplate: gate.getTemplate, activeSessions: [session], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+    let resume: Promise<boolean> | undefined;
+    try {
+      await act(async () => { await result.current.resumeSessionById(session.id); });
+      resume = applyMultiplayerParticipantBootstrap({
+        roomId, bootstrapMessage: makeBootstrap(roomId, updatedTemplate, confirmedSession, 2),
+        resumeSession: (id, shouldActivate) => result.current.resumeSessionById(id, shouldActivate),
+      });
+      await gate.started;
+      expect(runtime.session.session.players[0].scores.points?.parts).toEqual([7]);
+      expect(runtime.session.session.players[0].totalScore).toBe(14);
+      const pendingPatch = runtime.controller.queueScoreValuePatch({
+        actor: { role: 'player', playerId: 'p1' }, targetPlayerId: 'p1', colId: 'points',
+        scoreValue: { parts: [8] },
+      });
+      await pendingPatch;
+      expect(runtime.session.session.players[0].scores.points?.parts).toEqual([8]);
+      expect(runtime.session.session.players[0].totalScore).toBe(16);
+      runtime.leaveRoom();
+      act(() => { result.current.updateSession(runtime.session.session, { template: runtime.session.template }); });
+      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true, awaitLocalCleanup: false });
+      expect(result.current.currentSession?.players[0].scores.points?.parts).toEqual([8]);
+      expect(result.current.currentSession?.players[0].totalScore).toBe(16);
+      expect(result.current.activeTemplate?.columns[0]).toMatchObject({ formula: 'a1×c1', constants: { c1: 2 } });
+
+      gate.release();
+      await act(async () => { await resume; });
+      expect(result.current.currentSession?.players[0].scores.points?.parts).toEqual([8]);
+      expect(result.current.currentSession?.players[0].totalScore).toBe(16);
+      expect(result.current.activeTemplate?.columns[0]).toMatchObject({ formula: 'a1×c1', constants: { c1: 2 } });
+    } finally {
+      gate.release();
+      await act(async () => { await resume?.catch(() => false); });
+      unmount();
+      await multiplayerSessionManager.closeRoom(roomId, { deleteLocalRoom: true, awaitLocalCleanup: false });
+      await multiplayerSessionManager.waitForRoomCleanup(roomId);
+    }
+  });
+
+  it('does not activate an older resume or leak its image URL when a newer resume wins', async () => {
+    const oldTemplate: GameTemplate = { id: 'old-image-board', name: 'Old', createdAt: 1, columns: [], imageId: 'old-image' };
+    const newTemplate: GameTemplate = { id: 'new-image-board', name: 'New', createdAt: 2, columns: [] };
+    const oldSession: GameSession = { id: 'old-image-game', templateId: oldTemplate.id, name: 'Old', startTime: 1, status: 'active', players: [] };
+    const newSession: GameSession = { id: 'new-image-game', templateId: newTemplate.id, name: 'New', startTime: 2, status: 'active', players: [] };
+    await db.templates.bulkPut([oldTemplate, newTemplate]);
+    await db.sessions.bulkPut([oldSession, newSession]);
+    let finishImage!: (value: { id: string; blob: Blob } | undefined) => void;
+    let imageRequested!: () => void;
+    const imageGate = new Promise<{ id: string; blob: Blob } | undefined>(resolve => { finishImage = resolve; });
+    const requested = new Promise<void>(resolve => { imageRequested = resolve; });
+    const getImage = vi.spyOn(imageService, 'getImage').mockImplementation(async () => {
+      imageRequested();
+      return imageGate as Promise<any>;
+    });
+    const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:late-resume');
+    const revokeUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const { result, unmount } = renderHook(() => useSessionManager({
+      getTemplate: async id => (await db.templates.get(id)) ?? null,
+      activeSessions: [oldSession, newSession], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+    try {
+      let oldResume!: Promise<boolean>;
+      act(() => { oldResume = result.current.resumeSessionById(oldSession.id); });
+      await requested;
+      await act(async () => { expect(await result.current.resumeSessionById(newSession.id)).toBe(true); });
+      finishImage({ id: 'old-image', blob: new Blob(['late']) });
+      await act(async () => { await oldResume; });
+      expect(result.current.currentSession?.id).toBe(newSession.id);
+      expect(createUrl).not.toHaveBeenCalled();
+      expect(revokeUrl).not.toHaveBeenCalled();
+    } finally {
+      finishImage(undefined);
+      unmount();
+      getImage.mockRestore();
+      createUrl.mockRestore();
+      revokeUrl.mockRestore();
+    }
+  });
+
   it('does not overwrite received scores with the ordinary resume autosave', async () => {
     const template: GameTemplate = { id: 'autosave-board', name: 'Board', createdAt: 1,
       columns: [{ id: 'points', name: 'Points', formula: 'a1', inputType: 'keypad', isScoring: true }] };

@@ -3,7 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 import { db } from '../db';
 import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '../types';
 import { generateId } from '../utils/idGenerator';
-import { migrateTemplate, migrateScores } from '../utils/dataMigration';
+import { migrateTemplate } from '../utils/dataMigration';
+import { loadSessionActivation } from './sessionActivation';
 import { applyTemplateToSession } from '../utils/sessionTemplateUpdate';
 import { calculateScoreSession } from '../utils/sessionScoring';
 import { imageService } from '../services/imageService';
@@ -16,7 +17,7 @@ import { useToast } from './useToast';
 import { COLORS } from '../colors';
 import { useLibrary } from './useLibrary';
 import { useSessionTranslation } from '../i18n/session';
-import { isDisposableTemplate, calculateWinners, prepareTemplateForSave, createVirtualTemplate } from '../utils/templateUtils';
+import { isDisposableTemplate, calculateWinners, prepareTemplateForSave } from '../utils/templateUtils';
 import { deleteSessionRecord, deleteSessionRecords, notifySessionDeleted } from '../features/multiplayer/sessionDeletionEvents';
 
 interface UseSessionManagerProps {
@@ -29,6 +30,8 @@ interface UseSessionManagerProps {
 export interface SessionUpdateOptions {
     /** Adopt the canonical result only after the multiplayer controller has saved it. */
     alreadyPersisted?: boolean;
+    /** A room handoff keeps the accepted structure and inputs together. */
+    template?: GameTemplate;
 }
 
 export const useSessionManager = ({
@@ -52,6 +55,21 @@ export const useSessionManager = ({
     const autosaveInFlightRef = useRef<Promise<unknown> | null>(null);
     const autosaveGenerationRef = useRef(0);
     const persistedSessionRef = useRef<GameSession | null>(null);
+    const activationRef = useRef({ version: 0, mounted: true });
+
+    useEffect(() => {
+        activationRef.current.mounted = true;
+        return () => {
+            activationRef.current.mounted = false;
+            activationRef.current.version += 1;
+        };
+    }, []);
+
+    const beginActivation = (shouldActivate?: () => boolean) => {
+        const version = ++activationRef.current.version;
+        return () => activationRef.current.mounted && activationRef.current.version === version
+            && shouldActivate?.() !== false;
+    };
 
     useEffect(() => {
         return () => {
@@ -96,6 +114,8 @@ export const useSessionManager = ({
         playerCount: number,
         options?: { startTimeStr?: string, scoringRule?: ScoringRule, location?: string, locationId?: string }
     ): Promise<string | null> => {
+        const isCurrent = beginActivation();
+        if (!isCurrent()) return null;
         setSessionPlayerCount(playerCount);
         const scoringRule = options?.scoringRule || 'HIGHEST_WINS';
         try {
@@ -107,7 +127,9 @@ export const useSessionManager = ({
             });
         } catch (e) { console.warn("Failed to save preferences", e); }
 
+        if (!isCurrent()) return null;
         const fullTemplate = await getTemplate(partialTemplate.id);
+        if (!isCurrent()) return null;
         if (!fullTemplate) {
             showToast({ message: t('msg_template_read_failed'), type: 'error' });
             return null;
@@ -176,6 +198,7 @@ export const useSessionManager = ({
         // [Refactor] Delegate Auto-Fill Logic to specialized initializer
         // Now passing the full template to handle texture mode logic
         newSession.players = await applyRecommendationsToPlayers(newSession, migratedTemplate);
+        if (!isCurrent()) return null;
         
         // [New] Initial Winner Calculation
         newSession.winnerIds = calculateWinners(newSession.players, newSession.scoringRule);
@@ -185,6 +208,7 @@ export const useSessionManager = ({
         let loadedImageUrl: string | null = null;
         if (migratedTemplate.imageId) {
             const localImg = await imageService.getImage(migratedTemplate.imageId);
+            if (!isCurrent()) return null;
             if (localImg) {
                 loadedImageUrl = URL.createObjectURL(localImg.blob);
             }
@@ -197,81 +221,48 @@ export const useSessionManager = ({
         return sessionId;
     };
 
-    const activateSession = async (session: GameSession): Promise<boolean> => {
+    const activateSession = async (session: GameSession, isCurrent: () => boolean): Promise<boolean> => {
         try {
-            session = { ...session };
-            let template = await getTemplate(session.templateId);
-
-            // [Fail-Safe Reader]
-            if (!template) {
-                console.warn(`Template ${session.templateId} missing for session ${session.id}. Creating virtual fallback.`);
-                template = createVirtualTemplate(
-                    session.templateId,
-                    session.name || "Unknown Game",
-                    session.bggId,
-                    session.startTime,
-                    session.players.length,
-                    session.scoringRule
-                );
-            }
-
-            template = migrateTemplate(template);
-
-            session.players = session.players.map((p: any) => ({
-                ...p, scores: migrateScores(p.scores, template!)
-            }));
-
-            // [New] Ensure winnerIds are calculated on resume if missing (Compatibility)
-            if (!session.winnerIds) {
-                session.winnerIds = calculateWinners(session.players, session.scoringRule);
-            }
-
-            // [Identity Upgrade] Backfill legacy sessions
-            if (!session.name && template) {
-                session.name = template.name;
-            }
-            if (session.bggId === undefined && template) {
-                session.bggId = template.bggId;
-            }
-
-            if (!session.lastUpdatedAt) {
-                session.lastUpdatedAt = Date.now();
-            }
-
-            let loadedImageUrl: string | null = null;
-            if (template.imageId) {
-                const localImg = await imageService.getImage(template.imageId);
-                if (localImg) {
-                    loadedImageUrl = URL.createObjectURL(localImg.blob);
-                }
+            const loaded = await loadSessionActivation(session, getTemplate, isCurrent);
+            if (!loaded) return false;
+            if (!isCurrent()) {
+                if (loaded.imageUrl) URL.revokeObjectURL(loaded.imageUrl);
+                return false;
             }
 
             // Resume is a read, not an edit. Another owner (multiplayer) may
             // already be persisting newer snapshots of this same session.
             // Keep compatibility migrations in memory until an edit or save.
             cancelPendingAutosave();
-            persistedSessionRef.current = session;
-            setSessionImage(loadedImageUrl);
-            setActiveTemplate(template);
-            setCurrentSession(session);
+            persistedSessionRef.current = loaded.session;
+            setSessionImage(loaded.imageUrl);
+            setActiveTemplate(loaded.template);
+            setCurrentSession(loaded.session);
             return true;
 
         } catch (e) { console.error("Failed to resume session", e); }
         return false;
     };
 
-    const resumeSession = async (templateId: string): Promise<boolean> => {
+    const resumeSession = async (templateId: string, shouldActivate?: () => boolean): Promise<boolean> => {
+        if (shouldActivate?.() === false) return false;
+        const isCurrent = beginActivation(shouldActivate);
+        if (!isCurrent()) return false;
         const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
-        return session ? activateSession(session) : false;
+        return session && isCurrent() ? activateSession(session, isCurrent) : false;
     };
 
-    const resumeSessionById = async (sessionId: string): Promise<boolean> => {
+    const resumeSessionById = async (sessionId: string, shouldActivate?: () => boolean): Promise<boolean> => {
+        if (shouldActivate?.() === false) return false;
+        const isCurrent = beginActivation(shouldActivate);
+        if (!isCurrent()) return false;
         const session = await db.sessions.get(sessionId);
-        if (!session || session.status !== 'active') return false;
-        return activateSession(session);
+        if (!session || session.status !== 'active' || !isCurrent()) return false;
+        return activateSession(session, isCurrent);
     };
 
     const discardSessionById = async (sessionId: string) => {
+        activationRef.current.version += 1;
         const session = (currentSession?.id === sessionId ? currentSession : undefined)
             ?? await db.sessions.get(sessionId);
 
@@ -298,6 +289,7 @@ export const useSessionManager = ({
     };
 
     const discardSession = async (templateId: string) => {
+        activationRef.current.version += 1;
         const session = (currentSession?.templateId === templateId ? currentSession : undefined)
             ?? activeSessions?.find(s => s.templateId === templateId)
             ?? await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
@@ -306,6 +298,7 @@ export const useSessionManager = ({
     };
 
     const clearAllActiveSessions = async () => {
+        activationRef.current.version += 1;
         const activeIds = activeSessions?.map(s => s.id) || [];
         if (activeIds.length > 0 && activeSessions) {
             if (currentSession && activeIds.includes(currentSession.id)) {
@@ -324,6 +317,11 @@ export const useSessionManager = ({
     };
 
     const updateSession = (updatedSession: GameSession, options?: SessionUpdateOptions) => {
+        const scoringTemplate = options?.template ?? activeTemplate;
+        if (options?.template) {
+            setActiveTemplate(options.template);
+            if (activeTemplate?.imageId !== options.template.imageId) setSessionImage(null);
+        }
         if (options?.alreadyPersisted) {
             cancelPendingAutosave();
             persistedSessionRef.current = updatedSession;
@@ -333,8 +331,8 @@ export const useSessionManager = ({
         persistedSessionRef.current = null;
         const sessionWithTimestamp = { ...updatedSession, lastUpdatedAt: Date.now() };
 
-        if (activeTemplate) {
-            setCurrentSession(calculateScoreSession(sessionWithTimestamp, activeTemplate));
+        if (scoringTemplate) {
+            setCurrentSession(calculateScoreSession(sessionWithTimestamp, scoringTemplate));
         } else {
             setCurrentSession(sessionWithTimestamp);
         }
@@ -357,6 +355,7 @@ export const useSessionManager = ({
     };
 
     const exitSession = async (overrides?: Partial<GameSession>) => {
+        activationRef.current.version += 1;
         if (!currentSession) return;
 
         const sessionToSave = { ...currentSession, ...overrides };
@@ -417,6 +416,7 @@ export const useSessionManager = ({
     };
 
     const saveToHistory = async (finalLocation?: string) => {
+        activationRef.current.version += 1;
         if (!currentSession || !activeTemplate) return;
         try {
             cancelPendingAutosave();

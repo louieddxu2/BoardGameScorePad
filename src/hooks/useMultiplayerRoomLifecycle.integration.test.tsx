@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => {
     stop: vi.fn(),
     start: vi.fn(),
     leaveRoom: vi.fn(),
+    controller: { isActive: vi.fn(() => true) },
     restoreParticipantBinding: vi.fn(async () => true),
     receive: vi.fn(async () => true),
   };
@@ -154,6 +155,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     mocks.runtime.stop.mockReset();
     mocks.runtime.start.mockReset();
     mocks.runtime.leaveRoom.mockReset();
+    mocks.runtime.controller.isActive.mockReset().mockReturnValue(true);
     mocks.runtime.restoreParticipantBinding.mockReset().mockResolvedValue(true);
     mocks.runtime.receive.mockReset().mockResolvedValue(true);
     mocks.hostRuntime.start.mockReset();
@@ -467,7 +469,9 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
 
     expect(mocks.runtime.leaveRoom).toHaveBeenCalledTimes(1);
     expect(mocks.closeRoom).toHaveBeenCalledTimes(1);
-    expect(appData.updateSession).toHaveBeenCalledWith(mocks.runtime.session.session);
+    expect(appData.updateSession).toHaveBeenCalledWith(mocks.runtime.session.session, {
+      template: mocks.runtime.session.template,
+    });
     expect(appData.updateSession.mock.invocationCallOrder[0]).toBeLessThan(mocks.closeRoom.mock.invocationCallOrder[0]);
     expect(result.current.activeMultiplayerRoom).toBeNull();
     expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
@@ -573,7 +577,11 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     const update = { type: 'room:bootstrap', roomId: 'room-1', package: { revision: 2 } };
     await act(async () => { expect(await mocks.adapterOptions.applyRemoteBootstrap(update)).toBe(true); });
     expect(mocks.runtime.receive).toHaveBeenCalledWith(update);
-    expect(appData.resumeSessionById).toHaveBeenCalledWith('session-1');
+    expect(appData.resumeSessionById).toHaveBeenCalledWith('session-1', expect.any(Function));
+    const shouldActivate = appData.resumeSessionById.mock.calls[0][1];
+    expect(shouldActivate()).toBe(true);
+    mocks.runtime.controller.isActive.mockReturnValue(false);
+    expect(shouldActivate()).toBe(false);
     expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
   });
 

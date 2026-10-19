@@ -253,7 +253,7 @@ export const useMultiplayerRoomLifecycle = ({
     bootstrapMessage: BootstrapPackageMessage,
   ) => applyMultiplayerParticipantBootstrap({
     roomId, bootstrapMessage,
-    resumeSession: (sessionId) => appDataRef.current.resumeSessionById(sessionId),
+    resumeSession: (sessionId, shouldActivate) => appDataRef.current.resumeSessionById(sessionId, shouldActivate),
   }), []);
 
   const ensurePlayerRuntime = useCallback((
@@ -365,7 +365,7 @@ export const useMultiplayerRoomLifecycle = ({
           setActiveRoom({ roomId, role: 'player', playerIds: normalizedPlayerIds });
           clearRoomUrlQuery();
         },
-        resumeSession: (sessionId) => appDataRef.current.resumeSessionById(sessionId),
+        resumeSession: (sessionId, shouldActivate) => appDataRef.current.resumeSessionById(sessionId, shouldActivate),
         onJoined: () => {
           setPendingJoin(null);
           clearPendingRoomJoin();
@@ -502,7 +502,9 @@ export const useMultiplayerRoomLifecycle = ({
     // Ordinary autosave/exit now owns it; stopped receives cannot overwrite it.
     try {
       const localSession = managedRoom?.runtime?.session.session ?? managedRoom?.session;
-      if (localSession) appDataRef.current.updateSession(localSession);
+      if (localSession) appDataRef.current.updateSession(localSession, {
+        template: managedRoom?.runtime?.session.template,
+      });
     } finally {
       clearVisibleMultiplayerRoomState();
       setPendingJoin(null);

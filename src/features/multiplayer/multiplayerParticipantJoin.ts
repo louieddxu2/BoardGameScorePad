@@ -40,7 +40,7 @@ export const createMultiplayerParticipantRuntime = (options: {
 export const applyMultiplayerParticipantBootstrap = async (options: {
   roomId: string;
   bootstrapMessage: BootstrapPackageMessage;
-  resumeSession: (sessionId: string) => Promise<boolean>;
+  resumeSession: (sessionId: string, shouldActivate?: () => boolean) => Promise<boolean>;
 }): Promise<boolean> => {
   const { roomId, bootstrapMessage, resumeSession } = options;
   const managedRoom = multiplayerSessionManager.get(roomId);
@@ -51,7 +51,7 @@ export const applyMultiplayerParticipantBootstrap = async (options: {
   const previousTemplate = runtime.session.template;
   if (!await runtime.receive(bootstrapMessage)) return true;
   const templateChanged = JSON.stringify(previousTemplate) !== JSON.stringify(runtime.session.template);
-  if (templateChanged) await resumeSession(runtime.session.session.id);
+  if (templateChanged) await resumeSession(runtime.session.session.id, () => runtime.controller.isActive());
   return true;
 };
 
@@ -115,7 +115,7 @@ export const confirmMultiplayerParticipantJoin = async (options: {
   isCurrent: () => boolean;
   onParticipantCompletion: (roomId: string) => void;
   onRoomSelected: (playerIds: string[]) => void;
-  resumeSession: (sessionId: string) => Promise<boolean>;
+  resumeSession: (sessionId: string, shouldActivate?: () => boolean) => Promise<boolean>;
   onJoined: () => void;
 }): Promise<void> => {
   const { roomId, bootstrapMessage, transport } = options.pendingJoin;
@@ -166,7 +166,10 @@ export const confirmMultiplayerParticipantJoin = async (options: {
   }
 
   options.onRoomSelected(normalizedPlayerIds);
-  if (!await options.resumeSession(runtime.session.session.id)) throw new Error('participant_session_resume_failed');
+  if (!await options.resumeSession(runtime.session.session.id, options.isCurrent)) {
+    if (!options.isCurrent()) return;
+    throw new Error('participant_session_resume_failed');
+  }
   if (!options.isCurrent()) return;
   options.onJoined();
 };
