@@ -137,6 +137,39 @@ describe('ScoreOverlayGenerator zero-score outcomes', () => {
     expect(queryByText('Private name')).toBeNull();
   });
 
+  it('labels an unscored no-win/loss cooperative team without zeros, preserving explicit zero inputs', () => {
+    const players: OverlayData['players'] = [
+      { ...createPlayer('p1', 'Alice', 0), isForceLost: true },
+      { ...createPlayer('p2', 'Private name', 0), isAnonymous: true, scores: { cleared: { parts: [] } } },
+    ];
+    const data = baseData(players, ['p1', 'p2'], 'COOP_NO_SCORE');
+    const { container, getByText, queryByText, rerender } = renderOverlay(data);
+    const shared = container.querySelector('[data-score-photo-shared-result="true"]')!;
+    expect(shared).toContainElement(getByText('合作模式'));
+    expect(shared).toContainElement(getByText('Alice'));
+    expect(shared.querySelector('[data-sticker-icon]')).not.toBeNull();
+    expect(queryByText('Private name')).toBeNull();
+    expect(queryByText('0')).toBeNull();
+    expect(shared.querySelector('[data-score-photo-score]')).toBeNull();
+    expect(container.querySelector('[data-score-photo-team]')).toBeNull();
+    expect(container.querySelector('.lucide-crown')).toBeNull();
+
+    rerender(<LanguageContext.Provider value={{ language: 'en', setLanguage: () => undefined }}>
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={data} />
+    </LanguageContext.Provider>);
+    expect(getByText('Cooperative')).toBeInTheDocument();
+
+    rerender(<LanguageContext.Provider value={{ language: 'en', setLanguage: () => undefined }}>
+      <ScoreOverlayGenerator imageSrc="photo.jpg" data={{ ...data, players: [
+        { ...players[0], scores: { points: { parts: [0] } } }, players[1],
+      ] }} />
+    </LanguageContext.Provider>);
+    expect(container.querySelector('[data-score-photo-shared-result]')).toBeNull();
+    expect(container.querySelectorAll('[data-score-photo-score]')).toHaveLength(2);
+    expect(container.querySelector('[data-score-photo-team]')).toBeNull();
+    expect(container.querySelector('.lucide-crown')).toBeNull();
+  });
+
   it.each<{ label: string; scores: Player['scores']; totalScore: number; bonusScore?: number }>([
     { label: 'an explicit zero', scores: { points: { parts: [0] } }, totalScore: 0 },
     { label: 'offsetting inputs', scores: { points: { parts: [5, -5] } }, totalScore: 0 },

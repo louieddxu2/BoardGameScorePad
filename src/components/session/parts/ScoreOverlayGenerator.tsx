@@ -3,6 +3,7 @@ import { Player, ScoringRule } from '../../../types';
 import { Crown } from 'lucide-react';
 import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
+import { useCommonTranslation } from '../../../i18n/common';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 import { getPhotoPlayerNameShadow } from '../../../utils/photoTextContrast';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
@@ -30,6 +31,7 @@ const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime ?? data.date;
     const { t, language } = useSessionTranslation();
+    const { t: tCommon } = useCommonTranslation();
     const stickerIndices = useMemo(() => getPlayerStickerIndices(data.players.map(player => player.id)), [data.players]);
     const scoringRule = data.scoringRule || 'HIGHEST_WINS';
     const isCoop = scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE';
@@ -41,12 +43,12 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const teamLabel = teamWon ? t('screenshot_team_win') : t('screenshot_team_loss');
     // Zero is a valid entered score. Only collapse genuinely empty team scores;
     // totals/bonuses also preserve imported records without per-cell inputs.
-    const shareTeamResult = useMemo(() => scoringRule === 'COOP' && data.players.length > 0
+    const shareTeamResult = useMemo(() => isCoop && data.players.length > 0
         && !data.players.some(player => player.totalScore !== 0 || (player.bonusScore ?? 0) !== 0
             || Object.values(player.scores).some(value => value != null && (
                 !Array.isArray(value.parts) || value.parts.length > 0
                 || !!value.optionId || (value.multiOptionIds?.length ?? 0) > 0
-            ))), [data.players, scoringRule]);
+            ))), [data.players, isCoop]);
     const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
         || scoringRule === 'LOWEST_WINS';
     const showOutcomeForZeroScores = isScoredOutcomeMode
@@ -123,6 +125,14 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     } : {}),
                 }}
             >
+                {shareTeamResult && hasNoOutcome && (
+                    <div
+                        className="font-bold text-center"
+                        style={{ width: '100%', fontSize: 44, lineHeight: 1.2, color: RESULT_TEXT }}
+                    >
+                        {tCommon('rule_coop')}
+                    </div>
+                )}
                 {scoringRule === 'COOP' && data.players.length > 0 && (
                     <div
                         data-score-photo-team={teamWon ? 'win' : 'loss'}
