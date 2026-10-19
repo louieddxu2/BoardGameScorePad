@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import appCss from './index.css?raw';
+import appHtml from '../index.html?raw';
 // @ts-expect-error Tailwind configuration is intentionally JavaScript, without a declaration file.
 import config from '../tailwind.config.js';
 import { collectThemeVariables } from '../scripts/theme-contract';
@@ -17,6 +18,17 @@ const color = (theme: typeof APP_THEME_ORDER[number], token: string) => {
 };
 
 describe('Three-theme visual contract', () => {
+    it('keeps the unlayered HTML backdrop semantic instead of overriding light CSS with fixed dark paint', () => {
+        const inlineCss = [...appHtml.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<style>([\s\S]*?)<\/style>/g)]
+            .map(match => match[1]).join('\n');
+        const bodyPaint: Record<string, string> = {};
+        collectThemeVariables(inlineCss).styles.walkRules('body', rule => {
+            rule.walkDecls(declaration => { bodyPaint[declaration.prop] = declaration.value; });
+        });
+        expect(bodyPaint['background-color']).toBe('rgb(var(--c-app-bg))');
+        expect(bodyPaint.color).toBe('rgb(var(--c-txt-primary))');
+    });
+
     it('drives dark-only treatments from app selection and classifies sage as a light surface', () => {
         expect(config.darkMode).toEqual(['selector', '[data-theme-appearance="dark"]']);
         expect(APP_THEME_ORDER).toEqual(['dark', 'light', 'sage']);
