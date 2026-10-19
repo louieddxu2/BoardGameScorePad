@@ -8,6 +8,7 @@ import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors'; // Import colors for fallback
 import { useSessionTranslation } from '../../../i18n/session';
 import { Ban, Pencil, UsersRound } from 'lucide-react';
+import { withColorOpacity } from '../../../utils/color';
 
 interface TexturedPlayerHeaderProps {
   player: Player;
@@ -79,7 +80,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
   const hasTexture = !!(baseImage && rect);
 
   const containerStyle: React.CSSProperties = {
-    backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : `${effectiveColor}20`),
+    backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : withColorOpacity(effectiveColor, 32 / 255)),
     borderBottomColor: isTransparent ? 'transparent' : effectiveColor,
     borderBottomWidth: isTransparent ? '0px' : '2px',
     // [Fix]: When texture is present (bgUrl loaded), remove min-height constraint to let aspect-ratio drive the height.

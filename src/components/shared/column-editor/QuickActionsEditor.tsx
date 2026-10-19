@@ -3,6 +3,8 @@ import React, { useState, useRef, useLayoutEffect, useEffect, useCallback } from
 import { QuickAction } from '../../../types';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
+import { createColorReader } from '../../../utils/color';
+import { getSolidTextChoice } from '../../../utils/colorContrast';
 import { Plus, Trash2, Palette, X } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
 import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
@@ -83,6 +85,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
   onChange,
 }) => {
   const { t } = useColumnEditorTranslation(); // Use New Hook
+  const readColor = createColorReader();
   const [colorPickerIdx, setColorPickerIdx] = useState<number | null>(null);
 
   const handleAdd = () => {
@@ -169,7 +172,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                 <Palette
                   size={14}
                   className={
-                    isColorDark(action.color || defaultColor) ? 'text-txt-on-color/80' : 'text-black/50'
+                    getSolidTextChoice(action.color || defaultColor, { read: readColor }) === 'light' ? 'text-txt-on-color' : 'text-black'
                   }
                 />
               </button>

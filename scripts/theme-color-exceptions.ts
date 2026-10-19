@@ -28,7 +28,7 @@ export const fixedColorExceptions: FixedColorException[] = [
     { file: 'src/components/shared/column-editor/EditorTabAuto.tsx', tokens: /^bg-white$/, reason: 'Switch thumb remains white against either track state.' },
     { file: 'src/components/shared/GameSettingsEditor.tsx', tokens: /^(?:text-black(?:\/60)?|border-white(?:\/20)?|ring-white\/10|bg-black\/40)$/, reason: 'Luminance-based labels, selection outlines and removal overlay on user color swatches.' },
     { file: 'src/components/shared/ColumnConfigEditor.tsx', tokens: /^(?:border-white|ring-white\/50)$/, reason: 'Selection outline on arbitrary user color swatches.' },
-    { file: 'src/components/shared/column-editor/QuickActionsEditor.tsx', tokens: /^(?:text-black\/50|border-white|ring-white\/30|--c-white)$/, reason: 'Custom-color action preview contrast, default white game button and swatch selection outlines.' },
+    { file: 'src/components/shared/column-editor/QuickActionsEditor.tsx', tokens: /^(?:text-black|border-white|ring-white\/30|--c-white)$/, reason: 'Custom-color action preview contrast, default white game button and swatch selection outlines.' },
     { file: 'src/components/shared/QuickButtonPad.tsx', tokens: /^--c-(?:black|white|slate-50|slate-900)$/, reason: 'Game-selected button colors and luminance-based text/border contrast must not change with the application theme.' },
     { file: 'src/components/shared/LayoutEditor.tsx', tokens: /^--c-(?:black|white)$/, reason: 'White source-paper canvas and physical mapping-outline shadows.' },
     { file: 'src/components/session/parts/InputPanel.tsx', tokens: /^--c-black$/, reason: 'Physical drop shadow above the input drawer.' },

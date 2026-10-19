@@ -1,7 +1,8 @@
 
 import React, { useMemo } from 'react';
 import { QuickAction, ScoreColumn } from '../../types';
-import { isColorTooLight } from '../../utils/ui';
+import { createColorReader } from '../../utils/color';
+import { getSolidTextChoice, SOLID_TEXT_COLORS } from '../../utils/colorContrast';
 import { Check } from 'lucide-react';
 import { useSessionTranslation } from '../../i18n/session';
 import { useTouchAction } from './useTouchAction';
@@ -128,6 +129,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
     const isListMode = cols <= 1;
     const showActionValue = column.renderMode !== 'label_only';
     const minRowHeight = isListMode ? '3.5rem' : '4.5rem';
+    const readColor = createColorReader();
 
     return (
         <div ref={containerRef} onScroll={onScroll} className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-[8px]">
@@ -142,7 +144,9 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
                 {actions.map(action => {
                     const bg = action.color || column.color || 'rgb(var(--c-white))';
-                    const isLightBg = isColorTooLight(bg);
+                    const isLightBg = getSolidTextChoice(bg, {
+                        colors: SOLID_TEXT_COLORS, backdrop: 'rgb(var(--c-input-bg))', read: readColor,
+                    }) === 'dark';
                     const isStandardSumParts = column.formula.includes('+next') && !column.formula.includes('×a2');
                     const isModifier = isStandardSumParts && action.isModifier;
 
@@ -152,7 +156,7 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
                     // Contrast is against a game-selected background, not the app surface.
                     // Keep fixed palette tokens here: semantic UI colors change with theme.
-                    const textColor = isLightBg ? 'rgb(var(--c-slate-900))' : 'rgb(var(--c-slate-50))';
+                    const textColor = isLightBg ? SOLID_TEXT_COLORS.dark : SOLID_TEXT_COLORS.light;
 
                     // 2. Modifier Border Style
                     const borderClass = isModifier
@@ -161,8 +165,8 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
 
                     // 3. Badge Background Style
                     const badgeBgClass = isModifier
-                        ? (isLightBg ? 'bg-[rgb(var(--c-black)_/_0.3)]' : 'bg-[rgb(var(--c-white)_/_0.3)]')
-                        : 'bg-[rgb(var(--c-black)_/_0.2)]';
+                        ? (isLightBg ? 'bg-[rgb(var(--c-white)_/_0.3)]' : 'bg-[rgb(var(--c-black)_/_0.3)]')
+                        : (isLightBg ? 'bg-[rgb(var(--c-white)_/_0.2)]' : 'bg-[rgb(var(--c-black)_/_0.2)]');
 
                     return (
                         <QuickActionButton

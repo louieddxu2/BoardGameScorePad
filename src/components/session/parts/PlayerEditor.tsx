@@ -3,6 +3,8 @@ import { GameSession, Player, SavedListItem } from '../../../types';
 import { Ban, Flag, Palette } from 'lucide-react';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
+import { createColorReader } from '../../../utils/color';
+import { getSolidTextChoice } from '../../../utils/colorContrast';
 import { useSessionTranslation } from '../../../i18n/session';
 import { loadPlayerRecommendationContext, LoadedPlayerRecommendationContext } from '../../../features/recommendation/playerRecommendationContext';
 import { getPlayerEditorRecommendations, searchPlayerEditorCandidates } from '../../../features/recommendation/PlayerEditorRecommendation';
@@ -125,6 +127,9 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
 
   const isMainTransparent = player.color === 'transparent';
   const isMainDark = !isMainTransparent && isColorDark(player.color);
+  const lightMainIcon = !isMainTransparent && getSolidTextChoice(player.color, {
+    backdrop: 'rgb(var(--c-surface-bg-alt))', read: createColorReader(),
+  }) === 'light';
 
   // Color bar style for the input's left border
   const colorBarStyle = isMainTransparent ? undefined : { borderLeftColor: player.color };
@@ -186,7 +191,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             ) : (
               <Palette
                 size={20}
-                className={isMainDark ? 'text-txt-on-color/80' : 'text-black/50'}
+                className={lightMainIcon ? 'text-txt-on-color/80' : 'text-black/50'}
                 strokeWidth={2.5}
               />
             )}

@@ -5,6 +5,7 @@ import { ContrastText } from '../../shared/ContrastText';
 import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
 import { voiceService } from '../../../services/voiceService';
+import { withColorOpacity } from '../../../utils/color';
 
 const InputPanelHeader: React.FC<{
     player: Player;
@@ -22,8 +23,8 @@ const InputPanelHeader: React.FC<{
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
     const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
-    const bgColor = isTransparent ? 'rgb(var(--c-surface-bg-alt))' : `${player.color}20`;
-    const borderColor = isTransparent ? 'rgb(var(--c-surface-border))' : `${player.color}40`;
+    const bgColor = isTransparent ? 'rgb(var(--c-surface-bg-alt))' : withColorOpacity(player.color, 32 / 255);
+    const borderColor = isTransparent ? 'rgb(var(--c-surface-border))' : withColorOpacity(player.color, 64 / 255);
 
     // Auto columns cannot be cleared manually
     const isAuto = col?.inputType === 'auto';

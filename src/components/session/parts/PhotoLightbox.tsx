@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Trash2, Maximize, Share2, ReceiptText, Loader2, Download, ChevronLeft, ChevronRight, VenetianMask, Check, EyeOff, RotateCw } from 'lucide-react';
-import { isColorDark } from '../../../utils/ui';
+import { createColorReader } from '../../../utils/color';
+import { getSolidTextChoice } from '../../../utils/colorContrast';
 import { useToast } from '../../../hooks/useToast';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { LoadedImage } from '../modals/PhotoGalleryModal';
@@ -27,6 +28,7 @@ interface PhotoLightboxProps {
 const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onClose, onDelete, onRotate, overlayData, initialShowOverlay = false, manageBackHistory = true, onCurrentPhotoChange }) => {
     const { t, language } = useSessionTranslation();
     const { t: tCommon } = useCommonTranslation();
+    const readColor = createColorReader();
     const { triggerClose } = useModalBackHandler(manageBackHistory, onClose, 'photo-lightbox');
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [showOverlay, setShowOverlay] = useState(initialShowOverlay);
@@ -288,8 +290,10 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                         {overlayData.players.map((p, i) => {
                             const isHidden = anonymousPlayerIds.has(p.id);
-                            const playerColor = p.color === 'transparent' ? 'var(--c-txt-muted)' : p.color;
-                            const isDark = isColorDark(playerColor);
+                            const playerColor = p.color === 'transparent' ? 'rgb(var(--c-txt-muted))' : p.color;
+                            const isDark = getSolidTextChoice(playerColor, {
+                                backdrop: 'rgb(var(--c-modal-bg-elevated))', read: readColor,
+                            }) === 'light';
 
                             return (
                                 <button

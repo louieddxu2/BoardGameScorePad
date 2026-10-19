@@ -13,6 +13,15 @@ Run `npm run check:theme`. V3test CI and `npm run publish:v3test` run the same c
 - Tailwind color variables contain RGB channels only. Modal backdrop channels and `--modal-backdrop-opacity` are separate so explicit `/60` modifiers work. Use `bg-modal-backdrop/[var(--modal-backdrop-opacity)]` when the theme's default opacity is wanted.
 - Player/custom game colors and exported image treatments are separate from application surfaces. No changes to saved colors, layout, gestures or runtime data access are required for theme work.
 
+## Color calculation foundation
+
+- `src/utils/color.ts` normalizes Hex (3/4/6/8 digits), RGB/RGBA (numeric or percentage channels), HSL/HSLA, basic named colors and resolved CSS variables to RGBA. Unsupported or unresolved values return `null`; this is not a complete implementation of every CSS color space or named color.
+- `withColorOpacity` multiplies existing alpha instead of appending Hex digits to arbitrary strings. Fixed player-channel variables retain their live CSS reference without computed-style reads. General variables are resolved because their values can already contain alpha.
+- `src/utils/colorContrast.ts` owns source-over composition and foreground comparison. Translucent paint requires an explicitly supplied opaque backing; unknown backing is not guessed. Candidate foreground colors are evaluated against the composited background, rather than treating ink-tone labels as a button-text policy.
+- Callers provide the effective backing for their context; this utility does not inspect ancestor elements, sample images, or infer every CSS overlay/filter. Photo treatments and the existing ink-outline registry remain separate consumers of shared color math.
+- Reuse a `createColorReader()` for one synchronous operation or render. It performs at most one lazy `getComputedStyle` call and deduplicates parsed colors within that operation. Never keep this reader across theme changes. There are no new observers, global caches, effects or theme-selection state.
+- Solid button labels now choose the higher-contrast candidate. Some mid-tone backgrounds, including current blue/red/green quick buttons, therefore use dark text. Numeric badges lighten for dark text and darken for light text so the badge does not undo that choice. Saved player/attribute colors and existing photo outlines are not rewritten.
+
 ## Reviewed fixed colors
 
 `scripts/theme-color-exceptions.ts` lists file-specific color spellings and their reasons: QR quiet zones, source-photo masks and mapping ink, custom-color contrast, physical shadows, switch thumbs, artwork, and categorical badges. These exceptions bypass only the fixed-color rule, never unknown-role or variable checks. `@ui-ignore` is no longer an escape hatch.

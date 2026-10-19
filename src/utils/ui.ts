@@ -1,4 +1,6 @@
 import { COLOR_TONES } from '../colors';
+import { readColor } from './color';
+import { getSolidTextChoice, relativeLuminance } from './colorContrast';
 
 /**
  * Calculates the Euclidean distance between two touch points.
@@ -15,49 +17,6 @@ export const getTouchDistance = (touches: { length: number; [index: number]: { c
 // --- Color Luminance Helpers ---
 
 /**
- * Parses a hex or rgb/rgba color string to RGB components (0-255).
- * Supports CSS variables like rgb(var(--c-p-emerald)) by reading computed styles.
- */
-const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
-    if (!hex) return null;
-
-    // Handle rgb(var(--xyz)) or rgba(var(--xyz) / a)
-    if (hex.includes('var(')) {
-        // Extract the variable name
-        const match = hex.match(/var\((--[a-zA-Z0-9-]+)\)/);
-        if (match && match[1]) {
-            const varName = match[1];
-            // Get computed style
-            if (typeof document !== 'undefined') {
-                const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-                if (val) {
-                    // val is expected to be space-separated numbers like "16 185 129"
-                    const parts = val.split(/\s+/).map(Number);
-                    if (parts.length >= 3) {
-                        return { r: parts[0], g: parts[1], b: parts[2] };
-                    }
-                }
-            }
-        }
-    }
-
-    if (hex.startsWith('rgb')) {
-        const match = hex.match(/\d+/g);
-        if (match && match.length >= 3) {
-            return { r: parseInt(match[0]), g: parseInt(match[1]), b: parseInt(match[2]) };
-        }
-    }
-    const clean = hex.replace('#', '');
-    if (clean.length !== 6 && clean.length !== 3) return null;
-    const full = clean.length === 3
-        ? clean[0] + clean[0] + clean[1] + clean[1] + clean[2] + clean[2]
-        : clean;
-    const num = parseInt(full, 16);
-    if (isNaN(num)) return null;
-    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
-};
-
-/**
  * Extracts the CSS variable name from a color string if present.
  * Example: "rgb(var(--c-p-black))" -> "--c-p-black"
  */
@@ -72,7 +31,7 @@ const extractVarName = (colorStr: string): string | null => {
  * Higher values = brighter color.
  */
 export const getPerceivedLuminance = (hex: string): number => {
-    const rgb = hexToRgb(hex);
+    const rgb = readColor(hex);
     if (!rgb) return 128; // Default to neutral (middle) if unparseable to avoid false positives
     // Standard relative luminance formula
     return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114);
@@ -80,13 +39,9 @@ export const getPerceivedLuminance = (hex: string): number => {
 
 /** Linear-sRGB luminance for choosing the higher-contrast black/white outline. */
 export const getRelativeLuminance = (color: string): number => {
-    const rgb = hexToRgb(color);
+    const rgb = readColor(color);
     if (!rgb) return 0.5;
-    const linear = (channel: number) => {
-        const value = channel / 255;
-        return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
-    };
-    return linear(rgb.r) * 0.2126 + linear(rgb.g) * 0.7152 + linear(rgb.b) * 0.0722;
+    return relativeLuminance(rgb);
 };
 
 /**
@@ -99,9 +54,6 @@ export const isColorDark = (hex: string): boolean => {
     if (varName && COLOR_TONES[varName]) {
         return COLOR_TONES[varName] === 'dark';
     }
-    // Explicit check for system text colors which are always dark in light theme (but logic here is general)
-    if (varName?.includes('txt-primary') || varName?.includes('txt-secondary')) return true;
-    
     return getPerceivedLuminance(hex) < 115;
 };
 
@@ -119,18 +71,11 @@ export const isColorLight = (hex: string): boolean => {
 };
 
 /**
- * Determines if a background color is too light, requiring dark text for contrast.
- * Used for buttons (QuickButtonPad).
+ * Compatibility wrapper for opaque backgrounds. Translucent paint needs an
+ * explicit backing via getSolidTextChoice; ink-tone labels are a separate policy.
  */
 export const isColorTooLight = (hex: string): boolean => {
-    if (!hex) return true;
-    const lowerHex = hex.toLowerCase();
-    // Support common CSS variable themes and named colors
-    if (lowerHex.includes('white') || lowerHex.includes('slate-50') || lowerHex.includes('slate-100') || lowerHex.includes('--c-white')) {
-        return true;
-    }
-    const lum = getPerceivedLuminance(hex);
-    return lum > 190; // Slightly lower threshold for safer dark text adoption
+    return !hex || getSolidTextChoice(hex) === 'dark';
 };
 
 // --- Theme-Aware Contrast System ---

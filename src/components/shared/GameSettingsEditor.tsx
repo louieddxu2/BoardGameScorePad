@@ -4,6 +4,8 @@ import { GameTemplate } from '../../types';
 import { X, Save, Settings, RotateCcw, Palette, Hash } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
+import { createColorReader } from '../../utils/color';
+import { getSolidTextChoice } from '../../utils/colorContrast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useCommonTranslation } from '../../i18n/common';
 import { gameSettingsTranslations } from '../../i18n/gameSettings';
@@ -28,6 +30,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
 
     const { confirm } = useConfirm();
     const { t: tCommon } = useCommonTranslation();
+    const readColor = createColorReader();
     const { zIndex } = useModalBackHandler(isOpen, onClose, 'game-settings');
 
     if (!isOpen) return null;
@@ -145,7 +148,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
                                         className="w-10 h-10 rounded-full shadow-lg border-2 border-white/20 flex items-center justify-center relative animate-in zoom-in duration-200 group hover:scale-110 transition-transform"
                                         style={{ backgroundColor: c }}
                                     >
-                                        <span className={`text-sm font-bold font-mono ${isColorDark(c) ? 'text-txt-on-color/90' : 'text-black/60'}`}>
+                                        <span className={`text-sm font-bold font-mono ${getSolidTextChoice(c, { read: readColor }) === 'light' ? 'text-txt-on-color' : 'text-black'}`}>
                                             {i + 1}
                                         </span>
                                         <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -165,6 +168,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
                                     const isSelected = supportedColors.includes(c);
                                     const selectedIndex = supportedColors.indexOf(c) + 1;
                                     const isDark = isColorDark(c);
+                                    const lightText = getSolidTextChoice(c, { read: readColor }) === 'light';
 
                                     return (
                                         <button
@@ -180,7 +184,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
                                             style={{ backgroundColor: c }}
                                         >
                                             {isSelected && (
-                                                <span className={`text-xs font-bold ${isDark ? 'text-txt-on-color' : 'text-black'}`}>
+                                                <span className={`text-xs font-bold ${lightText ? 'text-txt-on-color' : 'text-black'}`}>
                                                     {selectedIndex}
                                                 </span>
                                             )}

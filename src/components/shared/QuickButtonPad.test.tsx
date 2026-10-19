@@ -153,6 +153,14 @@ describe('QuickButtonPad fixed-background contrast', () => {
     else document.documentElement.setAttribute('data-theme', previousTheme);
   });
 
+  it('lightens the numeric badge when choosing dark text instead of darkening its backing', () => {
+    render(<LanguageProvider><QuickButtonPad column={{ ...column, quickActions: [
+      { id: 'green', label: 'Green', value: 1, color: 'rgb(var(--c-p-emerald))' },
+    ] }} onAction={vi.fn()} /></LanguageProvider>);
+    expect(screen.getByText('1')).toHaveClass('bg-[rgb(var(--c-white)_/_0.2)]');
+    expect(screen.getByText('1')).toHaveStyle({ color: 'rgb(var(--c-slate-900))' });
+  });
+
   const contrastCases: {
     name: string;
     actionColor?: string;
@@ -164,14 +172,15 @@ describe('QuickButtonPad fixed-background contrast', () => {
     { name: 'white player color', actionColor: 'rgb(var(--c-p-white))', backgroundColor: 'rgb(var(--c-p-white))', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'yellow player color', actionColor: 'rgb(var(--c-p-yellow))', backgroundColor: 'rgb(var(--c-p-yellow))', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'skin player color', actionColor: 'rgb(var(--c-p-skin))', backgroundColor: 'rgb(var(--c-p-skin))', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'blue player color', actionColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-50))' },
-    { name: 'red player color', actionColor: 'rgb(var(--c-p-red))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-50))' },
+    { name: 'blue player color', actionColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-900))' },
+    { name: 'red player color', actionColor: 'rgb(var(--c-p-red))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-900))' },
+    { name: 'green player color', actionColor: 'rgb(var(--c-p-emerald))', backgroundColor: 'rgb(var(--c-p-emerald))', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'custom dark hex', actionColor: '#123456', backgroundColor: 'rgb(18, 52, 86)', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'custom light hex', actionColor: '#eeeeee', backgroundColor: 'rgb(238, 238, 238)', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'custom dark RGB', actionColor: 'rgb(20, 40, 60)', backgroundColor: 'rgb(20, 40, 60)', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'custom light RGB', actionColor: 'rgb(240, 240, 240)', backgroundColor: 'rgb(240, 240, 240)', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'column color fallback', columnColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-50))' },
-    { name: 'action color over column color', actionColor: 'rgb(var(--c-p-red))', columnColor: 'rgb(var(--c-p-white))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-50))' },
+    { name: 'column color fallback', columnColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-900))' },
+    { name: 'action color over column color', actionColor: 'rgb(var(--c-p-red))', columnColor: 'rgb(var(--c-p-white))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'default white background', backgroundColor: 'rgb(var(--c-white))', textColor: 'rgb(var(--c-slate-900))' },
   ];
 
