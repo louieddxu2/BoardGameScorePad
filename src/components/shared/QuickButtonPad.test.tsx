@@ -141,7 +141,7 @@ describe('QuickButtonPad', () => {
 describe('QuickButtonPad fixed-background contrast', () => {
   const style = document.createElement('style');
   // Use the real palette and both theme mappings, without Tailwind-only at-rules.
-  style.textContent = [...appCss.matchAll(/(?::root|html\[data-theme='light'\])\s*\{[^}]*\}/g)]
+  style.textContent = [...appCss.matchAll(/(?::root|html\[data-theme='(?:light|sage)'\])\s*\{[^}]*\}/g)]
     .map(match => match[0]).join('\n');
   let previousTheme: string | null;
 
@@ -189,6 +189,9 @@ describe('QuickButtonPad fixed-background contrast', () => {
   describe.each([
     { theme: 'dark', cases: contrastCases },
     { theme: 'light', cases: contrastCases.filter(testCase =>
+      testCase.actionColor === 'rgb(var(--c-p-black))'
+      || testCase.actionColor === 'rgb(var(--c-p-white))') },
+    { theme: 'sage', cases: contrastCases.filter(testCase =>
       testCase.actionColor === 'rgb(var(--c-p-black))'
       || testCase.actionColor === 'rgb(var(--c-p-white))') },
   ])('$theme theme', ({ theme, cases }) => {

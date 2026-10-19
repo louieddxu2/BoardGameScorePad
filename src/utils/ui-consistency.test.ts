@@ -12,6 +12,10 @@ const css = `
 html[data-theme='light'] {
     --c-txt-primary: 15 23 42;
     --c-surface-bg-alt: 248 250 252;
+}
+html[data-theme='sage'] {
+    --c-txt-primary: 29 51 46;
+    --c-surface-bg-alt: 217 233 223;
 }`;
 const config = { theme: { extend: { colors: {
     txt: { primary: 'rgb(var(--c-txt-primary) / <alpha-value>)', 'on-color': 'rgb(var(--c-txt-on-color) / <alpha-value>)' },
@@ -36,16 +40,25 @@ describe('Semantic theme contract', () => {
             .toContainEqual({ file: 'src/index.css', line: 1, kind: 'missing-light-mapping', token: 'surface-alt: --c-surface-bg-alt' });
     });
 
+    it('requires every registered additional palette and its semantic mappings', () => {
+        expect(inspect('', css.replace("html[data-theme='sage']", "html[data-theme='unknown']")))
+            .toContainEqual({ file: 'src/index.css', line: 1, kind: 'missing-sage-theme', token: 'sage' });
+        expect(inspect('', css.replace('--c-surface-bg-alt: 217 233 223;', '')))
+            .toContainEqual({ file: 'src/index.css', line: 1, kind: 'missing-sage-mapping', token: 'surface-alt: --c-surface-bg-alt' });
+    });
+
     it('finds component-only variables that were never registered with Tailwind', () => {
         expect(inspect('const style = { color: "rgb(var(--c-txt-on-dark))" };')).toEqual([
             { file, line: 1, kind: 'dark', token: 'undefined-variable: --c-txt-on-dark' },
             { file, line: 1, kind: 'light', token: 'undefined-variable: --c-txt-on-dark' },
+            { file, line: 1, kind: 'sage', token: 'undefined-variable: --c-txt-on-dark' },
         ]);
     });
 
     it('checks primitive definitions instead of skipping their entire palette', () => {
         expect(inspect('', css.replace('--c-amber-900: 120 53 15;', '')).map(issue => issue.token)).toEqual([
             'amber-900: undefined-variable: --c-amber-900', 'amber-900: undefined-variable: --c-amber-900',
+            'amber-900: undefined-variable: --c-amber-900',
         ]);
     });
 

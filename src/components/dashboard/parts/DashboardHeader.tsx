@@ -1,9 +1,16 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Moon } from 'lucide-react';
+import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Leaf } from 'lucide-react';
+import { APP_THEMES, nextAppTheme, type AppTheme } from '../../../theme';
 import { useTranslation } from '../../../i18n'; // Keep for language context
 import { useCommonTranslation } from '../../../i18n/common';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useCloudTranslation } from '../../../i18n/cloud';
+
+const themeIndicators = {
+  dark: { icon: Dice5, className: 'text-brand-primary' },
+  light: { icon: Sun, className: 'text-status-warning' },
+  sage: { icon: Leaf, className: 'text-brand-primary' },
+} satisfies Record<AppTheme, { icon: typeof Dice5; className: string }>;
 
 interface DashboardHeaderProps {
   isSearchActive: boolean;
@@ -17,7 +24,7 @@ interface DashboardHeaderProps {
   viewMode: 'library' | 'history';
   setViewMode: (mode: 'library' | 'history') => void;
   // Theme Props
-  themeMode: 'dark' | 'light';
+  themeMode: AppTheme;
   onToggleTheme: () => void;
   // Cloud Props
   isConnected: boolean;
@@ -58,6 +65,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { t: tCommon } = useCommonTranslation();
   const { t: tDash } = useDashboardTranslation();
   const { t: tCloud } = useCloudTranslation();
+  const { icon: ThemeIcon, className: themeIconClass } = themeIndicators[themeMode];
+  const themeControlLabel = tDash('dash_switch_theme', {
+    current: tDash(APP_THEMES[themeMode].labelKey),
+    next: tDash(APP_THEMES[nextAppTheme(themeMode)].labelKey),
+  });
 
   // [New] Storage Usage State
   const [localUsage, setLocalUsage] = useState<string>('');
@@ -208,17 +220,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             {/* Left Side: Logo, Title, Toggle */}
             <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
               {/* Logo: Toggle Theme */}
-              <div
-                className="bg-surface-alt p-1.5 rounded-lg border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm"
+              <button
+                type="button"
+                className="bg-surface-alt min-w-[44px] min-h-[44px] flex items-center justify-center p-1.5 rounded-lg border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
                 onClick={(e) => { e.stopPropagation(); onToggleTheme(); }}
-                role="button"
-                title={themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                title={themeControlLabel}
+                aria-label={themeControlLabel}
               >
-                {themeMode === 'dark'
-                  ? <Dice5 size={24} className="text-brand-primary" />
-                  : <Sun size={24} className="text-status-warning" />
-                }
-              </div>
+                <ThemeIcon size={24} className={themeIconClass} />
+              </button>
               {/* Title: Toggle Language */}
               <h1
                 className="text-lg sm:text-xl font-bold tracking-tight text-txt-primary truncate select-none cursor-pointer active:opacity-50 transition-opacity"

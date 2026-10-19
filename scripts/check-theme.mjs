@@ -23,5 +23,5 @@ if (issues.length) {
     console.error(`Theme contract failed: ${issues.length} issue(s).`);
     process.exitCode = 1;
 } else {
-    console.log(`Theme contract passed: ${sources.length} production source files; dark/light tokens and UI colors checked.`);
+    console.log(`Theme contract passed: ${sources.length} production source files; all registered themes and UI colors checked.`);
 }

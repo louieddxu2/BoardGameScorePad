@@ -1,4 +1,6 @@
 
+import type { AppTheme } from './theme';
+
 // --- Formula-based structure ---
 export interface ScoreValue {
   parts: number[];
@@ -392,7 +394,7 @@ export interface SystemWeightConfig {
 export interface SystemPreferences {
   updatedAt: number;
   appSettings: {
-    theme: 'dark' | 'light';
+    theme: AppTheme;
     zoomLevel: number;
     isEditMode: boolean;
   };

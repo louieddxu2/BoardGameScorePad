@@ -1,5 +1,6 @@
 import React from 'react';
 import { getContrastTextStyles } from '../../utils/ui';
+import type { AppTheme } from '../../theme';
 
 interface ContrastTextProps {
     children: React.ReactNode;
@@ -7,7 +8,7 @@ interface ContrastTextProps {
     className?: string;
     style?: React.CSSProperties;
     isTextureMode?: boolean;
-    theme?: 'dark' | 'light';
+    theme?: AppTheme;
 }
 
 /**

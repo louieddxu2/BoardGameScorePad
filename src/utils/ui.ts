@@ -1,6 +1,7 @@
 import { COLOR_TONES } from '../colors';
 import { readColor } from './color';
 import { getSolidTextChoice, relativeLuminance } from './colorContrast';
+import { getThemeAppearance, resolveAppTheme, type AppTheme } from '../theme';
 
 /**
  * Calculates the Euclidean distance between two touch points.
@@ -85,9 +86,9 @@ export const isColorTooLight = (hex: string): boolean => {
 /**
  * Reads the current theme from the DOM. Zero-cost since it's a simple attribute read.
  */
-export const getCurrentTheme = (): 'dark' | 'light' => {
+export const getCurrentTheme = (): AppTheme => {
     if (typeof document === 'undefined') return 'dark';
-    return (document.documentElement.getAttribute('data-theme') as 'dark' | 'light') || 'dark';
+    return resolveAppTheme(document.documentElement.getAttribute('data-theme'));
 };
 
 /**
@@ -96,11 +97,11 @@ export const getCurrentTheme = (): 'dark' | 'light' => {
  */
 export const getContrastTextStyles = (
     textColorHex: string,
-    theme?: 'dark' | 'light',
+    theme?: AppTheme,
     options: { isTextureMode?: boolean } = {}
 ): React.CSSProperties => {
     if (!textColorHex) return {};
-    const resolvedTheme = theme ?? getCurrentTheme();
+    const resolvedTheme = getThemeAppearance(theme ?? getCurrentTheme());
     const { isTextureMode } = options;
 
     const styles: React.CSSProperties = {

@@ -98,7 +98,7 @@ describe('photo title contrast', () => {
         try {
             for (const photoPixels of [new Uint8ClampedArray([220, 205, 180, 255]), new Uint8ClampedArray([30, 20, 10, 255])]) {
                 let firstStyles: string | undefined;
-                for (const appTheme of ['dark', 'light']) {
+                for (const appTheme of ['dark', 'light', 'sage']) {
                     document.documentElement.setAttribute('data-theme', appTheme);
                     context.getImageData.mockReturnValueOnce({ data: photoPixels });
                     await prepareScorePhotoTitle(root, new AbortController().signal);

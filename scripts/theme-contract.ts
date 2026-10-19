@@ -1,5 +1,6 @@
 import postcss from 'postcss';
 import ts from 'typescript';
+import { APP_THEME_ORDER } from '../src/theme.ts';
 
 export type ThemeSource = { file: string; content: string };
 export type ThemeIssue = { file: string; line: number; kind: string; token: string };
@@ -26,6 +27,24 @@ function references(value: string) {
     return [...value.matchAll(variablePattern)].map(match => match[1]);
 }
 
+/** Build-time palette reader shared by contract and contrast checks. */
+export function collectThemeVariables(css: string) {
+    const root = new Map<string, string>();
+    const overrides = new Map<string, Map<string, string>>();
+    const styles = postcss.parse(css);
+    styles.walkRules(rule => {
+        const id = rule.selector.match(/^html\[data-theme=['"]([^'"]+)['"]\]$/)?.[1];
+        if (rule.selector !== ':root' && !id) return;
+        const target = id ? (overrides.get(id) || new Map<string, string>()) : root;
+        if (id) overrides.set(id, target);
+        rule.walkDecls(declaration => {
+            if (declaration.prop.startsWith('--')) target.set(declaration.prop, declaration.value);
+        });
+    });
+    const themes = new Map(APP_THEME_ORDER.map(id => [id, new Map([...root, ...(overrides.get(id) || [])])]));
+    return { styles, root, overrides, themes };
+}
+
 export function inspectThemeContract(
     css: string,
     config: ThemeConfig,
@@ -33,28 +52,19 @@ export function inspectThemeContract(
     exceptions: FixedColorException[] = [],
 ): ThemeIssue[] {
     const issues: ThemeIssue[] = [];
-    const rootVars = new Map<string, string>();
-    const lightVars = new Map<string, string>();
-    let hasLightTheme = false;
-    const styles = postcss.parse(css);
-    styles.walkRules(rule => {
-        const target = rule.selector === ':root' ? rootVars
-            : /^html\[data-theme=['"]light['"]\]$/.test(rule.selector) ? lightVars : undefined;
-        if (!target) return;
-        if (target === lightVars) hasLightTheme = true;
-        rule.walkDecls(declaration => {
-            if (declaration.prop.startsWith('--')) target.set(declaration.prop, declaration.value);
-        });
-    });
-    if (!hasLightTheme) issues.push({ file: 'src/index.css', line: 1, kind: 'missing-light-theme', token: 'light' });
-    const themes = { dark: rootVars, light: new Map([...rootVars, ...lightVars]) };
+    const { styles, overrides, themes } = collectThemeVariables(css);
+    for (const id of APP_THEME_ORDER.filter(id => id !== 'dark')) {
+        if (!overrides.has(id)) issues.push({ file: 'src/index.css', line: 1, kind: `missing-${id}-theme`, token: id });
+    }
     const colors = flattenColors(config.theme.extend.colors);
     // Keep the original guarantee for theme-dependent Tailwind roles. Only
     // primitives and the explicitly fixed on-color foreground inherit unchanged.
     for (const [color, value] of colors) {
         for (const token of references(value)) {
-            if (!primitivePattern.test(token.slice('--c-'.length)) && token !== '--c-txt-on-color' && !lightVars.has(token)) {
-                issues.push({ file: 'src/index.css', line: 1, kind: 'missing-light-mapping', token: `${color}: ${token}` });
+            for (const id of APP_THEME_ORDER.filter(id => id !== 'dark')) {
+                if (!primitivePattern.test(token.slice('--c-'.length)) && token !== '--c-txt-on-color' && !overrides.get(id)?.has(token)) {
+                    issues.push({ file: 'src/index.css', line: 1, kind: `missing-${id}-mapping`, token: `${color}: ${token}` });
+                }
             }
         }
     }
@@ -68,7 +78,7 @@ export function inspectThemeContract(
         }
     }
 
-    for (const [theme, variables] of Object.entries(themes)) {
+    for (const [theme, variables] of themes) {
         // Validate primitive definitions too; aliases must eventually resolve to a real value.
         for (const [token] of variables) {
             const problem = checkVariable(token, variables);
@@ -92,14 +102,17 @@ export function inspectThemeContract(
         }
     }
 
-    for (const [theme, variables] of Object.entries(themes)) {
+    for (const [theme, variables] of themes) {
         styles.walkDecls(declaration => {
             // Custom properties were checked as an effective graph above. Only inspect
             // actual CSS uses here, and do not apply light-only rules to the dark theme.
             if (declaration.prop.startsWith('--')) return;
             let parent: postcss.AnyNode | undefined = declaration.parent;
             while (parent) {
-                if (theme === 'dark' && parent.type === 'rule' && /data-theme=['"]light['"]/.test(parent.selector)) return;
+                if (parent.type === 'rule') {
+                    const scopedTheme = parent.selector.match(/data-theme=['"]([^'"]+)['"]/)?.[1];
+                    if (scopedTheme && scopedTheme !== theme) return;
+                }
                 parent = parent.parent;
             }
             for (const token of references(declaration.value)) {
@@ -123,7 +136,7 @@ export function inspectThemeContract(
             if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
                 const text = node.text;
                 for (const token of references(text)) {
-                    for (const [theme, variables] of Object.entries(themes)) {
+                    for (const [theme, variables] of themes) {
                         const problem = checkVariable(token, variables);
                         if (problem) add(node, theme, problem);
                     }

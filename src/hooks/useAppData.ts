@@ -27,6 +27,7 @@ import { useAppQueries } from './useAppQueries';
 import { useSessionManager } from './useSessionManager';
 import { useLibrary } from './useLibrary';
 import { useDebounce } from './useDebounce';
+import { useAppTheme } from './useAppTheme';
 
 export const useAppData = () => {
     const { showToast } = useToast();
@@ -75,9 +76,7 @@ export const useAppData = () => {
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
-    const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
-        return (localStorage.getItem('app_theme_mode') as 'dark' | 'light') || 'dark';
-    });
+    const { themeMode, toggleTheme, restoreTheme } = useAppTheme(markSystemDirty);
 
     const [newBadgeIds, setNewBadgeIds] = useState<string[]>(() => {
         try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }
@@ -95,18 +94,8 @@ export const useAppData = () => {
     }, [pinnedIds]);
 
     useEffect(() => {
-        document.documentElement.setAttribute('data-theme', themeMode);
-        localStorage.setItem('app_theme_mode', themeMode);
-    }, [themeMode]);
-
-    useEffect(() => {
         localStorage.setItem('app_voice_enabled', String(isVoiceEnabled));
     }, [isVoiceEnabled]);
-
-    const toggleTheme = () => {
-        setThemeMode(prev => prev === 'dark' ? 'light' : 'dark');
-        markSystemDirty();
-    };
 
     const clearNewBadges = () => {
         setNewBadgeIds([]);
@@ -316,7 +305,7 @@ export const useAppData = () => {
             if (settings.preferences) {
                 const { theme, pinnedIds, newBadgeIds, zoomLevel, isEditMode } = settings.preferences;
                 if (theme) {
-                    setThemeMode(theme);
+                    restoreTheme(theme);
                 }
                 if (pinnedIds) {
                     setPinnedIds(pinnedIds);

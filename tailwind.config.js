@@ -1,6 +1,8 @@
 
 /** @type {import('tailwindcss').Config} */
 export default {
+  // App appearance, not the phone's OS preference, owns dark-only treatments.
+  darkMode: ['selector', '[data-theme-appearance="dark"]'],
   content: [
     "./index.html",
     "./*.{js,ts,jsx,tsx}",

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { AppTheme } from '../../theme';
 import { GameTemplate, GameSession, HistoryRecord, SavedListItem, ScoringRule, AppView } from '../../types';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 import { usePullAction } from '../../hooks/usePullAction';
@@ -57,7 +58,7 @@ interface DashboardProps {
   savedPlayers?: SavedListItem[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  themeMode: 'dark' | 'light';
+  themeMode: AppTheme;
   onToggleTheme: () => void;
   onTemplateSelect: (template: GameTemplate, options?: { persistIfMissing?: boolean }) => void;
   onDirectResume: (templateId: string) => void;

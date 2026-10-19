@@ -134,6 +134,8 @@ html[data-ios-safari-browser='true'] {
 
 /* DEFAULT/DARK MODE */
 :root {
+  color-scheme: dark;
+  --btn-primary-hover-brightness: 1.15;
   /* Common Surface Mappings */
   --c-app-bg: 15 23 42;          /* slate-900 */
   --c-app-bg-deep: 2 6 23;       /* slate-950 */
@@ -199,70 +201,133 @@ html[data-ios-safari-browser='true'] {
   --c-keypad-btn-active: 79 70 229; /* indigo-600 */
 }
 
-/* LIGHT MODE MAPPING */
+/* WARM PAPER: quiet parchment surfaces, ink text, restrained forest accents. */
 html[data-theme='light'] {
-  --c-app-bg: 248 250 252;       /* slate-50 */
-  --c-app-bg-deep: 241 245 249;  /* slate-100 */
-  --c-txt-title: 15 23 42;       /* slate-900 */
-  --c-txt-primary: 15 23 42;     /* slate-900 */
-  --c-txt-secondary: 51 65 85;   /* slate-700 */
-  --c-txt-tertiary: 71 85 105;   /* slate-600 */
-  --c-txt-muted: 100 116 139;    /* slate-500 */
-  --c-surface-bg: 255 255 255;   /* white */
-  --c-surface-bg-alt: 248 250 252; /* slate-50 */
-  --c-surface-border: 226 232 240; /* slate-200 */
-  --c-brand-primary: 16 185 129; /* emerald-500 */
-  --c-brand-primary-deep: 5 150 105; /* emerald-600 */
-  --c-brand-secondary: 67 56 202; /* indigo-700 */
-  --c-surface-hover: 241 245 249;      /* slate-100 */
-  --c-surface-border-hover: 203 213 225; /* slate-300 */
-  --c-card-txt-hover: 15 23 42;        /* slate-900 */
+  color-scheme: light;
+  --btn-primary-hover-brightness: 0.95;
+  --c-app-bg: 243 240 232;
+  --c-app-bg-deep: 233 229 218;
+  --c-txt-title: 38 45 42;
+  --c-txt-primary: 38 45 42;
+  --c-txt-secondary: 68 77 70;
+  --c-txt-tertiary: 82 90 82;
+  --c-txt-muted: 98 104 95;
+  --c-surface-bg: 252 250 245;
+  --c-surface-bg-alt: 239 235 225;
+  --c-surface-border: 207 204 193;
+  --c-brand-primary: 20 94 72;
+  --c-brand-primary-deep: 18 81 63;
+  --c-brand-secondary: 88 70 151;
+  --c-surface-hover: 232 229 217;
+  --c-surface-border-hover: 163 165 149;
+  --c-card-txt-hover: var(--c-txt-primary);
 
   /* Modal System */
   --c-modal-bg: var(--c-surface-bg);
-  --c-modal-bg-elevated: 255 255 255;          /* 改為純白，使其從淺灰背景浮起 */
-  --c-modal-bg-recessed: 241 245 249;          /* slate-100: 凹陷感更明確 */
+  --c-modal-bg-elevated: var(--c-surface-bg);
+  --c-modal-bg-recessed: var(--c-surface-bg-alt);
   --c-modal-border: var(--c-surface-border);
-  --c-modal-divider: 243 244 246; /* gray-100 */
-  --c-modal-input-bg: 243 244 246;
-  --c-modal-backdrop: 15 23 42;
-  --modal-backdrop-opacity: 0.4;
-  --c-modal-text-title: 17 24 39;  /* gray-900 */
+  --c-modal-divider: var(--c-surface-border);
+  --c-modal-input-bg: var(--c-surface-bg-alt);
+  --c-modal-backdrop: 38 45 42;
+  --modal-backdrop-opacity: 0.38;
+  --c-modal-text-title: var(--c-txt-title);
   --c-modal-text-body: var(--c-txt-secondary);
-  --c-modal-btn-sec-bg: 243 244 246; /* gray-100 */
-  --c-modal-btn-sec-text: 55 65 81;  /* gray-700 */
+  --c-modal-btn-sec-bg: var(--c-surface-bg-alt);
+  --c-modal-btn-sec-text: var(--c-txt-secondary);
 
   /* Status Tokens */
-  --c-status-danger: 220 38 38;  /* red-600 */
-  --c-status-warning: 217 119 6;  /* amber-600 */
+  --c-status-danger: 160 38 48;
+  --c-status-warning: 126 76 6;
   --c-status-success: var(--c-brand-primary);
-  --c-status-info: 2 132 199;   /* sky-600 */
+  --c-status-info: 18 88 120;
 
   /* Button Overrides */
-  --c-btn-ghost-hover: 241 245 249; /* slate-100 */
-  --c-btn-cloud-bg: 240 249 255;    /* sky-50 */
-  --c-btn-cloud-border: 186 230 253; /* sky-200 */
-  --c-btn-cloud-text: 3 105 161;    /* sky-700 */
+  --c-btn-ghost-hover: var(--c-surface-hover);
+  --c-btn-cloud-bg: 232 240 238;
+  --c-btn-cloud-border: 173 197 189;
+  --c-btn-cloud-text: 27 97 83;
 
   /* Shadows */
-  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.05);
-  --shadow-floating: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-soft: 0 2px 8px rgba(38, 45, 42, 0.06);
+  --shadow-floating: 0 20px 45px -12px rgba(38, 45, 42, 0.2);
   --shadow-cloud-connected: none;
+  --filter-icon-active: drop-shadow(0 1px 1px rgba(38, 45, 42, 0.12));
 
   /* Grid / Scoreboard System */
-  --c-grid-cell-bg: 255 255 255;       /* white */
-  --c-grid-cell-bg-alt: 248 250 252;   /* slate-50 */
-  --c-grid-cell-border: 226 232 240;   /* slate-200 */
+  --c-grid-cell-bg: var(--c-surface-bg);
+  --c-grid-cell-bg-alt: var(--c-surface-bg-alt);
+  --c-grid-cell-border: var(--c-surface-border);
   --c-grid-auto-bg: var(--c-brand-primary) / 0.05;
   --c-grid-active-ring: var(--c-brand-primary);
 
   /* --- Input System Tokens --- */
-  --c-input-bg: 248 250 252;       /* slate-50 */
-  --c-input-header-bg: 241 245 249; /* slate-100 */
-  --c-input-border: 226 232 240;   /* slate-200 */
-  --c-keypad-btn-bg: 255 255 255;  /* white */
-  --c-keypad-btn-text: 15 23 42;   /* slate-900 */
-  --c-keypad-btn-active: 99 102 241; /* indigo-500 (Softer for light) */
+  --c-input-bg: var(--c-app-bg);
+  --c-input-header-bg: var(--c-app-bg-deep);
+  --c-input-border: var(--c-surface-border);
+  --c-keypad-btn-bg: var(--c-surface-bg);
+  --c-keypad-btn-text: var(--c-txt-primary);
+  --c-keypad-btn-active: var(--c-brand-secondary);
+}
+
+/* SAGE: cool green-grey tabletop, pale jade cards and deep botanical ink. */
+html[data-theme='sage'] {
+  color-scheme: light;
+  --btn-primary-hover-brightness: 0.95;
+  --c-app-bg: 224 236 230;
+  --c-app-bg-deep: 208 225 216;
+  --c-txt-title: 29 51 46;
+  --c-txt-primary: 29 51 46;
+  --c-txt-secondary: 56 81 71;
+  --c-txt-tertiary: 65 89 78;
+  --c-txt-muted: 74 99 87;
+  --c-surface-bg: 242 247 243;
+  --c-surface-bg-alt: 217 233 223;
+  --c-surface-border: 171 195 180;
+  --c-brand-primary: 21 88 70;
+  --c-brand-primary-deep: 19 77 62;
+  --c-brand-secondary: 64 74 131;
+  --c-surface-hover: 203 224 210;
+  --c-surface-border-hover: 121 157 137;
+  --c-card-txt-hover: var(--c-txt-primary);
+
+  --c-modal-bg: var(--c-surface-bg);
+  --c-modal-bg-elevated: var(--c-surface-bg);
+  --c-modal-bg-recessed: var(--c-surface-bg-alt);
+  --c-modal-border: var(--c-surface-border);
+  --c-modal-divider: var(--c-surface-border);
+  --c-modal-input-bg: var(--c-surface-bg-alt);
+  --c-modal-backdrop: 29 51 46;
+  --modal-backdrop-opacity: 0.38;
+  --c-modal-text-title: var(--c-txt-title);
+  --c-modal-text-body: var(--c-txt-secondary);
+  --c-modal-btn-sec-bg: var(--c-surface-bg-alt);
+  --c-modal-btn-sec-text: var(--c-txt-secondary);
+
+  --c-status-danger: 148 33 45;
+  --c-status-warning: 116 68 8;
+  --c-status-success: var(--c-brand-primary);
+  --c-status-info: 21 88 123;
+  --c-btn-ghost-hover: var(--c-surface-hover);
+  --c-btn-cloud-bg: 219 235 231;
+  --c-btn-cloud-border: 148 180 169;
+  --c-btn-cloud-text: 27 89 78;
+  --shadow-soft: 0 2px 8px rgba(29, 51, 46, 0.07);
+  --shadow-floating: 0 20px 45px -12px rgba(29, 51, 46, 0.22);
+  --shadow-cloud-connected: none;
+  --filter-icon-active: drop-shadow(0 1px 1px rgba(29, 51, 46, 0.12));
+
+  --c-grid-cell-bg: var(--c-surface-bg);
+  --c-grid-cell-bg-alt: var(--c-surface-bg-alt);
+  --c-grid-cell-border: var(--c-surface-border);
+  --c-grid-auto-bg: var(--c-brand-primary) / 0.05;
+  --c-grid-active-ring: var(--c-brand-primary);
+  --c-input-bg: var(--c-app-bg);
+  --c-input-header-bg: var(--c-app-bg-deep);
+  --c-input-border: var(--c-surface-border);
+  --c-keypad-btn-bg: var(--c-surface-bg);
+  --c-keypad-btn-text: var(--c-txt-primary);
+  --c-keypad-btn-active: var(--c-brand-secondary);
 }
 
 /* ============================================================
@@ -304,11 +369,7 @@ html[data-theme='light'] {
   }
 
   .btn-action-primary:hover {
-    filter: brightness(1.15);
-  }
-
-  html[data-theme='light'] .btn-action-primary:hover {
-    filter: brightness(0.95);
+    filter: brightness(var(--btn-primary-hover-brightness));
   }
 
   .btn-fab-primary {
@@ -317,7 +378,7 @@ html[data-theme='light'] {
   }
 
   .btn-fab-primary:hover {
-    filter: brightness(1.15);
+    filter: brightness(var(--btn-primary-hover-brightness));
   }
 
   .btn-ghost-action {

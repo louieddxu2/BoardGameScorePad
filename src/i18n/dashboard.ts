@@ -36,6 +36,10 @@ export const dashboardTranslations = {
     dash_unnamed_session: "未命名遊戲",
     dash_simple_template_desc: "簡易計分板",
     dash_switch_language: "切換語言",
+    dash_theme_dark: "深色",
+    dash_theme_light: "暖紙淺色",
+    dash_theme_sage: "鼠尾草綠",
+    dash_switch_theme: "目前為{current}，切換為{next}",
     dash_pull_release_cloud: "放開管理雲端",
     dash_pull_release_search: "放開開始搜尋",
 
@@ -126,6 +130,10 @@ export const dashboardTranslations = {
     dash_unnamed_session: "Unnamed Session",
     dash_simple_template_desc: "Simple score sheet",
     dash_switch_language: "Switch Language",
+    dash_theme_dark: "Dark",
+    dash_theme_light: "Warm paper",
+    dash_theme_sage: "Sage",
+    dash_switch_theme: "Current theme: {current}. Switch to {next}",
     dash_pull_release_cloud: "Release to manage cloud",
     dash_pull_release_search: "Release to start search",
 
