@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Unplug, UsersRound } from 'lucide-react';
+import { Check, Circle, CircleAlert, RefreshCw, UsersRound } from 'lucide-react';
 import { useSessionTranslation, type SessionTranslationKey } from '../../../i18n/session';
 import type { MultiplayerConnectionStatus } from '../../../features/multiplayer/multiplayerSessionManager';
 import type { BoardSyncStatus } from '../../../features/multiplayer/multiplayerRoomController';
@@ -52,8 +52,10 @@ const MultiplayerConnectionButton: React.FC<MultiplayerConnectionButtonProps> = 
   const displayStatus = getDisplayStatus(role, status, connectionCount, boardSyncStatus);
   const label = displayStatus ? t(labels[displayStatus]) : undefined;
   const busy = displayStatus === 'connecting' || displayStatus === 'reconnecting' || displayStatus === 'syncing';
-  const warning = displayStatus === 'reconnecting' || displayStatus === 'syncing' || displayStatus === 'error';
-  const buttonClass = displayStatus === 'disconnected'
+  const warning = displayStatus === 'reconnecting' || displayStatus === 'syncing';
+  const hasError = displayStatus === 'disconnected' || displayStatus === 'error';
+  const StatusIcon = busy ? RefreshCw : hasError ? CircleAlert : displayStatus === 'connected' ? Check : Circle;
+  const buttonClass = hasError
     ? 'border-status-danger/60 bg-status-danger/10 text-status-danger hover:bg-status-danger/20'
     : warning
       ? 'border-status-warning/60 bg-status-warning/10 text-status-warning hover:bg-status-warning/20'
@@ -71,21 +73,29 @@ const MultiplayerConnectionButton: React.FC<MultiplayerConnectionButtonProps> = 
       type="button"
       onMouseDown={onMouseDown}
       onClick={onClick}
-      className={`relative inline-flex shrink-0 items-center gap-1.5 p-2 rounded-lg transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${buttonClass}`}
+      className={`relative inline-flex shrink-0 items-center justify-center p-2 rounded-lg transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${buttonClass}`}
       title={description}
       aria-label={description}
     >
-      <span aria-hidden="true" className={`inline-flex shrink-0 ${busy ? 'motion-safe:animate-spin' : ''}`}>
-        {busy ? <RefreshCw size={20} /> : displayStatus === 'disconnected' ? <Unplug size={20} /> : <UsersRound size={20} />}
-      </span>
-      {label && <span className="whitespace-nowrap text-xs font-bold leading-none">{label}</span>}
+      <UsersRound size={20} aria-hidden="true" />
+      {displayStatus && (
+        <span
+          aria-hidden="true"
+          data-multiplayer-status={displayStatus}
+          className="absolute -right-1 -top-1 w-4 h-4 inline-flex items-center justify-center rounded-full bg-modal-bg"
+        >
+          <span className={`inline-flex ${busy ? 'motion-safe:animate-spin' : ''}`}>
+            <StatusIcon size={14} strokeWidth={2.5} />
+          </span>
+        </span>
+      )}
       {role === 'host' && (
-        <span aria-hidden="true" className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-modal-bg text-current text-[10px] font-bold leading-none border border-current">
+        <span aria-hidden="true" data-multiplayer-count="true" className="absolute -right-1 -bottom-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-modal-bg text-current text-[10px] font-bold leading-none border border-current">
           {connectionCount > 99 ? '99+' : connectionCount}
         </span>
       )}
       {!role && previewPlayerNumber != null && (
-        <span className="absolute -right-1 -top-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
+        <span className="absolute -right-1 -bottom-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
           {previewPlayerNumber}
         </span>
       )}
