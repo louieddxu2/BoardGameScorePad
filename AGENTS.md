@@ -35,6 +35,12 @@ For `C:\board-game-score-pad`:
 - For focused AI simple-generator work, also run `npx vitest run src/features/ai-generator/hooks/useAiSimpleGenerator.test.tsx`.
 - Treat failures of `npm test` caused by repeated `--exclude` parsing as an environment/script invocation issue, not as evidence that the touched feature failed, unless package scripts or dependency versions were changed in the current work.
 
+# Proportionate Verification
+
+- Handle small text, style, or display changes directly, without sub-agents; run only relevant checks. Documentation-only changes need no application tests.
+- Reserve delegated simulations and broad regression testing for multiplayer, asynchronous races, data persistence, or other high-risk changes.
+- Keep required publishing checks, but do not separately repeat the full test suite before the publishing script for unchanged code.
+
 # Local Verification Constraints
 
 - Do not open a browser or run browser-based visual verification unless the user explicitly asks for it.
