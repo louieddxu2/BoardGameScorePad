@@ -163,7 +163,7 @@ async function openFourDeviceRoom(tap: (element: Element) => void, extraFormula?
   const enter = screen.getByRole('button', { name: 'Enter score sheet' });
   await waitFor(() => expect(enter).toBeEnabled(), { timeout: 3_000 });
   tap(enter);
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'Multiplayer room' })).not.toBeNull(), {
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Player · / })).not.toBeNull(), {
     timeout: 3_000,
     onTimeout: () => new Error(`join did not enter score sheet: ${JSON.stringify({
       room: multiplayerSessionManager.get('exit-test-room')?.status,
@@ -215,7 +215,7 @@ async function waitForScoreConvergence(colId: string, expected: number[][]) {
 }
 
 async function leaveAndDiscardRoom(tap: (element: Element) => void) {
-  tap(screen.getByRole('button', { name: 'Multiplayer room' }));
+  tap(screen.getByRole('button', { name: /^Player · / }));
   tap(screen.getByRole('button', { name: 'Leave multiplayer room' }));
   await waitFor(() => expect(multiplayerSessionManager.get('exit-test-room')).toBeNull());
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Leave multiplayer room' })).toBeNull(), {
@@ -316,7 +316,7 @@ it.each(['keep', 'history'] as const)('participant exit retains four-device scor
   expect(playerRuntime.session.session).toMatchObject({ photos: ['local-photo'], photoContentIds });
   expect(playerRuntime.session.session.players.map(player => player.scores[col.id]?.parts)).toEqual([[5], [8], [9], [11]]);
 
-  tap(screen.getByRole('button', { name: 'Multiplayer room' }));
+  tap(screen.getByRole('button', { name: /^Player · / }));
   tap(screen.getByRole('button', { name: 'Leave multiplayer room' }));
   await waitFor(() => expect(multiplayerSessionManager.get('exit-test-room')).toBeNull());
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Leave multiplayer room' })).toBeNull());
@@ -332,7 +332,7 @@ it.each(['keep', 'history'] as const)('participant exit retains four-device scor
     await waitFor(async () => expect((await db.history.get('shared-session'))?.players
       .map(player => player.scores[col.id]?.parts)).toEqual([[5], [8], [9], [11]]));
   }
-  await waitFor(() => expect(screen.queryByRole('button', { name: 'Multiplayer room' })).toBeNull());
+  await waitFor(() => expect(screen.queryByRole('button', { name: /^Player · / })).toBeNull());
   await screen.findByText('Other board', { exact: true });
   await waitFor(() => {
     const dashboard = screen.getByText('Other board', { exact: true }).closest('div.absolute.inset-0.z-0.flex.flex-col');
