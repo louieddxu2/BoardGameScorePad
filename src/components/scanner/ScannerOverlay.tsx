@@ -100,7 +100,7 @@ const ScannerOverlay: React.FC<ScannerOverlayProps> = ({
         >
           <div className={`w-5 h-5 rounded-full border-[3px] shadow-[0_0_2px_rgb(var(--c-black)_/_0.8)] transition-transform ${activePointIdx === i ? 'border-status-info scale-125' : 'border-status-info/80'}`}></div>
           {activePointIdx === i && isSnapping && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-modal-bg/80 backdrop-blur text-white text-[10px] px-2 py-1 rounded border border-surface-border whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-modal-bg/80 backdrop-blur text-txt-primary text-[10px] px-2 py-1 rounded border border-surface-border whitespace-nowrap pointer-events-none flex items-center gap-1 shadow-lg">
               {geometricGhost && Math.sqrt(Math.pow(p.x - geometricGhost.x, 2) + Math.pow(p.y - geometricGhost.y, 2)) < (40 / scale) ? (
                 <><BoxSelect size={10} className="text-status-info" /> {t('scan_snap_geo')}</>
               ) : snapType === 'line' ? (

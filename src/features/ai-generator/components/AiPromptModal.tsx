@@ -172,7 +172,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         });
 
         const renderSchemeRow = (label: string, count: number, dotColorClass: string) => (
-            <div className="flex justify-between items-center py-1 text-[11px] border-b border-white/5 last:border-0 last:pb-0">
+            <div className="flex justify-between items-center py-1 text-[11px] border-b border-surface-border/50 last:border-0 last:pb-0">
                 <span className="text-txt-secondary flex items-center gap-2 font-medium">
                     <span className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} />
                     {label}
@@ -184,7 +184,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
         );
 
         return (
-            <div className="bg-surface-bg-alt border border-surface-border rounded-xl p-4 mb-2 flex flex-col gap-2 shadow-sm">
+            <div className="bg-surface-alt border border-surface-border rounded-xl p-4 mb-2 flex flex-col gap-2 shadow-sm">
                 <div className="flex justify-between items-center py-1 text-sm border-b border-surface-border/40 pb-2.5">
                     <span className="text-txt-muted flex items-center gap-1.5 font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
@@ -204,7 +204,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                     {stats.list > 0 && renderSchemeRow(t('scheme_list'), stats.list, 'bg-status-success')}
                 </div>
                 {tokenUsage && (
-                    <div className="mt-2 pt-3 border-t border-surface-border/60 flex flex-col gap-1 bg-black/20 -mx-4 px-4 py-2.5 rounded-b-xl border-t border-white/5">
+                    <div className="mt-2 pt-3 border-t border-surface-border/60 flex flex-col gap-1 bg-surface-alt -mx-4 px-4 py-2.5 rounded-b-xl border-t border-surface-border/50">
                         <div className="flex justify-between items-center text-xs">
                             <span className="text-txt-muted font-mono text-[10px] tracking-tight">
                                 🚀 {selectedModel}
@@ -284,7 +284,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                         <span className="text-[11px] font-bold text-txt-secondary truncate max-w-[180px] px-2 py-0.5 bg-surface-bg border border-surface-border rounded-full">
                             {gameName}
                         </span>
-                        <span className="text-[9px] font-mono font-bold text-txt-muted bg-surface-bg-alt px-1.5 py-0.5 rounded border border-surface-border">
+                        <span className="text-[9px] font-mono font-bold text-txt-muted bg-surface-alt px-1.5 py-0.5 rounded border border-surface-border">
                             {selectedModel}
                         </span>
                     </div>
@@ -359,7 +359,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                     reset();
                                     setQueuedFiles([]);
                                 }}
-                                className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-[15px] shadow-lg shadow-brand-primary/20 active:scale-98 transition-all hover:brightness-105"
+                                className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-brand-primary to-brand-secondary text-txt-on-color rounded-xl font-black text-[15px] shadow-lg shadow-brand-primary/20 active:scale-98 transition-all hover:brightness-105"
                             >
                                 <Play size={18} className="fill-current" />
                                 <span>{t('btn_use_this_template')}</span>
@@ -368,7 +368,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                 onClick={() => {
                                     reset();
                                 }}
-                                className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-bg-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5"
+                                className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5"
                             >
                                 {t('btn_reanalyze')}
                             </button>
@@ -376,7 +376,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                     ) : isError ? (
                         <button
                             onClick={reset}
-                            className="w-full py-3.5 text-txt-primary hover:text-white font-bold rounded-xl bg-surface-bg border border-surface-border hover:bg-surface-border active:scale-95 transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
+                            className="w-full py-3.5 text-txt-primary hover:text-txt-primary font-bold rounded-xl bg-surface-bg border border-surface-border hover:bg-surface-border active:scale-95 transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
                         >
                             <X size={16} />
                             {t('btn_return_retry')}
@@ -392,7 +392,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+            className="fixed inset-0 bg-modal-backdrop/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
             style={{ zIndex }}
             onClick={(e) => {
                 if (e.target === e.currentTarget) onClose();
@@ -422,7 +422,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             <Sparkles size={20} />
                             <h3 className="font-black text-xl tracking-tight">{t('title')}</h3>
                         </div>
-                        <button onClick={onClose} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors">
+                        <button onClick={onClose} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-alt rounded-lg transition-colors">
                             <X size={20} />
                         </button>
                     </div>
@@ -443,7 +443,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                 {t('prompt_question')}
                             </p>
                             {/* 引擎效能控制台 (2x2 高科技 Grid) */}
-                            <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-bg-alt/50 rounded-xl border border-surface-border/60">
+                            <div className="grid grid-cols-2 gap-2 mb-5 p-1.5 bg-surface-alt/50 rounded-xl border border-surface-border/60">
                                 {(['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'] as const).map((model) => {
                                     const isSelected = selectedModel === model;
                                     return (
@@ -463,7 +463,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                             </div>
 
                             {/* 隱私警告區塊 */}
-                            <div className="flex gap-2 p-3 bg-surface-bg-alt rounded-lg border border-surface-border mb-6">
+                            <div className="flex gap-2 p-3 bg-surface-alt rounded-lg border border-surface-border mb-6">
                                 <AlertCircle size={16} className="text-status-warning shrink-0 mt-0.5" />
                                 <p className="text-xs text-txt-muted leading-relaxed">
                                     {t('privacy_warning')}
@@ -490,7 +490,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                     <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
                                         {previews.map((url, index) => (
                                             <div key={index} className="relative group flex-shrink-0 snap-start">
-                                                <div className="w-20 h-20 rounded-xl overflow-hidden border border-white/10 bg-surface-bg-alt shadow-md">
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden border border-surface-border bg-surface-alt shadow-md">
                                                     <img
                                                         src={url}
                                                         alt={`Preview ${index}`}
@@ -500,7 +500,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                                 {/* 懸浮 X 按鈕 */}
                                                 <button
                                                     onClick={() => handleRemoveFile(index)}
-                                                    className="absolute -top-1.5 -right-1.5 bg-black/80 hover:bg-status-danger text-white p-1 rounded-full shadow-lg border border-white/20 transition-all duration-200 hover:scale-110 active:scale-90"
+                                                    className="absolute -top-1.5 -right-1.5 bg-modal-backdrop/80 hover:bg-status-danger text-txt-on-color p-1 rounded-full shadow-lg border border-surface-border transition-all duration-200 hover:scale-110 active:scale-90"
                                                 >
                                                     <X size={12} />
                                                 </button>
@@ -528,7 +528,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                     <div className="grid grid-cols-2 gap-3">
                                         <button
                                             onClick={() => setIsScannerOpen(true)}
-                                            className="flex flex-col items-center justify-center gap-2 py-4 bg-brand-primary text-white rounded-xl font-bold shadow-md active:scale-95 transition-all hover:brightness-110"
+                                            className="flex flex-col items-center justify-center gap-2 py-4 bg-brand-primary text-txt-on-color rounded-xl font-bold shadow-md active:scale-95 transition-all hover:brightness-110"
                                         >
                                             <Camera size={24} />
                                             <span className="text-sm">{t('btn_take_photo')}</span>
@@ -546,7 +546,7 @@ const AiPromptModal: React.FC<AiPromptModalProps> = ({
                                     <div className="space-y-3">
                                         <button
                                             onClick={handleSubmit}
-                                            className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-base shadow-lg shadow-brand-primary/20 active:scale-98 hover:brightness-110 transition-all animate-in zoom-in-95 duration-300"
+                                            className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-txt-on-color rounded-xl font-black text-base shadow-lg shadow-brand-primary/20 active:scale-98 hover:brightness-110 transition-all animate-in zoom-in-95 duration-300"
                                         >
                                             <Sparkles size={20} className="animate-pulse" />
                                             <span>{t('btn_analyze_count').replace('{count}', queuedFiles.length.toString())}</span>

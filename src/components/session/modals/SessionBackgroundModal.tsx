@@ -62,14 +62,14 @@ const SessionBackgroundModal: React.FC<SessionBackgroundModalProps> = ({
                 {hasCloudImage && (
                     <button
                         onClick={onCloudDownload}
-                        className="w-full py-3 bg-status-info hover:opacity-90 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 mt-2"
+                        className="w-full py-3 bg-status-info hover:opacity-90 text-txt-on-color font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 mt-2"
                     >
                         <DownloadCloud size={20} />
                         {isConnected ? t('bg_btn_cloud_download') : t('bg_btn_cloud_connect')}
                     </button>
                 )}
 
-                <button onClick={onScannerCamera} className={`w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 ${hasCloudImage ? 'mt-1' : 'mt-2'}`}>
+                <button onClick={onScannerCamera} className={`w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 ${hasCloudImage ? 'mt-1' : 'mt-2'}`}>
                     <Aperture size={20} /> {t('bg_btn_camera')}
                 </button>
 

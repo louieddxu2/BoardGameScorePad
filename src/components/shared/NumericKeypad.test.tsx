@@ -32,8 +32,8 @@ describe('NumericKeypad', () => {
   it.each([true, false])('matches the decimal key theme to the digits with overwrite %s', (overwrite) => {
     const { container } = render(<NumericKeypad {...makeProps()} overwrite={overwrite} />);
     const decimal = getDecimalButton(container);
-    const theme = overwrite ? ['bg-keypad-active', 'text-white'] : ['bg-keypad-bg', 'text-keypad-text'];
-    const otherTheme = overwrite ? ['bg-keypad-bg', 'text-keypad-text'] : ['bg-keypad-active', 'text-white'];
+    const theme = overwrite ? ['bg-keypad-active', 'text-txt-on-color'] : ['bg-keypad-bg', 'text-keypad-text'];
+    const otherTheme = overwrite ? ['bg-keypad-bg', 'text-keypad-text'] : ['bg-keypad-active', 'text-txt-on-color'];
 
     expect(decimal).toHaveClass(...theme);
     expect(screen.getByRole('button', { name: '1' })).toHaveClass(...theme);
@@ -44,7 +44,7 @@ describe('NumericKeypad', () => {
     const props = makeProps();
     const { container, rerender } = render(<NumericKeypad {...props} value={12} />);
     const decimal = getDecimalButton(container);
-    expect(decimal).toHaveClass('bg-keypad-active', 'text-white');
+    expect(decimal).toHaveClass('bg-keypad-active', 'text-txt-on-color');
 
     fireEvent.click(decimal);
 
@@ -54,10 +54,10 @@ describe('NumericKeypad', () => {
     rerender(<NumericKeypad {...props} value={{ value: '0.', history: ['0.'] }} overwrite={false} />);
     expect(decimal).toHaveClass('bg-keypad-bg', 'text-keypad-text');
     expect(decimal).not.toHaveClass('bg-keypad-active');
-    expect(decimal).not.toHaveClass('text-white');
+    expect(decimal).not.toHaveClass('text-txt-on-color');
 
     rerender(<NumericKeypad {...props} value={37} overwrite={true} />);
-    expect(decimal).toHaveClass('bg-keypad-active', 'text-white');
+    expect(decimal).toHaveClass('bg-keypad-active', 'text-txt-on-color');
     expect(props.onChange).toHaveBeenCalledTimes(1);
   });
 
@@ -82,7 +82,7 @@ describe('NumericKeypad', () => {
     const value = { value: 24, factors: ['12', '2'], history: [] };
     const { container, rerender } = render(<NumericKeypad {...props} column={column} value={value} activeFactorIdx={activeFactorIdx} />);
     const decimal = getDecimalButton(container);
-    expect(decimal).toHaveClass('bg-keypad-active', 'text-white');
+    expect(decimal).toHaveClass('bg-keypad-active', 'text-txt-on-color');
 
     fireEvent.click(decimal);
 
@@ -93,7 +93,7 @@ describe('NumericKeypad', () => {
     rerender(<NumericKeypad {...props} column={column} value={updatedValue} activeFactorIdx={activeFactorIdx} overwrite={false} />);
     expect(decimal).toHaveClass('bg-keypad-bg', 'text-keypad-text');
     expect(decimal).not.toHaveClass('bg-keypad-active');
-    expect(decimal).not.toHaveClass('text-white');
+    expect(decimal).not.toHaveClass('text-txt-on-color');
   });
 
   it.each([
@@ -109,7 +109,7 @@ describe('NumericKeypad', () => {
     expect(sign).not.toHaveClass('font-mono');
     expect(sign).not.toHaveClass('text-xl');
     expect(sign).not.toHaveClass('text-txt-muted');
-    const theme = overwrite ? ['bg-keypad-active', 'text-white'] : ['bg-keypad-bg', 'text-keypad-text'];
+    const theme = overwrite ? ['bg-keypad-active', 'text-txt-on-color'] : ['bg-keypad-bg', 'text-keypad-text'];
     expect(sign).toHaveClass(...theme);
     expect(digit).toHaveClass(...theme);
   });

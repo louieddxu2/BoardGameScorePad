@@ -222,7 +222,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
 
     return (
         <div 
-            className={`fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300 ${
+            className={`fixed inset-0 bg-modal-backdrop/70 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300 ${
                 isOpen ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
             }`} 
             style={{ zIndex }} 
@@ -261,7 +261,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                     {t('tab_advanced')} ➔
                                 </button>
                             )}
-                            <button onClick={handleCloseWithBackgroundKeep} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors"><X size={18} /></button>
+                            <button onClick={handleCloseWithBackgroundKeep} className="p-1 text-txt-muted hover:text-txt-primary bg-surface-alt rounded-lg transition-colors"><X size={18} /></button>
                         </div>
                     </div>
 
@@ -271,7 +271,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             {/* 雙軌 Header (完整模型名稱與跑秒標示) */}
                             <div className="grid grid-cols-2 gap-2 mt-1 mb-2 select-none text-left">
                                 {/* 左軌 Header */}
-                                <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-bg-alt/60 border border-surface-border rounded-xl">
+                                <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-alt/60 border border-surface-border rounded-xl">
                                     <div className="flex items-center justify-between min-w-0">
                                         <span className="text-[11px] font-black text-brand-primary truncate">
                                             {t('label_flash_version')}
@@ -288,7 +288,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                 </div>
 
                                 {/* 右軌 Header */}
-                                <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-bg-alt/60 border border-surface-border rounded-xl">
+                                <div className="flex flex-col gap-0.5 px-2 py-1.5 bg-surface-alt/60 border border-surface-border rounded-xl">
                                     <div className="flex items-center justify-between min-w-0">
                                         <span className="text-[11px] font-black text-brand-secondary truncate">
                                             {t('label_gemma_version')}
@@ -351,7 +351,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                 {!isBothDone ? (
                                     <button onClick={() => { abortSimpleAll(); resetSimple(); onClose(); }} className="w-full py-2.5 text-status-danger/80 hover:text-status-danger font-medium rounded-xl bg-status-danger/5 hover:bg-status-danger/10 border border-status-danger/10 active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5"><X size={14} />{t('btn_cancel')}</button>
                                 ) : (
-                                    <button onClick={resetSimple} className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-bg-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5">{t('btn_re_analyze')}</button>
+                                    <button onClick={resetSimple} className="w-full py-2.5 text-txt-muted hover:text-txt-secondary font-bold rounded-xl bg-surface-bg hover:bg-surface-alt border border-surface-border active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5">{t('btn_re_analyze')}</button>
                                 )}
                             </div>
                         </div>
@@ -363,7 +363,7 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             <p className="text-txt-primary font-medium mb-3 text-[14px] leading-snug whitespace-pre-line select-none">{t('simple_desc')}</p>
 
                             {/* 隱私警告區塊 */}
-                            <div className="flex gap-2 p-3 bg-surface-bg-alt rounded-lg border border-surface-border mb-4 select-none">
+                            <div className="flex gap-2 p-3 bg-surface-alt rounded-lg border border-surface-border mb-4 select-none">
                                 <AlertCircle size={16} className="text-status-warning shrink-0 mt-0.5" />
                                 <p className="text-[11px] text-txt-muted leading-relaxed">
                                     {t('privacy_warning')}
@@ -380,8 +380,8 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                                     <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none snap-x">
                                         {previews.map((url, idx) => (
                                             <div key={idx} className="relative group flex-shrink-0 snap-start">
-                                                <div className="w-20 h-20 rounded-xl overflow-hidden border border-white/10 bg-surface-bg-alt shadow-md"><img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" /></div>
-                                                <button onClick={() => handleRemoveFile(idx)} className="absolute -top-1.5 -right-1.5 bg-black/80 hover:bg-status-danger text-white p-1 rounded-full shadow-lg border border-white/20 transition-all duration-200 hover:scale-110 active:scale-90"><X size={12} /></button>
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden border border-surface-border bg-surface-alt shadow-md"><img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" /></div>
+                                                <button onClick={() => handleRemoveFile(idx)} className="absolute -top-1.5 -right-1.5 bg-modal-backdrop/80 hover:bg-status-danger text-txt-on-color p-1 rounded-full shadow-lg border border-surface-border transition-all duration-200 hover:scale-110 active:scale-90"><X size={12} /></button>
                                             </div>
                                         ))}
                                         {canAddMoreImages && (
@@ -395,12 +395,12 @@ const AiSimplePromptModal: React.FC<AiSimplePromptModalProps> = ({
                             <div className="space-y-3">
                                 {queuedFiles.length === 0 ? (
                                     <div className="grid grid-cols-2 gap-3">
-                                        <button onClick={() => setIsScannerOpen(true)} className="flex flex-col items-center justify-center gap-2 py-4 bg-brand-primary text-white rounded-xl font-bold shadow-md active:scale-95 transition-all hover:brightness-110"><Camera size={24} /><span className="text-sm">{t('btn_take_photo')}</span></button>
+                                        <button onClick={() => setIsScannerOpen(true)} className="flex flex-col items-center justify-center gap-2 py-4 bg-brand-primary text-txt-on-color rounded-xl font-bold shadow-md active:scale-95 transition-all hover:brightness-110"><Camera size={24} /><span className="text-sm">{t('btn_take_photo')}</span></button>
                                         <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center gap-2 py-4 bg-surface-bg text-brand-primary border border-brand-primary/30 rounded-xl font-bold active:scale-95 transition-all hover:bg-brand-primary/10"><ImageIcon size={24} /><span className="text-sm">{t('btn_upload_image')}</span></button>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
-                                        <button onClick={handleSubmit} className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-black text-base shadow-lg shadow-brand-primary/20 active:scale-98 hover:brightness-110 transition-all animate-in zoom-in-95 duration-300"><Sparkles size={20} className="animate-pulse" /><span>{t('btn_generate_simple').replace('{count}', queuedFiles.length.toString())}</span></button>
+                                        <button onClick={handleSubmit} className="w-full flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-txt-on-color rounded-xl font-black text-base shadow-lg shadow-brand-primary/20 active:scale-98 hover:brightness-110 transition-all animate-in zoom-in-95 duration-300"><Sparkles size={20} className="animate-pulse" /><span>{t('btn_generate_simple').replace('{count}', queuedFiles.length.toString())}</span></button>
                                         {canAddMoreImages && (
                                             <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-brand-primary bg-surface-bg hover:bg-brand-primary/5 border border-brand-primary/20 rounded-lg active:scale-95 transition-all"><ImageIcon size={14} /><span>{t('btn_add_from_album')}</span></button>
                                         )}

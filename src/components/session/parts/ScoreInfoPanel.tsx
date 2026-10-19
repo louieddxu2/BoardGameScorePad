@@ -148,7 +148,7 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
                             return (
                                 <div key={idx} className="flex items-center justify-between pt-2 pb-1 relative animate-in fade-in slide-in-from-bottom-1">
                                     {onDeleteLastPart && (
-                                        <button onClick={onDeleteLastPart} className="w-5 h-5 rounded-full bg-status-danger hover:bg-status-danger/80 text-white flex items-center justify-center shadow-md border border-status-danger transition-transform active:scale-95" title={t('input_clear')}><X size={12} strokeWidth={3} /></button>
+                                        <button onClick={onDeleteLastPart} className="w-5 h-5 rounded-full bg-status-danger hover:bg-status-danger/80 text-txt-on-color flex items-center justify-center shadow-md border border-status-danger transition-transform active:scale-95" title={t('input_clear')}><X size={12} strokeWidth={3} /></button>
                                     )}
                                     <div className="flex-1 text-right">
                                         <div className="inline-block bg-status-success/5 px-2 py-0.5 rounded border border-status-success/20">
@@ -175,7 +175,7 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
                                 onClick={() => { setActiveFactorIdx?.(0); setOverwrite?.(true); }}
                                 className={`flex-1 bg-brand-primary/10 border rounded-md px-1 py-0.5 text-center shadow-sm transition-colors cursor-pointer ${isFactorAActive ? 'border-brand-primary ring-1 ring-brand-primary/50' : 'border-surface-border opacity-70 hover:opacity-100'}`}
                             >
-                                <span className={`text-xl font-bold font-mono leading-tight ${isFactorAActive ? 'text-white' : 'text-txt-secondary'}`}>
+                                <span className={`text-xl font-bold font-mono leading-tight ${isFactorAActive ? 'text-txt-primary' : 'text-txt-secondary'}`}>
                                     {String(currentFactors[0])}
                                 </span>
                             </div>
@@ -186,7 +186,7 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
                                 onClick={() => { setActiveFactorIdx?.(1); setOverwrite?.(true); }}
                                 className={`flex-1 bg-brand-primary/10 border rounded-md px-1 py-0.5 text-center shadow-sm transition-colors cursor-pointer ${isFactorBActive ? 'border-brand-primary ring-1 ring-brand-primary/50' : 'border-surface-border opacity-70 hover:opacity-100'}`}
                             >
-                                <span className={`text-xl font-bold font-mono leading-tight ${isFactorBActive ? 'text-white' : 'text-txt-secondary'}`}>
+                                <span className={`text-xl font-bold font-mono leading-tight ${isFactorBActive ? 'text-txt-primary' : 'text-txt-secondary'}`}>
                                     {String(currentFactors[1])}
                                 </span>
                             </div>
@@ -195,7 +195,7 @@ const InfoSumParts: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypa
                         // Constant Multiplier Input: [ Input ] x Constant
                         <div className="flex items-center gap-2">
                             <div className="flex-1 bg-brand-primary/10 border border-brand-primary/50 rounded-md px-2 py-0.5 text-right shadow-sm">
-                                <span className="text-2xl font-bold text-white font-mono leading-tight">{currentInputStr}</span>
+                                <span className="text-2xl font-bold text-txt-primary font-mono leading-tight">{currentInputStr}</span>
                             </div>
                             <span className="text-txt-muted text-xs font-bold flex items-center whitespace-nowrap gap-0.5">
                                 <X size={10} /> {constant}
@@ -378,7 +378,7 @@ const InfoMapping: React.FC<ScoreInfoPanelProps> = ({ column, value, localKeypad
 
                     return (
                         // 3. 卡片 Padding 縮減為 px-2 py-1，原本為 px-3 py-1.5
-                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-[1px] text-xs px-[2px] py-[2px] rounded border transition-colors ${isMatch ? 'bg-status-success/10 border-status-success/50' : 'bg-surface-recessed border-surface-border'}`}>
+                        <div key={idx} ref={isMatch ? activeRuleRef : null} className={`flex items-center gap-[1px] text-xs px-[2px] py-[2px] rounded border transition-colors ${isMatch ? 'bg-status-success/10 border-status-success/50' : 'bg-surface-alt border-surface-border'}`}>
                             <div className={`flex-1 text-center ${isMatch ? 'text-status-success font-bold' : 'text-txt-muted font-medium'}`}>{labelNode}</div>
                             <div className={`shrink-0 px-[1px] ${isMatch ? 'text-status-success' : 'text-txt-muted'}`}><ArrowRight size={10} /></div>
                             <div className={`flex-1 text-center font-mono ${isMatch ? 'text-txt-primary' : 'text-txt-muted'}`}>{scoreNode}</div>
@@ -429,7 +429,7 @@ const InfoStandard: React.FC<ScoreInfoPanelProps> = ({ column }) => {
         <div className="flex flex-col gap-2 flex-1 min-h-0 p-2">
             <div className="flex items-center gap-1 text-[10px] text-txt-muted font-bold uppercase pb-1 border-b border-surface-border shrink-0"><Calculator size={12} /> {t('input_calc_mode')}</div>
             <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 py-2">
-                <div className="bg-surface-recessed rounded p-2 border border-surface-border text-center">
+                <div className="bg-surface-alt rounded p-2 border border-surface-border text-center">
                     <div className="flex items-center justify-center gap-0.5 whitespace-nowrap">
                         <span className="text-base font-bold text-txt-primary leading-none">{unit}</span>
                         {column.formula === 'a1×c1' ? (
@@ -437,8 +437,8 @@ const InfoStandard: React.FC<ScoreInfoPanelProps> = ({ column }) => {
                         ) : null}
                     </div>
                 </div>
-                {roundingText && (<div className="bg-surface-recessed rounded p-2 border border-surface-border"><div className="text-[10px] text-txt-muted mb-1">{t('input_rounding')}</div><div className="flex items-center gap-2 text-brand-secondary font-medium text-sm"><Hash size={14} /> {roundingText}</div></div>)}
-                {!column.isScoring && (<div className="bg-surface-recessed/50 rounded p-2 border border-surface-border/50 text-center"><span className="text-xs text-txt-muted italic">{t('input_not_scored')}</span></div>)}
+                {roundingText && (<div className="bg-surface-alt rounded p-2 border border-surface-border"><div className="text-[10px] text-txt-muted mb-1">{t('input_rounding')}</div><div className="flex items-center gap-2 text-brand-secondary font-medium text-sm"><Hash size={14} /> {roundingText}</div></div>)}
+                {!column.isScoring && (<div className="bg-surface-alt/50 rounded p-2 border border-surface-border/50 text-center"><span className="text-xs text-txt-muted italic">{t('input_not_scored')}</span></div>)}
             </div>
         </div>
     );

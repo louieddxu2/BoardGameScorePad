@@ -34,7 +34,7 @@ export const GameLaunchActions: React.FC<GameLaunchActionsProps> = ({
                 className={`
               w-[90px] h-full flex flex-col items-center justify-center transition-all active:brightness-90
               ${dockedItem
-                        ? 'bg-brand-primary hover:filter hover:brightness-110 text-white'
+                        ? 'bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color'
                         : 'bg-surface-bg text-txt-muted cursor-not-allowed'
                     }
           `}

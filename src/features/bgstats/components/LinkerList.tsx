@@ -51,7 +51,7 @@ export const LinkerList: React.FC<LinkerListProps> = ({
               className={`
                 p-2 rounded-lg text-xs border transition-all cursor-pointer relative flex flex-col gap-1
                 ${item.isSelected
-                  ? 'bg-brand-secondary border-brand-secondary/50 text-white shadow-md z-10 sticky-item-active' // Active Selection (Left)
+                  ? 'bg-brand-secondary border-brand-secondary/50 text-txt-on-color shadow-md z-10 sticky-item-active' // Active Selection (Left)
                   : item.isLinked
                     ? 'bg-status-success/20 border-status-success text-status-success shadow-sm' // Active Linked (Right: Solid Green)
                     : item.isSuggested
@@ -72,7 +72,7 @@ export const LinkerList: React.FC<LinkerListProps> = ({
 
               {/* Linked Target Preview (Left Side Only usually) */}
               {item.linkedName && (
-                <div className={`text-[10px] flex items-center gap-1 ${item.isSelected ? 'text-white/80' : 'text-status-success'}`}>
+                <div className={`text-[10px] flex items-center gap-1 ${item.isSelected ? 'text-txt-on-color/80' : 'text-status-success'}`}>
                   <Link2 size={10} />
                   <span className="truncate">{item.linkedName}</span>
                 </div>
@@ -80,7 +80,7 @@ export const LinkerList: React.FC<LinkerListProps> = ({
 
               {/* Subtitle (BGG ID etc) */}
               {item.subTitle && (!item.linkedName || item.isSelected) && (
-                <div className={`text-[10px] font-mono ${item.isSelected || item.isLinked ? 'text-white/70' : 'text-txt-muted'}`}>
+                <div className={`text-[10px] font-mono ${item.isSelected || item.isLinked ? 'text-txt-on-color/70' : 'text-txt-muted'}`}>
                   {item.subTitle}
                 </div>
               )}

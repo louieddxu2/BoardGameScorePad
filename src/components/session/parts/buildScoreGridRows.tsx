@@ -119,7 +119,7 @@ export function buildScoreGridRows({
           }
         >
           {renderIndicators(col, isHidden, isOverlay)}
-          {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-white/70"><GripVertical size={10} /></div>}
+          {isEditMode && isTextureMode && <div className="absolute top-1/2 left-0.5 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded p-0.5 text-txt-on-color/70"><GripVertical size={10} /></div>}
         </TexturedBlock>
 
         {/* Normal Players Row OR Shared Player Row */}

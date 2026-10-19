@@ -231,7 +231,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
     // Default Modal Layout for other states
     return (
         <div
-            className="fixed inset-0 z-[60] bg-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 z-[60] bg-modal-backdrop/[var(--modal-backdrop-opacity)] backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
             onClick={(e) => {
                 if (e.target === e.currentTarget && importState !== 'importing') onClose();
             }}
@@ -292,8 +292,8 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
                                             disabled={!!cooldownRemaining}
                                             className={`px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shrink-0 whitespace-nowrap
                                         ${cooldownRemaining
-                                                    ? 'bg-surface-bg-alt text-txt-muted cursor-not-allowed border border-surface-border'
-                                                    : 'bg-status-info hover:filter hover:brightness-110 text-white shadow-lg'
+                                                    ? 'bg-surface-alt text-txt-muted cursor-not-allowed border border-surface-border'
+                                                    : 'bg-status-info hover:filter hover:brightness-110 text-txt-on-color shadow-lg'
                                                 }
                                     `}
                                         >

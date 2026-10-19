@@ -299,7 +299,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex-none bg-modal-header p-4 border-b border-modal-border flex items-center justify-between rounded-t-2xl">
+                <div className="flex-none bg-modal-bg-elevated p-4 border-b border-modal-border flex items-center justify-between rounded-t-2xl">
                     <h3 className="text-lg font-bold text-txt-title flex items-center gap-2">
                         <Settings size={20} className="text-brand-primary" />
                         {t('history_settings_title')}
@@ -324,7 +324,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                         </button>
 
                         {showRawInspector && (
-                            <div className="mt-2 bg-black/30 p-3 rounded-lg border border-modal-border overflow-x-auto">
+                            <div className="mt-2 bg-modal-bg-recessed p-3 rounded-lg border border-modal-border overflow-x-auto">
                                 <pre className="text-[10px] text-txt-muted font-mono leading-relaxed">
                                     {JSON.stringify(formData, null, 2)}
                                 </pre>
@@ -351,10 +351,10 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                 </div>
 
                 {/* Footer - Only Save Button */}
-                <div className="flex-none p-4 bg-modal-footer border-t border-modal-border rounded-b-2xl">
+                <div className="flex-none p-4 bg-modal-bg-elevated border-t border-modal-border rounded-b-2xl">
                     <button
                         onClick={handleSave}
-                        className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
+                        className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color font-bold rounded-xl shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
                     >
                         <Save size={18} />
                         {t('history_save_btn')}

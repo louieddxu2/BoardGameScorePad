@@ -118,8 +118,8 @@ const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = 
     <div className="relative w-full h-full flex flex-col overflow-hidden bg-app-bg-deep">
       <div className="relative min-h-0 flex-1 overflow-hidden bg-app-bg-deep">
         <PhotoImage tile={tile} />
-        <div className="pointer-events-none absolute right-[1.5cqw] bottom-[1.5cqw] px-[1.2cqw] py-[0.8cqw] rounded-[0.8cqw] bg-black/55 text-white">
-          <span className="text-[2.2cqw] leading-none text-white/75 font-mono">{formatGridDate(tile.endTime)}</span>
+        <div className="pointer-events-none absolute right-[1.5cqw] bottom-[1.5cqw] px-[1.2cqw] py-[0.8cqw] rounded-[0.8cqw] bg-black/55 text-txt-on-color">
+          <span className="text-[2.2cqw] leading-none text-txt-on-color/75 font-mono">{formatGridDate(tile.endTime)}</span>
         </div>
       </div>
       {!hideGameName && (

@@ -206,13 +206,13 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             )}
 
             {/* Header Toolbar */}
-            <div className="safe-area-top-padding flex-none flex justify-between items-center p-4 bg-surface-recessed border-b border-surface-border z-10 min-h-16">
-                <button onClick={onClose} aria-label={tCommon('close')} className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
+            <div className="safe-area-top-padding flex-none flex justify-between items-center p-4 bg-surface-alt border-b border-surface-border z-10 min-h-16">
+                <button onClick={onClose} aria-label={tCommon('close')} className="p-2 bg-surface-alt rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors">
                     <X size={24} />
                 </button>
 
                 {images.length > 1 && (
-                    <div className="text-txt-title text-sm font-bold bg-surface-recessed/80 px-3 py-1 rounded-full border border-surface-border">
+                    <div className="text-txt-title text-sm font-bold bg-surface-alt/80 px-3 py-1 rounded-full border border-surface-border">
                         {currentIndex + 1} / {images.length}
                     </div>
                 )}
@@ -221,14 +221,14 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                     {onRotate && (
                         <button type="button" onClick={handleRotate} disabled={controlsBusy}
                             title={t('lightbox_rotate')} aria-label={t('lightbox_rotate')}
-                            className="p-2 bg-surface-recessed rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
+                            className="p-2 bg-surface-alt rounded-full text-txt-muted hover:text-txt-title border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                             {isRotating ? <Loader2 size={24} className="animate-spin" /> : <RotateCw size={24} />}
                         </button>
                     )}
-                    <button onClick={() => onDelete(currentImage.id, triggerClose)} aria-label={tCommon('delete')} disabled={isRotating || motion.settling} className="p-2 bg-surface-recessed rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
+                    <button onClick={() => onDelete(currentImage.id, triggerClose)} aria-label={tCommon('delete')} disabled={isRotating || motion.settling} className="p-2 bg-surface-alt rounded-full text-status-danger hover:text-status-danger/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                         <Trash2 size={24} />
                     </button>
-                    <button onClick={handleShare} aria-label={tCommon(typeof navigator.share === 'function' ? 'share' : 'download')} disabled={controlsBusy} className="p-2 bg-surface-recessed rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
+                    <button onClick={handleShare} aria-label={tCommon(typeof navigator.share === 'function' ? 'share' : 'download')} disabled={controlsBusy} className="p-2 bg-surface-alt rounded-full text-brand-secondary hover:text-brand-secondary/80 border border-surface-border transition-colors active:scale-95 disabled:opacity-40">
                         {typeof navigator.share === 'function' ? <Share2 size={24} /> : <Download size={24} />}
                     </button>
                 </div>
@@ -267,12 +267,12 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
 
                 {/* Navigation Arrows */}
                 {currentIndex > 0 && transform.scale <= 1.05 && (
-                    <button onClick={handlePrev} aria-label={t('lightbox_previous_photo')} disabled={controlsBusy} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block disabled:opacity-40">
+                    <button onClick={handlePrev} aria-label={t('lightbox_previous_photo')} disabled={controlsBusy} className="absolute left-2 top-1/2 -translate-y-1/2 p-3 bg-black/40 hover:bg-black/60 text-txt-on-color rounded-full backdrop-blur-sm z-20 hidden sm:block disabled:opacity-40">
                         <ChevronLeft size={32} />
                     </button>
                 )}
                 {currentIndex < images.length - 1 && transform.scale <= 1.05 && (
-                    <button onClick={handleNext} aria-label={t('lightbox_next_photo')} disabled={controlsBusy} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm z-20 hidden sm:block disabled:opacity-40">
+                    <button onClick={handleNext} aria-label={t('lightbox_next_photo')} disabled={controlsBusy} className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-black/40 hover:bg-black/60 text-txt-on-color rounded-full backdrop-blur-sm z-20 hidden sm:block disabled:opacity-40">
                         <ChevronRight size={32} />
                     </button>
                 )}
@@ -283,7 +283,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 <div className="absolute left-4 right-4 bg-modal-bg-elevated/95 backdrop-blur-md border border-surface-border rounded-2xl p-4 z-30 shadow-2xl animate-in slide-in-from-bottom-5" style={{ bottom: 'calc(6rem + var(--app-safe-area-bottom))' }}>
                     <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-bold text-txt-muted uppercase">{t('lightbox_anon_hint')}</span>
-                        <button onClick={() => setIsAnonPanelOpen(false)} aria-label={tCommon('close')} className="p-1 bg-surface-recessed rounded-full text-txt-secondary"><X size={14} /></button>
+                        <button onClick={() => setIsAnonPanelOpen(false)} aria-label={tCommon('close')} className="p-1 bg-surface-alt rounded-full text-txt-secondary"><X size={14} /></button>
                     </div>
                     <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                         {overlayData.players.map((p, i) => {
@@ -298,7 +298,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                                     className={`
                                   flex items-center gap-2 px-3 py-2 rounded-lg border transition-all shrink-0 min-w-[100px]
                                   ${isHidden
-                                            ? 'bg-surface-recessed border-surface-border text-txt-muted opacity-70'
+                                            ? 'bg-surface-alt border-surface-border text-txt-muted opacity-70'
                                             : 'border-transparent shadow-md'
                                         }
                               `}
@@ -316,7 +316,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
             )}
 
             {/* Footer Controls - Reorganized */}
-            <div className="safe-area-bottom-medium flex-none px-4 py-3 bg-surface-recessed border-t border-surface-border z-20 flex items-center justify-between min-h-20 gap-4">
+            <div className="safe-area-bottom-medium flex-none px-4 py-3 bg-surface-alt border-t border-surface-border z-20 flex items-center justify-between min-h-20 gap-4">
 
                 {/* Left Group: Config & Show */}
                 <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                             <button
                                 onClick={() => setIsAnonPanelOpen(!isAnonPanelOpen)}
                                 disabled={controlsBusy}
-                                className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-surface-recessed-hover border-brand-primary text-txt-title' : 'bg-surface-recessed border-surface-border text-txt-muted'}`}
+                                className={`p-3 rounded-xl border transition-all active:scale-95 ${isAnonPanelOpen ? 'bg-surface-hover border-brand-primary text-txt-title' : 'bg-surface-alt border-surface-border text-txt-muted'}`}
                                 title={t('lightbox_anon_setting')}
                                 aria-label={t('lightbox_anon_setting')}
                             >
@@ -337,8 +337,8 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                                 disabled={controlsBusy}
                                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border transition-all active:scale-95 font-bold text-sm min-w-[110px] justify-center
                             ${showOverlay
-                                        ? 'bg-brand-primary text-txt-on-dark border-brand-primary shadow-lg shadow-brand-primary/20'
-                                        : 'bg-surface-recessed text-brand-primary border-surface-border hover:bg-surface-recessed-hover'
+                                        ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-lg shadow-brand-primary/20'
+                                        : 'bg-surface-alt text-brand-primary border-surface-border hover:bg-surface-hover'
                                     }`}
                             >
                                 {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <ReceiptText size={18} />}
@@ -352,7 +352,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({ images, initialIndex, onC
                 <div className="flex-1 flex justify-center">
                     <button
                         onClick={resetView}
-                        className="p-3 rounded-full bg-surface-recessed text-txt-muted border border-surface-border active:scale-95 hover:text-txt-title"
+                        className="p-3 rounded-full bg-surface-alt text-txt-muted border border-surface-border active:scale-95 hover:text-txt-title"
                         title={t('lightbox_view_reset')}
                         aria-label={t('lightbox_view_reset')}
                     >

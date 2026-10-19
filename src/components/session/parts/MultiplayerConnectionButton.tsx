@@ -95,7 +95,7 @@ const MultiplayerConnectionButton: React.FC<MultiplayerConnectionButtonProps> = 
         </span>
       )}
       {!role && previewPlayerNumber != null && (
-        <span className="absolute -right-1 -bottom-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-white text-[10px] font-bold leading-none border border-modal-bg">
+        <span className="absolute -right-1 -bottom-1 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-brand-primary text-txt-on-color text-[10px] font-bold leading-none border border-modal-bg">
           {previewPlayerNumber}
         </span>
       )}

@@ -193,10 +193,10 @@ const SessionExitModal: React.FC<SessionExitModalProps> = ({
 
                         <button
                             onClick={() => onSaveHistory(location)}
-                            className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-lg transition-transform active:scale-95"
+                            className="flex flex-col items-center justify-center gap-0.5 py-3 rounded-xl bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color shadow-lg transition-transform active:scale-95"
                         >
                             <span className="text-sm font-bold">{t('exit_btn_finish')}</span>
-                            <span className="text-[10px] text-white/60 font-medium">{t('exit_btn_finish_sub')}</span>
+                            <span className="text-[10px] text-txt-on-color/60 font-medium">{t('exit_btn_finish_sub')}</span>
                         </button>
                     </div>
                 </div>

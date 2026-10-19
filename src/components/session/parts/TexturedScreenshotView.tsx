@@ -147,13 +147,13 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                 display: 'inline-flex',
                 flexDirection: 'column',
                 width: 'max-content',
-                color: 'rgb(var(--c-txt-on-dark))',
+                color: 'rgb(var(--c-txt-primary))',
                 boxSizing: 'border-box',
                 ...style
             }}
         >
             {showAppHeader && (
-                <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-surface-recessed rounded-none border-b border-surface-border shadow-sm w-full box-border">
+                <div id={`ss-header-${mode}`} className="p-4 flex items-center gap-2 bg-surface-alt rounded-none border-b border-surface-border shadow-sm w-full box-border">
                     <div className={`p-2 rounded ${headerIconBoxClass}`}>
                         <Trophy className="text-brand-primary" />
                     </div>
@@ -224,7 +224,7 @@ const TexturedScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
                                         className={`text-center flex flex-col justify-center`}
                                         style={{ ...itemColStyle }}
                                         fallbackContent={
-                                            <div className="flex flex-col items-center justify-center w-full h-full p-2 border-r border-b border-surface-border bg-surface-recessed">
+                                            <div className="flex flex-col items-center justify-center w-full h-full p-2 border-r border-b border-surface-border bg-surface-alt">
                                                 <ContrastText
                                                     className="text-sm font-bold text-txt-primary w-full leading-tight block break-words whitespace-pre-wrap hyphenate"
                                                     color={col.color || 'inherit'}

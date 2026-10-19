@@ -494,7 +494,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
             paddingRight: '16px'
           }}
         >
-          <div className="w-full p-3 rounded-xl border border-surface-border bg-surface-bg-alt/80 backdrop-blur-sm text-txt-secondary text-xs flex items-center justify-center gap-2 shadow-sm box-border">
+          <div className="w-full p-3 rounded-xl border border-surface-border bg-surface-alt/80 backdrop-blur-sm text-txt-secondary text-xs flex items-center justify-center gap-2 shadow-sm box-border">
             <ArrowDown className="w-4 h-4 text-brand-primary shrink-0 animate-bounce" />
             <span className="leading-relaxed font-semibold">
               {tSession('session_simple_promo_totals_hint')}

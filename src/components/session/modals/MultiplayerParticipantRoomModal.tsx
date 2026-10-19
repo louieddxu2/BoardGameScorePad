@@ -33,7 +33,7 @@ const MultiplayerParticipantRoomModal: React.FC<MultiplayerParticipantRoomModalP
             <span>{t('multiplayer_reconnecting')}</span>
           </div>
         )}
-        <button type="button" onClick={() => { void onLeave(); }} className="btn-action-primary mt-5 min-h-10 w-full justify-center gap-2 bg-status-danger text-white shadow-none hover:bg-status-danger/90">
+        <button type="button" onClick={() => { void onLeave(); }} className="btn-action-primary mt-5 min-h-10 w-full justify-center gap-2 bg-status-danger text-txt-on-color shadow-none hover:bg-status-danger/90">
           <LogOut size={16} />
           <span>{t('multiplayer_leave_room')}</span>
         </button>

@@ -14,7 +14,7 @@ const MediaTool: React.FC<MediaToolProps> = ({ onTakePhoto, onScreenshot }) => {
         <div className="grid grid-cols-2 gap-3 h-full">
             <button
                 onClick={onTakePhoto}
-                className="flex flex-col items-center justify-center p-3 bg-surface-recessed hover:bg-surface-recessed-hover rounded-2xl border border-surface-border transition-all active:scale-95 text-txt-primary h-24 shadow-sm"
+                className="flex flex-col items-center justify-center p-3 bg-surface-alt hover:bg-surface-hover rounded-2xl border border-surface-border transition-all active:scale-95 text-txt-primary h-24 shadow-sm"
             >
                 <div className="p-2 bg-brand-secondary/10 rounded-full mb-1 text-brand-secondary">
                     <Camera size={24} />
@@ -23,7 +23,7 @@ const MediaTool: React.FC<MediaToolProps> = ({ onTakePhoto, onScreenshot }) => {
             </button>
             <button
                 onClick={onScreenshot}
-                className="flex flex-col items-center justify-center p-3 bg-surface-recessed hover:bg-surface-recessed-hover rounded-2xl border border-surface-border transition-all active:scale-95 text-txt-primary h-24 shadow-sm"
+                className="flex flex-col items-center justify-center p-3 bg-surface-alt hover:bg-surface-hover rounded-2xl border border-surface-border transition-all active:scale-95 text-txt-primary h-24 shadow-sm"
             >
                 <div className="p-2 bg-status-success/10 rounded-full mb-1 text-status-success">
                     <ImageIcon size={24} />

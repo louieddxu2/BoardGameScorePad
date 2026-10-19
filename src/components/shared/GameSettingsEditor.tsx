@@ -145,11 +145,11 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
                                         className="w-10 h-10 rounded-full shadow-lg border-2 border-white/20 flex items-center justify-center relative animate-in zoom-in duration-200 group hover:scale-110 transition-transform"
                                         style={{ backgroundColor: c }}
                                     >
-                                        <span className={`text-sm font-bold font-mono ${isColorDark(c) ? 'text-white/90' : 'text-black/60'}`}>
+                                        <span className={`text-sm font-bold font-mono ${isColorDark(c) ? 'text-txt-on-color/90' : 'text-black/60'}`}>
                                             {i + 1}
                                         </span>
                                         <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                            <X size={16} className="text-white" />
+                                            <X size={16} className="text-txt-on-color" />
                                         </div>
                                     </button>
                                 ))}
@@ -180,7 +180,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
                                             style={{ backgroundColor: c }}
                                         >
                                             {isSelected && (
-                                                <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-black'}`}>
+                                                <span className={`text-xs font-bold ${isDark ? 'text-txt-on-color' : 'text-black'}`}>
                                                     {selectedIndex}
                                                 </span>
                                             )}
@@ -198,7 +198,7 @@ const GameSettingsEditor: React.FC<GameSettingsEditorProps> = ({ isOpen, templat
             <footer className="safe-area-bottom-padding p-4 bg-app-bg border-t border-surface-border flex-none mt-auto">
                 <button
                     onClick={handleSave}
-                    className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
+                    className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color font-bold rounded-xl shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2 transition-transform active:scale-95"
                 >
                     <Save size={20} />
                     {t('btn_save')}

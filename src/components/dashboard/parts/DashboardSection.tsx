@@ -8,7 +8,7 @@ interface DashboardSectionProps {
   count: number;
   isOpen: boolean;
   onToggle: () => void;
-  titleColorClass?: string; // e.g. "text-white"
+  titleColorClass?: string; // e.g. "text-txt-title"
   iconColorClass?: string; // e.g. "text-brand-primary"
   actionButton?: React.ReactNode;
   children: React.ReactNode;

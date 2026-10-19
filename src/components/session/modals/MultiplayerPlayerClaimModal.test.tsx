@@ -81,7 +81,7 @@ describe('MultiplayerPlayerClaimModal', () => {
     const closeRoom = screen.getByRole('button', { name: 'Close room' });
     const buttons = screen.getAllByRole('button');
     expect(buttons[buttons.length - 1]).toBe(closeRoom);
-    expect(closeRoom).toHaveClass('bg-status-danger', 'text-white', 'w-full', 'min-h-12');
+    expect(closeRoom).toHaveClass('bg-status-danger', 'text-txt-on-color', 'w-full', 'min-h-12');
     fireEvent.click(closeRoom);
     expect(onCloseRoom).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();

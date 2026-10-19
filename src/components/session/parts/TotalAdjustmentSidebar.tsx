@@ -20,7 +20,7 @@ const TotalAdjustmentSidebar: React.FC<{
                     className={`flex-1 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 p-1
                         ${player.tieBreaker
                             ? 'bg-brand-secondary/20 border-brand-secondary text-brand-secondary shadow-lg'
-                            : 'bg-surface-recessed border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
+                            : 'bg-surface-alt border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
                         }
                     `}
                 >
@@ -34,7 +34,7 @@ const TotalAdjustmentSidebar: React.FC<{
                     className={`flex-1 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all active:scale-95 p-1
                         ${player.isForceLost
                             ? 'bg-status-danger/20 border-status-danger text-status-danger shadow-lg'
-                            : 'bg-surface-recessed border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
+                            : 'bg-surface-alt border-surface-border text-txt-muted hover:border-surface-border-hover hover:text-txt-secondary'
                         }
                     `}
                 >

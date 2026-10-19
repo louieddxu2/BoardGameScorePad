@@ -174,7 +174,7 @@ export const GameLaunchDashboard: React.FC<GameLaunchDashboardProps> = ({
                 >
                     <button
                         onClick={() => setPlayerCount(Math.max(1, playerCount - 1))}
-                        className={`w-9 h-9 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-bg-alt relative z-10 shrink-0 ${isPlayerCountManual ? 'opacity-80' : ''}`}
+                        className={`w-9 h-9 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-alt relative z-10 shrink-0 ${isPlayerCountManual ? 'opacity-80' : ''}`}
                     >
                         <Minus size={16} />
                     </button>

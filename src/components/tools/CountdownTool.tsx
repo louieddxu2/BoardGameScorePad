@@ -202,7 +202,7 @@ const CountdownTool: React.FC = () => {
                         className={`w-full py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all active:scale-95 shadow-sm
                             ${isRunning
                                 ? 'bg-status-warning/20 text-status-warning border border-status-warning/30'
-                                : (timeLeft === 0 ? 'bg-input-header text-txt-muted opacity-50 cursor-not-allowed' : 'bg-status-success text-white hover:opacity-90')
+                                : (timeLeft === 0 ? 'bg-input-header text-txt-muted opacity-50 cursor-not-allowed' : 'bg-status-success text-txt-on-color hover:opacity-90')
                             }
                         `}
                     >

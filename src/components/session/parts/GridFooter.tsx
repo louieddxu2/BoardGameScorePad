@@ -81,7 +81,7 @@ const GridFooter: React.FC<GridFooterProps> = ({
                         onClick={onToggleToolbox}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95 shadow-sm group border
                         ${isToolboxOpen
-                                ? 'bg-brand-primary text-white border-brand-primary shadow-lg shadow-brand-primary/20'
+                                ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-lg shadow-brand-primary/20'
                                 : 'text-txt-muted border-[rgb(var(--c-grid-cell-border))] hover:text-txt-primary hover:border-txt-muted'
                             }
                     `}

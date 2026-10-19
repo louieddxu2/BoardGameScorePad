@@ -257,7 +257,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                 {/* Top Bar (Overlay on Video) */}
                 <div className="safe-area-top-padding absolute top-0 left-0 right-0 p-4 flex justify-between items-start bg-gradient-to-b from-black/60 to-transparent z-10 pointer-events-none">
                     <div className="pointer-events-auto">
-                        <button onClick={onClose} className="p-3 bg-black/40 text-white rounded-full backdrop-blur-md active:scale-95 transition-transform" style={iconStyle}>
+                        <button onClick={onClose} className="p-3 bg-black/40 text-txt-on-color rounded-full backdrop-blur-md active:scale-95 transition-transform" style={iconStyle}>
                             <X size={24} />
                         </button>
                     </div>
@@ -265,13 +265,13 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                     <div className="flex gap-4 pointer-events-auto">
                         <button
                             onClick={handleManualRotate}
-                            className="p-3 bg-black/40 text-white rounded-full backdrop-blur-md active:scale-95 transition-transform"
+                            className="p-3 bg-black/40 text-txt-on-color rounded-full backdrop-blur-md active:scale-95 transition-transform"
                             style={iconStyle}
                         >
                             <RotateCcw size={24} />
                         </button>
 
-                        <button onClick={() => setFacingMode(p => p === 'environment' ? 'user' : 'environment')} className="p-3 bg-black/40 text-white rounded-full backdrop-blur-md active:scale-95 transition-transform" style={iconStyle}>
+                        <button onClick={() => setFacingMode(p => p === 'environment' ? 'user' : 'environment')} className="p-3 bg-black/40 text-txt-on-color rounded-full backdrop-blur-md active:scale-95 transition-transform" style={iconStyle}>
                             <SwitchCamera size={24} />
                         </button>
                     </div>
@@ -291,7 +291,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                                 <div className="w-full h-full rounded-lg overflow-hidden border-2 border-white/50" style={iconStyle}>
                                     <img src={lastThumbnail} className="w-full h-full object-cover" alt="Last capture" />
                                 </div>
-                                <div className="absolute -top-2 -right-2 bg-brand-primary text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black z-10">
+                                <div className="absolute -top-2 -right-2 bg-brand-primary text-txt-on-color text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-black z-10">
                                     {captures.length}
                                 </div>
                             </div>
@@ -309,7 +309,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                     className="w-20 h-20 rounded-full border-4 border-white bg-transparent flex items-center justify-center active:scale-90 transition-transform disabled:opacity-80 disabled:scale-95"
                 >
                     {isProcessing ? (
-                        <Loader2 size={32} className="animate-spin text-white" />
+                        <Loader2 size={32} className="animate-spin text-txt-on-color" />
                     ) : (
                         <div className="w-16 h-16 bg-white rounded-full transition-all flex items-center justify-center">
                             <Camera size={28} className="text-txt-secondary" style={iconStyle} />
@@ -323,7 +323,7 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onClose, singleShot 
                         <button
                             onClick={handleDone}
                             disabled={isProcessing}
-                            className="w-14 h-14 bg-brand-primary-deep rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-all animate-in zoom-in duration-200 disabled:opacity-80 disabled:scale-95"
+                            className="w-14 h-14 bg-brand-primary-deep rounded-full flex items-center justify-center text-txt-on-color shadow-lg active:scale-95 transition-all animate-in zoom-in duration-200 disabled:opacity-80 disabled:scale-95"
                             style={iconStyle}
                         >
                             {isProcessing ? (

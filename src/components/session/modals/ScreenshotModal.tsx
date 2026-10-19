@@ -6,7 +6,7 @@ import { GameSession, GameTemplate } from '../../../types';
 import { ScreenshotLayout } from '../hooks/useSessionState';
 import ScreenshotView from '../parts/ScreenshotView';
 import { useToast } from '../../../hooks/useToast';
-import { getTouchDistance, getCurrentTheme } from '../../../utils/ui';
+import { getTouchDistance } from '../../../utils/ui';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
@@ -192,7 +192,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
 
                 const backgroundColor = baseImage 
                     ? 'rgb(var(--c-white))' 
-                    : (getCurrentTheme() === 'light' ? 'rgb(var(--c-slate-50))' : 'rgb(var(--c-slate-900))');
+                    : 'rgb(var(--c-app-bg))';
 
                 const blob = await toBlob(targetWrapper, {
                     backgroundColor: backgroundColor,
@@ -424,14 +424,14 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
                         <button
                             onClick={() => setActiveMode('full')}
                             disabled={showLoading}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'full' ? 'bg-brand-primary-deep text-white shadow-sm' : 'text-txt-muted hover:text-txt-primary'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'full' ? 'bg-brand-primary-deep text-txt-on-color shadow-sm' : 'text-txt-muted hover:text-txt-primary'}`}
                         >
                             <ImageIcon size={14} /> {t('photo_mode_full')}
                         </button>
                         <button
                             onClick={() => setActiveMode('simple')}
                             disabled={showLoading}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'simple' ? 'bg-status-info text-white shadow-sm' : 'text-txt-muted hover:text-txt-primary'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeMode === 'simple' ? 'bg-status-info text-txt-on-color shadow-sm' : 'text-txt-muted hover:text-txt-primary'}`}
                         >
                             <LayoutPanelLeft size={14} /> {t('photo_mode_simple')}
                         </button>

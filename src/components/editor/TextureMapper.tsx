@@ -495,7 +495,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
                 <button onClick={resetView} className="flex flex-col items-center gap-1 text-xs font-bold text-txt-muted hover:text-txt-primary active:scale-95 transition-all"><div className="p-3 rounded-xl bg-modal-bg-recessed"><ZoomIn size={20} /></div>{t('mapper_btn_reset_view')}</button>
                 <button onClick={(e) => { e.stopPropagation(); addLine('h'); }} className="flex flex-col items-center gap-1 text-xs font-bold text-txt-muted hover:text-txt-primary active:scale-95 transition-all"><div className="p-3 rounded-xl bg-modal-bg-recessed"><Plus size={20} /></div>{t('mapper_btn_add_line', { n: hLines.length })}</button>
               </div>
-              <button onClick={() => setPhase('structure')} className="bg-brand-primary hover:filter hover:brightness-110 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all">{t('mapper_btn_next')} <ArrowRight size={16} /></button>
+              <button onClick={() => setPhase('structure')} className="bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all">{t('mapper_btn_next')} <ArrowRight size={16} /></button>
             </>
           ) : (
             <>
@@ -510,7 +510,7 @@ const TextureMapper: React.FC<TextureMapperProps> = ({ imageSrc, initialName, in
                   <button onClick={() => setShowImportModal(true)} className="bg-status-info/10 text-status-info px-4 py-3 rounded-lg text-sm font-bold shadow flex items-center gap-2 border border-status-info/20 active:scale-95 transition-all"><CopyPlus size={16} /> {t('mapper_btn_import')}</button>
                 )}
               </div>
-              <button onClick={handleSave} className="bg-brand-secondary hover:filter hover:brightness-110 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all"><Check size={18} /> {t('mapper_btn_finish')}</button>
+              <button onClick={handleSave} className="bg-brand-secondary hover:filter hover:brightness-110 text-txt-on-color px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all"><Check size={18} /> {t('mapper_btn_finish')}</button>
             </>
           )}
         </footer>

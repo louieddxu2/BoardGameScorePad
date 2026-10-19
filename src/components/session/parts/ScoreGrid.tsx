@@ -395,7 +395,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
               </div>
 
               {aiStatus !== 'success' && (
-                <div className="flex gap-1.5 items-center justify-center py-1 bg-black/10 rounded-full px-3 border border-white/5">
+                <div className="flex gap-1.5 items-center justify-center py-1 bg-surface-alt rounded-full px-3 border border-surface-border/50">
                   <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-100" />
                   <div className="w-1 h-1 rounded-full bg-brand-secondary animate-bounce delay-200" />
                   <div className="w-1 h-1 rounded-full bg-brand-primary animate-bounce delay-300" />

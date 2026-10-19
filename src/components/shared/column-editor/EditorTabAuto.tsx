@@ -258,7 +258,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                             <Unlock size={24} />
                         </button>
                         :
-                        <button onClick={handleLock} className="px-4 bg-brand-primary text-white rounded-xl shadow-lg shadow-brand-primary/20 flex items-center justify-center active:scale-95 transition-all">
+                        <button onClick={handleLock} className="px-4 bg-brand-primary text-txt-on-color rounded-xl shadow-lg shadow-brand-primary/20 flex items-center justify-center active:scale-95 transition-all">
                             <Check size={24} />
                         </button>
                     }
@@ -285,7 +285,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                             <button onMouseDown={e => e.preventDefault()} onClick={() => {
                                 const nextId = existingXVars.length > 0 ? Math.max(...existingXVars.map(v => parseInt(v.substring(1)))) + 1 : 1;
                                 insertToken(`x${nextId}`);
-                            }} className="px-3 py-2 bg-brand-secondary text-white font-black rounded-lg text-xs flex items-center gap-1 shadow-lg shadow-brand-secondary/20 border border-brand-secondary/30 active:scale-95 transition-all">xi</button>
+                            }} className="px-3 py-2 bg-brand-secondary text-txt-on-color font-black rounded-lg text-xs flex items-center gap-1 shadow-lg shadow-brand-secondary/20 border border-brand-secondary/30 active:scale-95 transition-all">xi</button>
 
                             <div className="w-px h-6 bg-surface-border mx-2" />
 
@@ -300,7 +300,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                             <button onMouseDown={e => e.preventDefault()} onClick={() => {
                                 const nextId = existingFuncs.length > 0 ? Math.max(...existingFuncs.map(f => parseInt(f.substring(1)))) + 1 : 1;
                                 insertToken(`f${nextId}()`, -1);
-                            }} className="px-3 py-2 bg-status-info text-white font-black rounded-lg text-xs flex items-center gap-1 shadow-lg shadow-status-info/20 border border-status-info/30 active:scale-95 transition-all">fi()</button>
+                            }} className="px-3 py-2 bg-status-info text-txt-on-color font-black rounded-lg text-xs flex items-center gap-1 shadow-lg shadow-status-info/20 border border-status-info/30 active:scale-95 transition-all">fi()</button>
                         </div>
                     </div>
                 )}
@@ -439,7 +439,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                             <div className="animate-in fade-in slide-in-from-top-2 pt-4 pl-4 border-l-2 border-brand-secondary/30 ml-4">
                                 <div className="grid grid-cols-3 gap-2">
                                     {(['floor', 'ceil', 'round'] as const).map(mode => (
-                                        <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-black transition-all active:scale-95 ${column.rounding === mode ? 'bg-brand-secondary border-brand-secondary/50 text-white shadow-lg shadow-brand-secondary/20' : 'bg-modal-bg border-surface-border text-txt-muted'}`}>
+                                        <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-black transition-all active:scale-95 ${column.rounding === mode ? 'bg-brand-secondary border-brand-secondary/50 text-txt-on-color shadow-lg shadow-brand-secondary/20' : 'bg-modal-bg border-surface-border text-txt-muted'}`}>
                                             {mode === 'floor' ? t('col_round_floor') : mode === 'ceil' ? t('col_round_ceil') : t('col_round_round')}
                                         </button>
                                     ))}

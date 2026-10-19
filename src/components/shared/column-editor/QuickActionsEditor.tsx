@@ -169,7 +169,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
                 <Palette
                   size={14}
                   className={
-                    isColorDark(action.color || defaultColor) ? 'text-white/80' : 'text-black/50'
+                    isColorDark(action.color || defaultColor) ? 'text-txt-on-color/80' : 'text-black/50'
                   }
                 />
               </button>

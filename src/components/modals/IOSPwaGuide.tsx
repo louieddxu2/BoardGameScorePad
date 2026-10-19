@@ -22,7 +22,7 @@ export const IOSPwaGuide: React.FC<IOSPwaGuideProps> = ({ onClose }) => {
     };
 
     return (
-        <div className="safe-area-screen-padding-5 fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-black/50 animate-in fade-in duration-500 backdrop-blur-sm">
+        <div className="safe-area-screen-padding-5 fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-modal-backdrop/50 animate-in fade-in duration-500 backdrop-blur-sm">
             <div className="bg-surface-bg rounded-3xl p-6 w-[90%] max-w-[400px] text-center shadow-2xl animate-in zoom-in-95 duration-300 border border-surface-border relative">
 
                 <div className="w-16 h-16 bg-brand-primary/10 rounded-2xl flex items-center justify-center text-brand-primary mx-auto mb-4">
@@ -38,7 +38,7 @@ export const IOSPwaGuide: React.FC<IOSPwaGuideProps> = ({ onClose }) => {
                 </p>
 
                 {/* Boxed Instruction Area */}
-                <div className="bg-surface-bg-alt/50 rounded-2xl p-5 text-left border-2 border-dashed border-surface-border mb-8">
+                <div className="bg-surface-alt/50 rounded-2xl p-5 text-left border-2 border-dashed border-surface-border mb-8">
                     <div className="space-y-4">
                         <p className="text-sm text-txt-primary font-bold">
                             {t('guide_ios_pwa_step1')}
@@ -51,7 +51,7 @@ export const IOSPwaGuide: React.FC<IOSPwaGuideProps> = ({ onClose }) => {
 
                 <button 
                     onClick={handleConfirm}
-                    className="w-full py-4 bg-brand-primary text-white rounded-2xl font-bold hover:bg-brand-primary-alt transition-colors shadow-lg shadow-brand-primary/20"
+                    className="w-full py-4 bg-brand-primary text-txt-on-color rounded-2xl font-bold hover:bg-brand-primary-deep transition-colors shadow-lg shadow-brand-primary/20"
                 >
                     {t('guide_ios_pwa_close')}
                 </button>

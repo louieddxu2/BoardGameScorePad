@@ -444,7 +444,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
     return createPortal(
         <div 
-            className="fixed inset-0 bg-black flex flex-col animate-in fade-in duration-200 text-white select-none"
+            className="fixed inset-0 bg-black flex flex-col animate-in fade-in duration-200 text-txt-on-color select-none"
             data-mobile-zoom-ignore="true"
             style={{ zIndex }}
         >
@@ -486,7 +486,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
                             {/* 置中的橫置退出指示 (長寬比自適應邊框與旋轉) */}
                             <div className="py-2 px-5 border-y border-white/20 my-2 portrait:my-0 portrait:mx-2 select-none portrait:w-10 portrait:h-48 portrait:flex portrait:items-center portrait:justify-center portrait:border-x portrait:border-y-0">
-                                <span className="text-white text-[2.2vw] portrait:text-[2.4vh] landscape:text-[2.2vw] font-bold opacity-90 tracking-wider whitespace-nowrap transform portrait:rotate-90">
+                                <span className="text-txt-on-color text-[2.2vw] portrait:text-[2.4vh] landscape:text-[2.2vw] font-bold opacity-90 tracking-wider whitespace-nowrap transform portrait:rotate-90">
                                     {t('picker_prototype_exit_hint')}
                                 </span>
                             </div>
@@ -505,7 +505,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     {phase === 'selecting' && hasEnoughPlayers && (
                         <button
                             onClick={startDraw}
-                            className="pointer-events-auto flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-2xl transition-transform active:scale-95 text-sm font-bold border border-white/10"
+                            className="pointer-events-auto flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color shadow-2xl transition-transform active:scale-95 text-sm font-bold border border-white/10"
                         >
                             <Play size={18} />
                             <span>{t('picker_prototype_draw_order')}</span>
@@ -529,7 +529,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                             </button>
                             <button
                                 onClick={handleConfirm}
-                                className="pointer-events-auto absolute left-1/2 top-1/2 flex min-w-[172px] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-white shadow-2xl transition-transform active:scale-95 px-7 py-4 text-base font-bold border border-white/10"
+                                className="pointer-events-auto absolute left-1/2 top-1/2 flex min-w-[172px] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 rounded-2xl bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color shadow-2xl transition-transform active:scale-95 px-7 py-4 text-base font-bold border border-white/10"
                             >
                                 <Play size={18} />
                                 <span>{t('picker_prototype_start_game')}</span>

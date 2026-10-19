@@ -248,7 +248,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 highlight={newSystemTemplatesCount > 0 && !searchQuery}
                 actionButton={
                     newSystemTemplatesCount > 0 && !searchQuery ? (
-                        <button onClick={(e) => { e.stopPropagation(); onClearNewBadges(); setIsSystemLibOpen(true); }} className="flex items-center gap-1 bg-brand-secondary hover:bg-brand-secondary/80 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-ui-floating">
+                        <button onClick={(e) => { e.stopPropagation(); onClearNewBadges(); setIsSystemLibOpen(true); }} className="flex items-center gap-1 bg-brand-secondary hover:bg-brand-secondary/80 text-txt-on-color text-xs font-bold px-3 py-1.5 rounded-lg shadow-ui-floating">
                             <Sparkles size={14} /> {t('dash_new_games_found', { count: newSystemTemplatesCount })}
                         </button>
                     ) : undefined

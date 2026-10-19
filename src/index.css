@@ -83,6 +83,7 @@
   --c-yellow-400: 250 204 21;
   --c-amber-400: 251 191 36;
   --c-amber-500: 245 158 11;
+  --c-amber-900: 120 53 15;
 
   --c-red-400: 248 113 113;
   --c-red-500: 239 68 68;
@@ -90,12 +91,13 @@
   --c-red-900: 127 29 29;
 
   /* Accent & Shared UI Tokens */
-  --c-accent-emerald: 16 185 129;
-  --c-btn-primary-bg: var(--c-accent-emerald);
-  --c-btn-primary-text: 255 255 255;
-  --btn-shadow-active: 0 8px 25px -4px rgba(var(--c-accent-emerald), 0.3);
-  --btn-border-primary: var(--c-accent-emerald) / 0.3;
-  --c-icon-active: var(--c-accent-emerald);
+  --c-btn-primary-bg: var(--c-brand-primary);
+  --c-btn-primary-text: var(--c-txt-on-color);
+  /* Foreground on filled controls and dark media overlays; independent of theme. */
+  --c-txt-on-color: var(--c-white);
+  --btn-shadow-active: 0 8px 25px -4px rgb(var(--c-brand-primary) / 0.3);
+  --btn-border-primary: var(--c-brand-primary) / 0.3;
+  --c-icon-active: var(--c-brand-primary);
   --filter-icon-active: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
 
   /* Player Palette (Source of Truth) */
@@ -153,12 +155,12 @@ html[data-ios-safari-browser='true'] {
   /* Modal System */
   --c-modal-bg: var(--c-app-bg);              /* slate-900: 容器底色 */
   --c-modal-bg-elevated: var(--c-surface-bg); /* slate-800: 浮起的互動表面 */
-  --c-modal-backdrop: 0 0 0;                  /* 純黑遮罩底色 */
   --c-modal-bg-recessed: var(--c-slate-850);  /* slate-850: 凹陷的容納區域 */
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: var(--c-slate-800);
   --c-modal-input-bg: var(--c-surface-bg);
-  --c-modal-backdrop: 2 6 23 / 0.65;
+  --c-modal-backdrop: 2 6 23;
+  --modal-backdrop-opacity: 0.65;
   --c-modal-text-title: 255 255 255;
   --c-modal-text-body: var(--c-txt-secondary);
   --c-modal-btn-sec-bg: 51 65 85; /* slate-700 */
@@ -185,8 +187,8 @@ html[data-ios-safari-browser='true'] {
   --c-grid-cell-bg: 15 23 42;          /* slate-900 */
   --c-grid-cell-bg-alt: 30 41 59 / 0.5; /* slate-800/50 */
   --c-grid-cell-border: 30 41 59;      /* slate-800 */
-  --c-grid-auto-bg: 16 185 129 / 0.1;  /* emerald-500/10 */
-  --c-grid-active-ring: 16 185 129;    /* emerald-500 */
+  --c-grid-auto-bg: var(--c-brand-primary) / 0.1;
+  --c-grid-active-ring: var(--c-brand-primary);
 
   /* --- Input System Tokens --- */
   --c-input-bg: 15 23 42;          /* slate-900 */
@@ -223,7 +225,8 @@ html[data-theme='light'] {
   --c-modal-border: var(--c-surface-border);
   --c-modal-divider: 243 244 246; /* gray-100 */
   --c-modal-input-bg: 243 244 246;
-  --c-modal-backdrop: 15 23 42 / 0.4;
+  --c-modal-backdrop: 15 23 42;
+  --modal-backdrop-opacity: 0.4;
   --c-modal-text-title: 17 24 39;  /* gray-900 */
   --c-modal-text-body: var(--c-txt-secondary);
   --c-modal-btn-sec-bg: 243 244 246; /* gray-100 */
@@ -250,8 +253,8 @@ html[data-theme='light'] {
   --c-grid-cell-bg: 255 255 255;       /* white */
   --c-grid-cell-bg-alt: 248 250 252;   /* slate-50 */
   --c-grid-cell-border: 226 232 240;   /* slate-200 */
-  --c-grid-auto-bg: 16 185 129 / 0.05; /* emerald-500/5% (Softer for light) */
-  --c-grid-active-ring: 16 185 129;    /* emerald-500 */
+  --c-grid-auto-bg: var(--c-brand-primary) / 0.05;
+  --c-grid-active-ring: var(--c-brand-primary);
 
   /* --- Input System Tokens --- */
   --c-input-bg: 248 250 252;       /* slate-50 */
@@ -284,10 +287,6 @@ html[data-theme='light'] {
     font-family: inherit;
   }
 
-  /* Force solid background for standard slate utilities to prevent legacy conflicts */
-  .bg-slate-900 {
-    background-color: rgb(var(--c-slate-900)) !important;
-  }
 }
 
 /* ============================================================
@@ -323,7 +322,7 @@ html[data-theme='light'] {
 
   .btn-ghost-action {
     @apply p-1.5 rounded-lg transition-colors focus:outline-none;
-    color: rgb(var(--c-accent-emerald));
+    color: rgb(var(--c-brand-primary));
   }
 
   .btn-ghost-action:hover {
@@ -408,7 +407,7 @@ html[data-theme='light'] {
   /* Specialized UI Utilities */
   .modal-backdrop {
     @apply fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300;
-    background-color: rgba(var(--c-modal-backdrop));
+    background-color: rgb(var(--c-modal-backdrop) / var(--modal-backdrop-opacity));
     padding-top: max(1rem, var(--app-safe-area-top));
     padding-right: max(1rem, var(--app-safe-area-right));
     padding-bottom: max(1rem, var(--app-safe-area-bottom));

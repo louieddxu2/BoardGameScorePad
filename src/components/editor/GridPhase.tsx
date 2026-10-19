@@ -106,7 +106,7 @@ const GridPhase: React.FC = () => {
           className="absolute right-[100%] top-[50%] mr-4 flex items-center justify-end"
           style={hLabelStyle}
         >
-          <div className="bg-brand-primary-deep text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-brand-primary">
+          <div className="bg-brand-primary-deep text-txt-on-color px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-brand-primary">
             <ScanLine size={12} /> {t('mapper_grid_top')}
           </div>
         </div>
@@ -125,7 +125,7 @@ const GridPhase: React.FC = () => {
           className="absolute right-[100%] top-[50%] mr-4 flex items-center justify-end"
           style={hLabelStyle}
         >
-          <div className="bg-brand-primary-deep text-white px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-brand-primary">
+          <div className="bg-brand-primary-deep text-txt-on-color px-2 py-1 rounded text-xs font-bold shadow flex items-center gap-1 border border-brand-primary">
             <ScanLine size={12} /> {t('mapper_grid_bottom')}
           </div>
         </div>
@@ -144,7 +144,7 @@ const GridPhase: React.FC = () => {
           className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center"
           style={vLabelTopStyle}
         >
-          <div className="bg-brand-primary-deep text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-brand-primary">{t('mapper_grid_left')}</div>
+          <div className="bg-brand-primary-deep text-txt-on-color px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-brand-primary">{t('mapper_grid_left')}</div>
         </div>
       </div>
 
@@ -161,7 +161,7 @@ const GridPhase: React.FC = () => {
           className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center"
           style={vLabelTopStyle}
         >
-          <div className="bg-brand-primary-deep text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-brand-primary">{t('mapper_grid_right')}</div>
+          <div className="bg-brand-primary-deep text-txt-on-color px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-brand-primary">{t('mapper_grid_right')}</div>
         </div>
       </div>
 
@@ -191,11 +191,11 @@ const GridPhase: React.FC = () => {
             <div className="absolute right-[100%] mr-2 top-0 flex items-center justify-end" style={hLineChildStyle}>
               <div className="flex items-center gap-1 -translate-y-1/2">
                 {isUserLine && (
-                  <button onClick={(e) => { e.stopPropagation(); deleteLine('h', originalIndex); }} className="p-1 bg-status-danger/80 hover:bg-status-danger text-white rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={(e) => { e.stopPropagation(); deleteLine('h', originalIndex); }} className="p-1 bg-status-danger/80 hover:bg-status-danger text-txt-on-color rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                     <Trash2 size={12} />
                   </button>
                 )}
-                <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow-sm border ${!isUserLine ? 'bg-surface-bg/80 text-txt-muted border-surface-border' : 'bg-status-info-deep text-white border-status-info'}`}>
+                <div className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap shadow-sm border ${!isUserLine ? 'bg-surface-bg/80 text-txt-muted border-surface-border' : 'bg-status-info text-txt-on-color border-status-info'}`}>
                   {t('mapper_grid_line_n', { i })}
                 </div>
                 <div className={`w-2 h-[1px] ${!isUserLine ? 'bg-surface-border' : 'bg-status-info'}`}></div>
@@ -221,7 +221,7 @@ const GridPhase: React.FC = () => {
             style={vLabelBottomStyle}
           >
             <div className="h-4 w-[1px] bg-status-info absolute top-0 left-1/2 -translate-x-1/2 -mt-4"></div>
-            <div className="bg-status-info-deep text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-status-info">{t('mapper_grid_v_item')}</div>
+            <div className="bg-status-info text-txt-on-color px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-status-info">{t('mapper_grid_v_item')}</div>
           </div>
         </div>
 
@@ -238,7 +238,7 @@ const GridPhase: React.FC = () => {
             className="absolute bottom-[100%] left-[50%] mb-4 flex flex-col items-center"
             style={vLabelTopStyle}
           >
-            <div className="bg-brand-primary-deep text-white px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-brand-primary">{t('mapper_grid_v_player')}</div>
+            <div className="bg-brand-primary-deep text-txt-on-color px-2 py-1 rounded text-xs font-bold shadow whitespace-nowrap border border-brand-primary">{t('mapper_grid_v_player')}</div>
             <div className="h-4 w-[1px] bg-brand-primary absolute bottom-0 left-1/2 -translate-x-1/2 -mb-4"></div>
           </div>
         </div>

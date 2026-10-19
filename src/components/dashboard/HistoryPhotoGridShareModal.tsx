@@ -485,7 +485,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             </div>
             <button
               onClick={confirmCrop}
-              className="shrink-0 h-12 px-4 rounded-xl bg-brand-primary text-white font-bold text-sm flex items-center gap-2 active:scale-95 transition-transform"
+              className="shrink-0 h-12 px-4 rounded-xl bg-brand-primary text-txt-on-color font-bold text-sm flex items-center gap-2 active:scale-95 transition-transform"
             >
               <Check size={18} />
               {t('grid_confirm_crop')}
@@ -516,7 +516,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             </button>
             <button
               onClick={handleShareImage}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-primary text-white font-bold text-sm active:scale-95 transition-all"
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-primary text-txt-on-color font-bold text-sm active:scale-95 transition-all"
             >
               <Share2 size={18} />
               {t('grid_share_button')}
@@ -533,7 +533,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
               </div>
             ) : tiles.length === 0 ? (
               <div className="flex flex-col items-center gap-3 text-txt-muted text-center">
-                <div className="w-16 h-16 rounded-full bg-surface-recessed flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-surface-alt flex items-center justify-center">
                   <ImageIcon size={30} className="opacity-60" />
                 </div>
                 <div>
@@ -555,7 +555,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
             <button
               onClick={handleGenerateImage}
               disabled={tiles.length === 0 || isLoading || isExporting}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-primary text-white font-bold text-sm disabled:bg-surface-bg disabled:text-txt-muted disabled:cursor-not-allowed active:scale-95 transition-all"
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-brand-primary text-txt-on-color font-bold text-sm disabled:bg-surface-bg disabled:text-txt-muted disabled:cursor-not-allowed active:scale-95 transition-all"
             >
               {isExporting ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
               {isExporting ? t('grid_exporting') : t('grid_generate_action')}

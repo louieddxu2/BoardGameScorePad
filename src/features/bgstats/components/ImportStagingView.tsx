@@ -228,7 +228,7 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
                 <button
                     onClick={handleConfirmClick}
                     disabled={isProcessing}
-                    className="px-6 py-2 bg-brand-primary-deep hover:bg-brand-primary text-white rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {t('staging_btn_confirm')} <ArrowRight size={16} />
                 </button>

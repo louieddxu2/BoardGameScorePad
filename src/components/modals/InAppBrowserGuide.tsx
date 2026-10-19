@@ -24,7 +24,7 @@ export const InAppBrowserGuide: React.FC = () => {
     if (!isInApp) return null;
 
     return (
-        <div className="safe-area-screen-padding-5 fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-black/50 animate-in fade-in duration-500 backdrop-blur-sm">
+        <div className="safe-area-screen-padding-5 fixed inset-0 w-screen h-screen z-[999999] flex items-center justify-center p-5 box-border bg-modal-backdrop/50 animate-in fade-in duration-500 backdrop-blur-sm">
             {/* Modal Container - Max width 2/3 of screen */}
             <div className="bg-surface-bg rounded-3xl p-6 w-[80%] max-w-[400px] text-center shadow-2xl animate-in zoom-in-95 duration-300 border border-surface-border relative">
 
@@ -34,7 +34,7 @@ export const InAppBrowserGuide: React.FC = () => {
                 </h3>
 
                 {/* Boxed Instruction Area */}
-                <div className="bg-surface-bg-alt/50 rounded-2xl p-5 text-left border-2 border-dashed border-surface-border">
+                <div className="bg-surface-alt/50 rounded-2xl p-5 text-left border-2 border-dashed border-surface-border">
                     <p className="text-xs font-bold text-brand-primary mb-3 uppercase tracking-wider">
                         {t('guide_inapp_steps_header')}
                     </p>

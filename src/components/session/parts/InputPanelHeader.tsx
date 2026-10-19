@@ -22,7 +22,7 @@ const InputPanelHeader: React.FC<{
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
     const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
-    const bgColor = isTransparent ? 'rgb(var(--c-surface-recessed))' : `${player.color}20`;
+    const bgColor = isTransparent ? 'rgb(var(--c-surface-bg-alt))' : `${player.color}20`;
     const borderColor = isTransparent ? 'rgb(var(--c-surface-border))' : `${player.color}40`;
 
     // Auto columns cannot be cleared manually
@@ -54,7 +54,7 @@ const InputPanelHeader: React.FC<{
                         <span className="text-[10px] shrink-0 font-bold opacity-70 uppercase tracking-tighter" style={{ color: displayColor }}>
                             {t('input_edit_player')}
                         </span>
-                        <div className="w-px h-3 bg-[rgb(var(--c-white)_/_0.1)] shrink-0" />
+                        <div className="w-px h-3 bg-surface-border shrink-0" />
                         <ContrastText
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow"
@@ -93,7 +93,7 @@ const InputPanelHeader: React.FC<{
                     }}
                     className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all border shrink-0 ${isVoiceEnabled
                         ? 'bg-status-success/20 border-status-success/50 text-status-success'
-                        : 'bg-surface-recessed border-surface-border text-txt-muted hover:text-txt-primary'}`}
+                        : 'bg-surface-alt border-surface-border text-txt-muted hover:text-txt-primary'}`}
                     title={isVoiceEnabled ? t('input_voice_on') : t('input_voice_off')}
                 >
                     {isVoiceEnabled ? (
@@ -126,7 +126,7 @@ const InputPanelHeader: React.FC<{
                 <button
                     onMouseDown={(e) => e.preventDefault()} // Keep focus on input
                     onClick={onDirectionToggle}
-                    className="bg-surface-recessed hover:bg-surface-hover text-txt-secondary h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-surface-border shadow-sm"
+                    className="bg-surface-alt hover:bg-surface-hover text-txt-secondary h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-surface-border shadow-sm"
                 >
                     <span className="text-status-success hidden xs:inline">{t('input_next')}</span>
                     <div className="flex font-mono text-[10px] items-center">

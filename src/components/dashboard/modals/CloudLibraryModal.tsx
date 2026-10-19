@@ -251,7 +251,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
                   };
                   load();
                 }}
-                className="px-4 py-2 bg-brand-primary text-white text-xs font-bold rounded-lg hover:filter hover:brightness-110 active:scale-95 transition-all"
+                className="px-4 py-2 bg-brand-primary text-txt-on-color text-xs font-bold rounded-lg hover:filter hover:brightness-110 active:scale-95 transition-all"
               >
                 Retry
               </button>
@@ -269,7 +269,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
                   <button
                     onClick={handleImportAll}
                     disabled={isImportingAll || !!importingId}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-brand-primary to-brand-secondary rounded-xl shadow-lg hover:filter hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-txt-on-color bg-gradient-to-r from-brand-primary to-brand-secondary rounded-xl shadow-lg hover:filter hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all"
                   >
                     {isImportingAll ? (
                       <>
@@ -311,7 +311,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
                           <button
                             onClick={(e) => handleDelete(item.id, item.name, e)}
                             disabled={!!deletingId || isImportingAll || !!importingId}
-                            className="p-1 rounded bg-status-danger/10 hover:bg-status-danger text-status-danger hover:text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                            className="p-1 rounded bg-status-danger/10 hover:bg-status-danger text-status-danger hover:text-txt-on-color transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center"
                             title={t('lib_btn_delete_tooltip')}
                           >
                             {deletingId === item.id ? (
@@ -348,7 +348,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
                           <button
                             onClick={() => handleSingleImport(item)}
                             disabled={!!importingId || isImportingAll}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg border border-brand-primary/30 text-brand-primary bg-brand-primary/5 hover:bg-brand-primary hover:text-white transition-all active:scale-95 disabled:opacity-50"
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg border border-brand-primary/30 text-brand-primary bg-brand-primary/5 hover:bg-brand-primary hover:text-txt-on-color transition-all active:scale-95 disabled:opacity-50"
                           >
                             {isSingleImporting ? (
                               <Loader2 size={12} className="animate-spin" />

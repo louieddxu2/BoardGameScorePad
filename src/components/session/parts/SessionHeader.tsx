@@ -170,7 +170,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         {canEditTemplate && <button
           onMouseDown={preventBlur}
           onClick={onToggleEditMode}
-          className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-brand-secondary border-brand-secondary text-white shadow-lg' : 'modal-bg-elevated border-surface-border text-txt-muted hover:text-txt-primary'}`}
+          className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-brand-secondary border-brand-secondary text-txt-on-color shadow-lg' : 'modal-bg-elevated border-surface-border text-txt-muted hover:text-txt-primary'}`}
           title={isEditMode ? t('session_lock_edit') : t('session_unlock_edit')}
         >
           {isEditMode ? <Unlock size={20} /> : <Lock size={20} />}

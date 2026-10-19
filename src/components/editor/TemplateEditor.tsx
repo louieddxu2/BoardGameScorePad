@@ -254,13 +254,13 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({ onSave, onCancel, initi
                             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-surface-border">
                                 <button
                                     onClick={handleCreateImageBoard}
-                                    className="w-full py-4 bg-status-info hover:filter hover:brightness-110 text-white text-base font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-2"
+                                    className="w-full py-4 bg-status-info hover:filter hover:brightness-110 text-txt-on-color text-base font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-2"
                                 >
                                     <ImageIcon size={24} /> {t('tmpl_btn_img')}
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-white text-base font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-2"
+                                    className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color text-base font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-2"
                                 >
                                     <LayoutTemplate size={24} /> {t('tmpl_btn_std')}
                                 </button>

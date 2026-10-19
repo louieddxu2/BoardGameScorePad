@@ -410,7 +410,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               }`}>
                 <button
                   onClick={() => setPlayerCount(prev => prev === null || prev <= 1 ? null : prev - 1)}
-                  className="w-8 h-8 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-bg-alt relative z-10 shrink-0"
+                  className="w-8 h-8 flex items-center justify-center bg-surface-bg text-txt-muted rounded-lg active:scale-95 transition-transform hover:bg-surface-alt relative z-10 shrink-0"
                 >
                   <Minus size={16} />
                 </button>
@@ -454,7 +454,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 
             <button
               onClick={() => setShowPhotoGrid(true)}
-              className="flex-1 min-w-0 h-full flex flex-col items-center justify-center gap-0.5 transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-white"
+              className="flex-1 min-w-0 h-full flex flex-col items-center justify-center gap-0.5 transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color"
               title={t('stats_photo_grid_title')}
             >
               <Images size={23} />

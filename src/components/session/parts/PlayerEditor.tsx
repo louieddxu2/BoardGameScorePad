@@ -186,7 +186,7 @@ const PlayerEditor: React.FC<PlayerEditorProps> = ({
             ) : (
               <Palette
                 size={20}
-                className={isMainDark ? 'text-white/80' : 'text-black/50'}
+                className={isMainDark ? 'text-txt-on-color/80' : 'text-black/50'}
                 strokeWidth={2.5}
               />
             )}

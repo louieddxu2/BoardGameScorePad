@@ -100,7 +100,7 @@ const SessionViewportDiagnostics: React.FC = () => {
   return (
     <output
       data-session-viewport-diagnostics="true"
-      className="fixed left-1 top-1 z-[10000] pointer-events-none whitespace-pre rounded bg-black/90 px-2 py-1 font-mono text-[10px] leading-tight text-white shadow-xl"
+      className="fixed left-1 top-1 z-[10000] pointer-events-none whitespace-pre rounded bg-black/90 px-2 py-1 font-mono text-[10px] leading-tight text-txt-on-color shadow-xl"
     >
       {`appZoom ${round(snapshot.appZoom)} root ${round(snapshot.rootFontSize)}px\n`}
       {`vv h${round(snapshot.visualHeight)} top${round(snapshot.visualOffsetTop)} scale${round(snapshot.visualScale)} bottom${round(snapshot.visualBottom)}\n`}

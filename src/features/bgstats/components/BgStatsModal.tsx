@@ -168,7 +168,7 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
     // Default Modal Layout for other states
     return (
         <div
-            className="fixed inset-0 z-[60] bg-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 z-[60] bg-modal-backdrop/[var(--modal-backdrop-opacity)] backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
             onClick={onClose}
         >
             <div
@@ -205,7 +205,7 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={importState === 'analyzing' || exportState === 'processing'}
-                                    className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-white font-bold rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color font-bold rounded-xl shadow-lg flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
                                 >
                                     {importState === 'analyzing' ? (
                                         <Loader2 size={24} className="animate-spin" />
@@ -230,7 +230,7 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
                                     className={`
                                 w-full py-4 rounded-xl font-bold border flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group
                                 ${exportState === 'ready'
-                                            ? 'bg-status-info hover:filter hover:brightness-110 text-white border-white/10 shadow-lg'
+                                            ? 'bg-status-info hover:filter hover:brightness-110 text-txt-on-color border-status-info/50 shadow-lg'
                                             : 'modal-bg-recessed hover:modal-bg-elevated text-txt-primary border-surface-border'
                                         }
                             `}

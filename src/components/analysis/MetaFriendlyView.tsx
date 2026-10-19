@@ -36,7 +36,7 @@ const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon
                 </div>
             </button>
             {isOpen && (
-                <div className="p-2 border-t border-surface-border bg-black/20">
+                <div className="p-2 border-t border-surface-border bg-surface-alt">
                     {children}
                 </div>
             )}

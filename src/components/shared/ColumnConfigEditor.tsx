@@ -497,7 +497,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             </main>
             {!isKeyboardOpen && (
                 <footer className="flex-none p-4 bg-modal-bg/80 backdrop-blur-sm border-t border-surface-border">
-                    <button onClick={handleSave} className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-white font-bold rounded-xl shadow-lg shadow-brand-primary/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
+                    <button onClick={handleSave} className="w-full py-3 bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color font-bold rounded-xl shadow-lg shadow-brand-primary/50 flex items-center justify-center gap-2"><Save size={20} /> {t('col_btn_save')}</button>
                 </footer>
             )}
         </div>

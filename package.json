@@ -16,6 +16,7 @@
     "test:core": "vitest run --exclude \"{src/components/session/SessionUI.test.tsx,src/utils/ui-consistency.test.ts}\"",
     "test:release": "vitest run",
     "test:ui": "vitest run src/utils/ui-consistency.test.ts",
+    "check:theme": "node scripts/check-theme.mjs && npm run test:ui",
     "test:touch": "vitest run src/components/session/touchDiagnostics.test.ts",
     "audit:ci": "node scripts/audit-dependencies.mjs",
     "publish:v3test": "powershell -ExecutionPolicy Bypass -File scripts/publish-v3test.ps1"

@@ -230,23 +230,23 @@ export const DataList = ({ title, table, icon: Icon, isBGG = false }: { title: s
                         <button
                             key={item.id}
                             onClick={() => setSelectedId(item.id)}
-                            className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center active:scale-[0.98] ${selectedId === item.id ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated text-txt-secondary border border-surface-border/50 hover:modal-bg-recessed hover:text-txt-primary'}`}
+                            className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center active:scale-[0.98] ${selectedId === item.id ? 'bg-brand-primary text-txt-on-color shadow-md' : 'modal-bg-elevated text-txt-secondary border border-surface-border/50 hover:modal-bg-recessed hover:text-txt-primary'}`}
                         >
                             <div className="flex flex-col min-w-0">
                                 <span className="truncate font-bold">{item.name || item.id}</span>
                                 {/* Visual hint for BGG link */}
                                 {!isBGG && item.bggId && (
-                                    <span className={`text-[9px] font-mono leading-none mt-0.5 flex items-center gap-0.5 ${selectedId === item.id ? 'text-white/80' : 'text-brand-secondary'}`}>
+                                    <span className={`text-[9px] font-mono leading-none mt-0.5 flex items-center gap-0.5 ${selectedId === item.id ? 'text-txt-on-color/80' : 'text-brand-secondary'}`}>
                                         <Hash size={8} /> BGG
                                     </span>
                                 )}
                                 {isBGG && (
-                                    <span className={`text-[9px] font-mono leading-none mt-0.5 ${selectedId === item.id ? 'text-white/60' : 'text-txt-muted'}`}>
+                                    <span className={`text-[9px] font-mono leading-none mt-0.5 ${selectedId === item.id ? 'text-txt-on-color/60' : 'text-txt-muted'}`}>
                                         ID: {item.id}
                                     </span>
                                 )}
                             </div>
-                            {!isBGG && <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedId === item.id ? 'bg-white/20 text-white' : 'bg-surface-border/50 text-txt-muted'}`}>{item.usageCount || 0}</span>}
+                            {!isBGG && <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedId === item.id ? 'bg-white/20 text-txt-on-color' : 'bg-surface-border/50 text-txt-muted'}`}>{item.usageCount || 0}</span>}
                         </button>
                     ))}
                     {data.length === 0 && (

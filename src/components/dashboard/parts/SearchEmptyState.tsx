@@ -33,7 +33,7 @@ const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ searchQuery, onCrea
 
   // Centered Block Style (Restored & Enhanced)
   return (
-    <div className={`col-span-2 flex flex-col items-center justify-center py-6 px-4 gap-4 border-2 border-dashed border-surface-border/50 rounded-xl animate-in fade-in zoom-in-95 duration-300 ${hasResults ? 'mt-4 bg-surface-bg-alt/50' : ''}`}>
+    <div className={`col-span-2 flex flex-col items-center justify-center py-6 px-4 gap-4 border-2 border-dashed border-surface-border/50 rounded-xl animate-in fade-in zoom-in-95 duration-300 ${hasResults ? 'mt-4 bg-surface-alt/50' : ''}`}>
 
       {!hasResults && (
         <p className="text-txt-muted text-sm italic">
@@ -45,7 +45,7 @@ const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ searchQuery, onCrea
         {/* Button 1: Original Create (Edit Mode) */}
         <button
           onClick={() => onCreate(searchQuery)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-surface-bg text-txt-primary border border-surface-border rounded-xl hover:bg-surface-bg-alt transition-all active:scale-95 shadow-sm group"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-surface-bg text-txt-primary border border-surface-border rounded-xl hover:bg-surface-alt transition-all active:scale-95 shadow-sm group"
         >
           <LayoutTemplate size={18} className="text-txt-muted group-hover:text-txt-primary transition-colors" />
           <span className="font-bold text-sm">
@@ -57,7 +57,7 @@ const SearchEmptyState: React.FC<SearchEmptyStateProps> = ({ searchQuery, onCrea
         <button
           onClick={handleQuickCreate}
           disabled={isCreating}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-primary/10 text-brand-primary border border-brand-primary/30 rounded-xl hover:bg-brand-primary hover:text-white hover:border-brand-primary transition-all active:scale-95 shadow-sm group"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-primary/10 text-brand-primary border border-brand-primary/30 rounded-xl hover:bg-brand-primary hover:text-txt-on-color hover:border-brand-primary transition-all active:scale-95 shadow-sm group"
         >
           {isCreating ? <Loader2 size={18} className="animate-spin" /> : <PlayCircle size={18} className="group-hover:scale-110 transition-transform" />}
           <span className="font-bold text-sm">

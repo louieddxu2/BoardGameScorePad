@@ -84,7 +84,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             } as React.CSSProperties}
         >
             {isSelected && (
-                <div className="absolute -top-1.5 -right-1.5 bg-white text-status-success rounded-full p-[2px] shadow-md animate-in zoom-in duration-200 z-20">
+                <div className="absolute -top-1.5 -right-1.5 bg-surface-bg text-status-success rounded-full p-[2px] shadow-md animate-in zoom-in duration-200 z-20">
                     <Check strokeWidth={4} size={12} />
                 </div>
             )}

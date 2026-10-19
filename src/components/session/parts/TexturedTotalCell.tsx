@@ -266,7 +266,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
       <ContrastText 
         className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" 
-        color={bgUrl ? (visualForceLost ? 'rgb(var(--c-txt-muted))' : 'rgb(var(--c-txt-on-dark))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
+        color={bgUrl ? (visualForceLost ? 'rgb(var(--c-txt-muted))' : 'rgb(var(--c-txt-primary))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
         style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
         isTextureMode={!!bgUrl}
       >

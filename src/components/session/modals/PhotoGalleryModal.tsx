@@ -169,7 +169,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                     <button
                         onClick={onTakePhoto}
                         aria-label={t('gallery_camera')}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary hover:bg-brand-primary-deep text-white rounded-lg text-xs font-bold shadow-md transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-2 bg-brand-primary hover:bg-brand-primary-deep text-txt-on-color rounded-lg text-xs font-bold shadow-md transition-colors"
                     >
                         <Camera size={14} /> <span className="hidden sm:inline">{t('gallery_camera')}</span>
                     </button>
@@ -207,7 +207,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
                                 onAnimationEnd={event => {
                                     if (event.target === event.currentTarget && returnPhotoId === img.id) setReturnPhotoId(null);
                                 }}
-                                className={`aspect-square bg-surface-recessed rounded-lg overflow-hidden relative cursor-pointer group active:scale-95 transition-transform border border-surface-border focus-visible:ring-2 focus-visible:ring-brand-secondary ${returnPhotoId === img.id ? 'photo-return-highlight' : ''}`}
+                                className={`aspect-square bg-surface-alt rounded-lg overflow-hidden relative cursor-pointer group active:scale-95 transition-transform border border-surface-border focus-visible:ring-2 focus-visible:ring-brand-secondary ${returnPhotoId === img.id ? 'photo-return-highlight' : ''}`}
                             >
                                 <img src={img.url} className="w-full h-full object-cover" alt="Session Photo" loading="lazy" />
                                 <div className="absolute inset-0 bg-txt-primary/0 group-hover:bg-txt-primary/5 transition-colors" />
@@ -218,7 +218,7 @@ const PhotoGalleryModal: React.FC<PhotoGalleryModalProps> = ({ isOpen, onClose, 
 
                 {images.length === 0 && !loading && (
                     <div className="flex flex-col items-center justify-center h-64 text-txt-muted gap-4">
-                        <div className="w-16 h-16 rounded-full bg-surface-recessed flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-surface-alt flex items-center justify-center">
                             <ImageIcon size={32} className="opacity-50" />
                         </div>
                         <p className="text-sm">{t('gallery_empty')}</p>

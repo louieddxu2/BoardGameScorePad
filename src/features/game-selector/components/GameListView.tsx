@@ -55,14 +55,14 @@ export const GameListView: React.FC<GameListViewProps> = ({
                             <div className="flex flex-wrap justify-center gap-2 max-w-[90%]">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onOpenBgStats(); }}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-bg-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
                                 >
                                     <FileJson size={12} />
                                     {t('btn_bgstats_open')}
                                 </button>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onOpenBggImport(); }}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-bg-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
                                 >
                                     <Database size={12} />
                                     {t('btn_bgg_open')}

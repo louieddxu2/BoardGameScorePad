@@ -25,7 +25,7 @@ export default {
           900: 'rgb(var(--c-slate-900) / <alpha-value>)',
           950: 'rgb(var(--c-slate-950) / <alpha-value>)',
         },
-        // Override basic White/Black to flip in light mode
+        // Fixed palette primitives: media, QR codes and custom-color contrast only.
         white: 'rgb(var(--c-white) / <alpha-value>)',
         black: 'rgb(var(--c-black) / <alpha-value>)',
 
@@ -76,6 +76,7 @@ export default {
           secondary: 'rgb(var(--c-txt-secondary) / <alpha-value>)',
           tertiary: 'rgb(var(--c-txt-tertiary) / <alpha-value>)',
           muted: 'rgb(var(--c-txt-muted) / <alpha-value>)',
+          'on-color': 'rgb(var(--c-txt-on-color) / <alpha-value>)',
           'card-hover': 'rgb(var(--c-card-txt-hover) / <alpha-value>)',
         },
         surface: {

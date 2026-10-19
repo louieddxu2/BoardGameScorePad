@@ -207,7 +207,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                             </div>
                             <button
                                 onClick={onUpload}
-                                className="w-full py-3 bg-brand-secondary hover:filter hover:brightness-110 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-brand-secondary hover:filter hover:brightness-110 text-txt-on-color font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
                                 <UploadCloud size={18} /> {tCloud('sync_btn_upload')}
                             </button>
@@ -244,7 +244,7 @@ const SyncDashboard: React.FC<SyncDashboardProps> = ({
                             </div>
                             <button
                                 onClick={onDownload}
-                                className="w-full py-3 bg-status-info hover:filter hover:brightness-110 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-status-info hover:filter hover:brightness-110 text-txt-on-color font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
                                 <DownloadCloud size={18} /> {tCloud('sync_btn_download')}
                             </button>

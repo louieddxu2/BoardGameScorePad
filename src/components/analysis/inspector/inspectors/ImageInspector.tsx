@@ -70,11 +70,11 @@ const ImageInspector = () => {
                         <button
                             key={img.id}
                             onClick={() => setSelectedId(img.id)}
-                            className={`w-full text-left p-2 rounded-lg text-xs transition-all flex flex-col gap-1 active:scale-[0.98] ${selectedId === img.id ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated text-txt-secondary border border-surface-border/50 hover:modal-bg-recessed hover:text-txt-primary'}`}
+                            className={`w-full text-left p-2 rounded-lg text-xs transition-all flex flex-col gap-1 active:scale-[0.98] ${selectedId === img.id ? 'bg-brand-primary text-txt-on-color shadow-md' : 'modal-bg-elevated text-txt-secondary border border-surface-border/50 hover:modal-bg-recessed hover:text-txt-primary'}`}
                         >
                             <div className="flex justify-between w-full">
-                                <span className={`font-mono truncate w-24 text-[10px] ${selectedId === img.id ? 'text-white/60' : 'text-txt-muted'}`}>{img.id.substring(0, 8)}...</span>
-                                <span className={`text-[9px] font-bold ${selectedId === img.id ? 'text-white/80' : 'text-txt-muted'}`}>
+                                <span className={`font-mono truncate w-24 text-[10px] ${selectedId === img.id ? 'text-txt-on-color/60' : 'text-txt-muted'}`}>{img.id.substring(0, 8)}...</span>
+                                <span className={`text-[9px] font-bold ${selectedId === img.id ? 'text-txt-on-color/80' : 'text-txt-muted'}`}>
                                     {img.createdAt ? new Date(img.createdAt).toLocaleDateString() : img.relatedType}
                                 </span>
                             </div>
@@ -83,7 +83,7 @@ const ImageInspector = () => {
                                 <span className="font-bold truncate">{img.sourceName || img.relatedId}</span>
                             </div>
                             {img.createdAt && (
-                                <div className={`text-[9px] flex items-center gap-1 ${selectedId === img.id ? 'text-white/50' : 'text-txt-muted/70'}`}>
+                                <div className={`text-[9px] flex items-center gap-1 ${selectedId === img.id ? 'text-txt-on-color/50' : 'text-txt-muted/70'}`}>
                                     <Clock size={8} />
                                     {new Date(img.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </div>
@@ -102,7 +102,7 @@ const ImageInspector = () => {
             <div className="flex-1 min-h-0 bg-app-bg p-4 flex flex-col items-center justify-center overflow-hidden">
                 {selectedImage ? (
                     <div className="flex flex-col flex-1 min-h-0 items-center gap-4 w-full animate-in fade-in slide-in-from-right-4 duration-300">
-                        <div className="relative flex-1 w-full min-h-0 rounded-xl overflow-hidden border border-surface-border bg-black/20 flex items-center justify-center shadow-inner">
+                        <div className="relative flex-1 w-full min-h-0 rounded-xl overflow-hidden border border-surface-border bg-surface-alt flex items-center justify-center shadow-inner">
                             {previewUrl && <img src={previewUrl} className="max-w-full max-h-full object-contain drop-shadow-2xl" alt="Preview" />}
                         </div>
                         <div className="w-full modal-bg-elevated p-4 rounded-xl border border-surface-border grid grid-cols-2 gap-4 text-xs shadow-lg">

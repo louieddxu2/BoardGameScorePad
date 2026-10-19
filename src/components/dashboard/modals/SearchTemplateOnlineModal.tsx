@@ -62,7 +62,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
+            className="fixed inset-0 bg-modal-backdrop/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300"
             style={{ zIndex }}
             onClick={(e) => {
                 if (e.target === e.currentTarget) onClose();
@@ -90,7 +90,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                         </div>
                         <button
                             onClick={onClose}
-                            className="p-1 text-txt-muted hover:text-txt-primary bg-surface-bg-alt rounded-lg transition-colors"
+                            className="p-1 text-txt-muted hover:text-txt-primary bg-surface-alt rounded-lg transition-colors"
                         >
                             <X size={20} />
                         </button>
@@ -100,7 +100,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                     <div className="flex-1 overflow-y-auto scrollbar-none pr-0.5">
                         {loading ? (
                             /* 骨架屏：脈搏亮滅閃爍與漸變流光 */
-                            <div className="bg-surface-bg-alt/60 border border-surface-border rounded-xl p-4 mb-4 animate-pulse flex flex-col gap-3 min-h-[120px]">
+                            <div className="bg-surface-alt/60 border border-surface-border rounded-xl p-4 mb-4 animate-pulse flex flex-col gap-3 min-h-[120px]">
                                 <div className="flex justify-between items-center">
                                     <div className="h-4 w-2/3 bg-txt-muted/20 rounded-md" />
                                     <div className="h-3 w-1/4 bg-txt-muted/20 rounded-md" />
@@ -124,7 +124,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                         ) : suggestions.length > 0 ? (
                             viewMode === 'detail' ? (
                                 /* 最佳推薦卡片預覽 */
-                                <div className="bg-surface-bg-alt/80 border border-brand-primary/20 rounded-xl p-4 mb-1 flex flex-col shadow-sm hover:border-brand-primary/40 transition-all duration-300 relative overflow-hidden group">
+                                <div className="bg-surface-alt/80 border border-brand-primary/20 rounded-xl p-4 mb-1 flex flex-col shadow-sm hover:border-brand-primary/40 transition-all duration-300 relative overflow-hidden group">
                                     
                                     <div className="flex justify-between items-start pr-8 mb-3">
                                         <span className="font-bold text-txt-primary text-[15px] truncate max-w-[200px]">
@@ -170,7 +170,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                     {/* 下載啟用按鈕 */}
                                     <button
                                         onClick={() => onSelectTemplate && onSelectTemplate(currentSuggestion)}
-                                        className="w-full py-2 bg-brand-primary text-white hover:brightness-110 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-brand-primary/10 active:scale-98"
+                                        className="w-full py-2 bg-brand-primary text-txt-on-color hover:brightness-110 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-brand-primary/10 active:scale-98"
                                     >
                                         <span>
                                             {currentSuggestion.isDownloaded 
@@ -199,7 +199,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                                                         setSelectedIdx(idx);
                                                         setViewMode('detail');
                                                     }}
-                                                    className={`bg-surface-bg-alt/50 border rounded-xl p-3 flex flex-col justify-between hover:border-brand-primary/40 hover:shadow-sm hover:scale-[1.01] cursor-pointer active:scale-98 transition-all duration-300 relative group min-h-[115px] ${
+                                                    className={`bg-surface-alt/50 border rounded-xl p-3 flex flex-col justify-between hover:border-brand-primary/40 hover:shadow-sm hover:scale-[1.01] cursor-pointer active:scale-98 transition-all duration-300 relative group min-h-[115px] ${
                                                         isSelected ? 'border-brand-primary bg-brand-primary/5' : 'border-surface-border'
                                                     }`}
                                                 >
@@ -247,7 +247,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                             )
                         ) : (
                             /* 查無在線範本 */
-                            <div className="bg-surface-bg-alt/30 border border-dashed border-surface-border rounded-xl p-5 mb-4 flex flex-col items-center justify-center text-center gap-2">
+                            <div className="bg-surface-alt/30 border border-dashed border-surface-border rounded-xl p-5 mb-4 flex flex-col items-center justify-center text-center gap-2">
                                 <span className="text-xl">✨</span>
                                 <span className="text-xs font-bold text-txt-secondary">
                                     {t('search_online_empty_title')}
@@ -265,7 +265,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                         <button
                             onClick={() => setViewMode(viewMode === 'detail' ? 'grid' : 'detail')}
                             disabled={viewMode === 'detail' && suggestions.length < 2}
-                            className="flex items-center justify-center gap-1.5 py-3 px-2 text-txt-secondary font-bold rounded-xl bg-surface-bg-alt hover:bg-surface-bg border border-surface-border active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-1.5 py-3 px-2 text-txt-secondary font-bold rounded-xl bg-surface-alt hover:bg-surface-bg border border-surface-border active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             <span>
                                 {viewMode === 'detail'
@@ -277,7 +277,7 @@ const SearchTemplateOnlineModal: React.FC<SearchTemplateOnlineModalProps> = ({
                         {/* 右下角：AI 生成 */}
                         <button
                             onClick={onAiClick}
-                            className="flex items-center justify-center gap-1.5 py-3 px-2 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-xl font-bold text-xs shadow-md shadow-brand-primary/10 active:scale-95 hover:brightness-110 transition-all"
+                            className="flex items-center justify-center gap-1.5 py-3 px-2 bg-gradient-to-r from-brand-primary to-brand-secondary text-txt-on-color rounded-xl font-bold text-xs shadow-md shadow-brand-primary/10 active:scale-95 hover:brightness-110 transition-all"
                         >
                             <Sparkles size={13} className="animate-pulse" />
                             <span>{t('search_online_btn_ai')}</span>

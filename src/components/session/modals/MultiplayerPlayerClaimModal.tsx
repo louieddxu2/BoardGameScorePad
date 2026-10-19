@@ -58,12 +58,12 @@ const MultiplayerPlayerClaimModal: React.FC<MultiplayerPlayerClaimModalProps> = 
           {players.map((player) => {
             const selected = selectedIds.includes(player.id);
             return <button key={player.id} type="button" onClick={() => toggle(player.id)} className={`w-full flex items-center gap-3 p-3 text-left border rounded-lg transition-colors ${selected ? 'border-brand-primary bg-brand-primary/10' : 'border-surface-border hover:bg-surface-hover'}`}>
-              <span className="w-5 h-5 rounded border flex items-center justify-center shrink-0" style={{ borderColor: player.color, backgroundColor: selected ? player.color : 'transparent' }}>{selected && <Check size={14} className="text-white" />}</span>
+              <span className="w-5 h-5 rounded border flex items-center justify-center shrink-0" style={{ borderColor: player.color, backgroundColor: selected ? player.color : 'transparent' }}>{selected && <Check size={14} className="text-txt-on-color" />}</span>
               <span className="font-medium text-txt-primary truncate">{player.name}</span>
             </button>;
           })}
         </div>
-        <button type="button" disabled={!selectedIds.length && !isManage} onClick={() => onConfirm(selectedIds)} className="w-full mt-5 py-3 rounded-lg bg-brand-primary text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+        <button type="button" disabled={!selectedIds.length && !isManage} onClick={() => onConfirm(selectedIds)} className="w-full mt-5 py-3 rounded-lg bg-brand-primary text-txt-on-color font-bold disabled:opacity-40 disabled:cursor-not-allowed">
           {t(confirmKey)}
         </button>
       </section>

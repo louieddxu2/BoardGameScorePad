@@ -402,7 +402,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             {isConnected && viewMode === 'active' && (
                                 <button
                                     onClick={() => setShowSyncDashboard(true)}
-                                    className="bg-brand-primary hover:filter hover:brightness-110 text-white p-1.5 px-3 rounded-lg transition-all flex items-center gap-2 shadow-sm font-bold text-xs active:scale-95"
+                                    className="bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color p-1.5 px-3 rounded-lg transition-all flex items-center gap-2 shadow-sm font-bold text-xs active:scale-95"
                                     title={tCloud('sync_title')}
                                 >
                                     <ArrowRightLeft size={16} /> {tCloud('cloud_open_sync')}
@@ -416,28 +416,28 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                         <button
                             onClick={() => handleSwitchCategory('templates')}
                             disabled={!isConnected}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'templates' ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'templates' ? 'bg-brand-primary text-txt-on-color shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <LayoutGrid size={14} /> {tCloud('cloud_tab_templates')}
                         </button>
                         <button
                             onClick={() => handleSwitchCategory('sessions')}
                             disabled={!isConnected}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'sessions' ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'sessions' ? 'bg-brand-primary text-txt-on-color shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <Activity size={14} /> {tCloud('cloud_tab_active')}
                         </button>
                         <button
                             onClick={() => handleSwitchCategory('history')}
                             disabled={!isConnected}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'history' ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 ${category === 'history' ? 'bg-brand-primary text-txt-on-color shadow-md' : 'modal-bg-elevated border border-surface-border text-txt-muted hover:text-txt-secondary'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <History size={14} /> {tCloud('cloud_tab_history')}
                         </button>
                     </div>
 
                     <div className="flex gap-2 modal-bg-recessed p-1 rounded-lg border border-surface-border">
-                        <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${viewMode === 'active' ? 'bg-status-info text-white shadow-sm' : 'text-txt-muted hover:text-txt-secondary hover:modal-bg-elevated'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> {tCloud('cloud_tab_files')}</button>
+                        <button onClick={() => handleSwitchMode('active')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${viewMode === 'active' ? 'bg-status-info text-txt-on-color shadow-sm' : 'text-txt-muted hover:text-txt-secondary hover:modal-bg-elevated'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><FolderOpen size={14} /> {tCloud('cloud_tab_files')}</button>
                         <button onClick={() => handleSwitchMode('trash')} disabled={!isConnected} className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-95 ${viewMode === 'trash' ? 'bg-status-danger/20 text-status-danger shadow-sm border border-status-danger/30' : 'text-txt-muted hover:text-txt-secondary hover:modal-bg-elevated'} ${!isConnected ? 'opacity-50 cursor-not-allowed' : ''}`}><Trash2 size={14} /> {tCloud('cloud_tab_trash')}</button>
                     </div>
                 </div>
@@ -464,7 +464,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             <button
                                 onClick={handleConnect}
                                 disabled={isLoading}
-                                className="w-full max-w-[200px] py-3 bg-status-info hover:filter hover:brightness-110 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                className="w-full max-w-[200px] py-3 bg-status-info hover:filter hover:brightness-110 text-txt-on-color font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
                             >
                                 {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Cloud size={20} />}
                                 <span>{tCloud('cloud_btn_connect')}</span>
@@ -480,7 +480,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                             ) : (
                                 <div className="space-y-2">
                                     {cloudFiles.map(file => (
-                                        <div key={file.id} className="w-full modal-bg-elevated border border-surface-border p-3 rounded-xl flex items-center justify-between group transition-all hover:bg-surface-bg-alt hover:border-surface-border-hover shadow-sm">
+                                        <div key={file.id} className="w-full modal-bg-elevated border border-surface-border p-3 rounded-xl flex items-center justify-between group transition-all hover:bg-surface-alt hover:border-surface-border-hover shadow-sm">
 
                                             <div className="shrink-0 mr-3">
                                                 <button
@@ -503,7 +503,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                                 {viewMode === 'active' ? (
                                                     <button
                                                         onClick={() => handleFileSelect(file)}
-                                                        className="p-2 bg-status-info hover:filter hover:brightness-110 text-white rounded-lg shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+                                                        className="p-2 bg-status-info hover:filter hover:brightness-110 text-txt-on-color rounded-lg shadow-md active:scale-95 transition-all flex items-center gap-1.5"
                                                         title={tCloud('cloud_action_download')}
                                                     >
                                                         <Download size={18} />
@@ -512,7 +512,7 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
                                                 ) : (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleRestoreFromTrash(file); }}
-                                                        className="p-2 text-status-success hover:text-white modal-bg-recessed hover:bg-status-success border border-surface-border hover:border-status-success rounded-lg transition-colors"
+                                                        className="p-2 text-status-success hover:text-txt-on-color modal-bg-recessed hover:bg-status-success border border-surface-border hover:border-status-success rounded-lg transition-colors"
                                                         title={tCloud('cloud_restore')}
                                                     >
                                                         <RefreshCcw size={18} />

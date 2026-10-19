@@ -69,7 +69,7 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
       
       {/* 標籤框 1：手動新增指引 (置左，寬度與 + 號方格完全一致，左右並列，字體放大) */}
       <div 
-        className="p-1 rounded-xl border border-surface-border bg-surface-bg-alt/50 backdrop-blur-sm text-txt-secondary flex flex-row items-center justify-center gap-1 shadow-sm shrink-0 text-left break-words leading-tight box-border overflow-hidden"
+        className="p-1 rounded-xl border border-surface-border bg-surface-alt/50 backdrop-blur-sm text-txt-secondary flex flex-row items-center justify-center gap-1 shadow-sm shrink-0 text-left break-words leading-tight box-border overflow-hidden"
         style={{ 
           width: `${leftColWidth}px`,
           fontSize: `${11 * zoomLevel}px`
@@ -109,14 +109,14 @@ const SimpleScorepadPromo: React.FC<SimpleScorepadPromoProps> = ({
                   onOpenOnlineSearch?.();
                 }
               }}
-              className={`w-full h-full rounded-lg bg-gradient-to-r text-xs font-semibold text-white transition-all shadow-sm flex ${isGenerating ? 'flex-col items-center justify-center py-1.5 gap-0.5' : 'items-center justify-center gap-1.5'} ${isOfflineIdle ? 'cursor-not-allowed' : 'cursor-pointer'} ${
+              className={`w-full h-full rounded-lg bg-gradient-to-r text-xs font-semibold transition-all shadow-sm flex ${isGenerating ? 'flex-col items-center justify-center py-1.5 gap-0.5' : 'items-center justify-center gap-1.5'} ${isOfflineIdle ? 'cursor-not-allowed' : 'cursor-pointer'} ${
                 isGenerating
                   ? 'from-brand-primary/10 via-brand-secondary/10 to-brand-primary/10 animate-pulse border border-brand-primary/30 text-brand-primary shadow-none hover:brightness-105 active:scale-[0.98]'
                   : isSuccess
-                    ? 'from-status-success/90 to-status-success border border-status-success/30 hover:brightness-105 active:scale-[0.98] shadow-md shadow-status-success/15 font-black'
+                    ? 'from-status-success/90 to-status-success text-txt-on-color border border-status-success/30 hover:brightness-105 active:scale-[0.98] shadow-md shadow-status-success/15 font-black'
                     : isOfflineIdle
-                      ? 'from-surface-bg-muted/80 to-surface-bg-muted/60 border border-surface-border text-txt-muted shadow-none'
-                      : 'from-brand-primary to-brand-secondary hover:opacity-95 active:scale-[0.98] shadow-brand-primary/10'
+                      ? 'from-surface-alt/80 to-surface-alt/60 border border-surface-border text-txt-muted shadow-none'
+                      : 'from-brand-primary to-brand-secondary text-txt-on-color hover:opacity-95 active:scale-[0.98] shadow-brand-primary/10'
               }`}
             >
               {isGenerating ? (

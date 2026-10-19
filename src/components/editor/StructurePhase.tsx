@@ -101,7 +101,7 @@ const StructurePhase: React.FC = () => {
             width: `${widthPercent}%`
           }}
         >
-          <span className="text-white/70 font-bold tracking-widest uppercase origin-center bg-[rgb(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span>
+          <span className="text-txt-on-color/70 font-bold tracking-widest uppercase origin-center bg-[rgb(var(--c-black)/0.5)] px-2 rounded" style={inverseScaleStyle}>{t('mapper_player_name')}</span>
         </div>
         <div
           className="absolute bottom-0 bg-status-danger/30 flex items-center justify-center"
@@ -169,7 +169,7 @@ const StructurePhase: React.FC = () => {
                             <span className="font-bold text-txt-primary truncate" style={{ textShadow: '0 1px 1px rgb(var(--c-white) / 0.5)' }}>{sourceCol.name}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRemoveItemFromRow(i, colId); }}
-                              className="absolute top-1/2 right-0.5 -translate-y-1/2 w-4 h-4 rounded-full bg-surface-hover/80 hover:bg-status-danger text-txt-primary hover:text-white flex items-center justify-center transition-colors pointer-events-auto"
+                              className="absolute top-1/2 right-0.5 -translate-y-1/2 w-4 h-4 rounded-full bg-surface-hover/80 hover:bg-status-danger text-txt-primary hover:text-txt-on-color flex items-center justify-center transition-colors pointer-events-auto"
                             >
                               <X size={8} strokeWidth={3} />
                             </button>
@@ -205,7 +205,7 @@ const StructurePhase: React.FC = () => {
                       e.stopPropagation();
                       handleClearRow(i);
                     }}
-                    className="absolute right-[100%] mr-2 top-1/2 z-10 p-1.5 bg-surface-bg/30 hover:bg-status-danger/50 backdrop-blur-sm border border-white/20 text-txt-secondary hover:text-white rounded-full transition-all opacity-50 group-hover:opacity-100"
+                    className="absolute right-[100%] mr-2 top-1/2 z-10 p-1.5 bg-surface-bg/30 hover:bg-status-danger/50 backdrop-blur-sm border border-white/20 text-txt-secondary hover:text-txt-on-color rounded-full transition-all opacity-50 group-hover:opacity-100"
                     style={{
                       transform: `translateY(-50%) scale(${1 / transform.scale})`,
                       transformOrigin: 'center'

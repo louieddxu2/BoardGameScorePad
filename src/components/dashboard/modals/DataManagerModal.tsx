@@ -231,7 +231,7 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                 {importError && <p className="text-status-danger text-xs flex items-center gap-1 bg-status-danger/10 p-2 rounded border border-status-danger/30"><AlertCircle size={12} /> {importError}</p>}
 
                 <div className="grid grid-cols-2 gap-3">
-                  <label className={`flex flex-col items-center justify-center gap-1 w-full py-3 bg-surface-bg-alt hover:filter hover:brightness-110 text-txt-secondary font-bold rounded-xl border border-surface-border cursor-pointer transition-all group ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <label className={`flex flex-col items-center justify-center gap-1 w-full py-3 bg-surface-alt hover:filter hover:brightness-110 text-txt-secondary font-bold rounded-xl border border-surface-border cursor-pointer transition-all group ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center gap-2">
                       <FileJson size={20} className="text-brand-secondary" />
                       <span className="text-xs text-txt-primary">{t('data_read_json_btn')}</span>
@@ -251,14 +251,14 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
                   <button
                     onClick={handleManualImport}
                     disabled={isProcessing}
-                    className={`w-full py-3 bg-brand-primary hover:filter hover:brightness-110 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    className={`w-full py-3 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color font-bold rounded-xl shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 ${isProcessing ? 'opacity-70 cursor-not-allowed' : ''}`}
                   >
                     {isProcessing ? (
                       <span className="text-xs flex items-center gap-1"><Loader2 size={16} className="animate-spin" /> {t('data_processing')}</span>
                     ) : (
                       <span className="text-xs flex items-center gap-1"><Check size={16} /> {t('data_execute_import')}</span>
                     )}
-                    <span className="text-[9px] text-white/80">{t('data_parse_content')}</span>
+                    <span className="text-[9px] text-txt-on-color/80">{t('data_parse_content')}</span>
                   </button>
                 </div>
               </div>
@@ -286,16 +286,16 @@ const DataManagerModal: React.FC<DataManagerModalProps> = ({ isOpen, onClose, us
 
               <div className="flex justify-between items-center flex-none mt-1">
                 <span className="text-xs text-txt-muted">{t('data_selected_count', { count: exportSelectedIds.length })}</span>
-                <button onClick={handleToggleSelectAll} className="text-xs text-brand-secondary hover:brightness-110 font-bold px-2 py-1 rounded hover:bg-surface-bg-alt transition-colors">
+                <button onClick={handleToggleSelectAll} className="text-xs text-brand-secondary hover:brightness-110 font-bold px-2 py-1 rounded hover:bg-surface-alt transition-colors">
                   {isAllSelected ? t('data_deselect_all') : t('data_select_all')}
                 </button>
               </div>
 
               <div className="flex-none grid grid-cols-2 gap-3 pt-2 border-t border-surface-border">
-                <button onClick={handleExportCopy} disabled={exportSelectedIds.length === 0} className={`py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${exportSelectedIds.length > 0 ? 'bg-brand-primary hover:filter hover:brightness-110 text-white shadow-lg' : 'bg-surface-bg-alt text-txt-muted cursor-not-allowed opacity-50'}`}>
+                <button onClick={handleExportCopy} disabled={exportSelectedIds.length === 0} className={`py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${exportSelectedIds.length > 0 ? 'bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color shadow-lg' : 'bg-surface-alt text-txt-muted cursor-not-allowed opacity-50'}`}>
                   {isExportCopying ? <Check size={18} /> : <Copy size={18} />} {t('data_copy_json')}
                 </button>
-                <button onClick={handleShareToDev} disabled={exportSelectedIds.length === 0} className={`py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${exportSelectedIds.length > 0 ? 'bg-brand-secondary hover:filter hover:brightness-110 text-white shadow-lg' : 'bg-surface-bg-alt text-txt-muted cursor-not-allowed opacity-50'}`}>
+                <button onClick={handleShareToDev} disabled={exportSelectedIds.length === 0} className={`py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${exportSelectedIds.length > 0 ? 'bg-brand-secondary hover:filter hover:brightness-110 text-txt-on-color shadow-lg' : 'bg-surface-alt text-txt-muted cursor-not-allowed opacity-50'}`}>
                   <Mail size={18} /> {t('data_mail_dev')}
                 </button>
               </div>

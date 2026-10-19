@@ -211,7 +211,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                     </h3>
                     <button
                         onClick={onClose}
-                        className="p-1.5 text-txt-muted hover:text-txt-primary hover:bg-surface-bg-alt rounded-full transition-colors focus:ring-0"
+                        className="p-1.5 text-txt-muted hover:text-txt-primary hover:bg-surface-alt rounded-full transition-colors focus:ring-0"
                     >
                         <X size={20} />
                     </button>
@@ -260,7 +260,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                                 {hasBgImage && <p className="text-[10px] text-txt-muted italic pl-7">{t('share_modal_img_note')}</p>}
                                 <button
                                     onClick={handleUploadToCloud}
-                                    className="w-full flex items-center justify-center gap-2 py-3 bg-brand-primary hover:filter hover:brightness-110 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all"
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color rounded-xl font-bold shadow-lg active:scale-95 transition-all"
                                 >
                                     <UploadCloud size={18} />
                                     {t('share_modal_cloud_btn')}
@@ -282,7 +282,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                                     <input type="text" readOnly value={shareUrl} className="bg-transparent text-xs text-txt-secondary flex-1 outline-none" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={handleCopyLink} className="flex items-center justify-center gap-2 py-3 bg-brand-primary hover:filter hover:brightness-110 text-white rounded-xl font-bold active:scale-95 transition-all">
+                                    <button onClick={handleCopyLink} className="flex items-center justify-center gap-2 py-3 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color rounded-xl font-bold active:scale-95 transition-all">
                                         {isCopied ? <Check size={18} /> : <Copy size={18} />}
                                         {tCommon('copy')}
                                     </button>

@@ -15,7 +15,7 @@ const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ isOpen, onClose }
   if (!isOpen) return null;
 
   return (
-    <div className="safe-area-screen-padding fixed inset-0 z-[60] bg-modal-backdrop backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+    <div className="safe-area-screen-padding fixed inset-0 z-[60] bg-modal-backdrop/[var(--modal-backdrop-opacity)] backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
       <div className="modal-container w-full max-w-sm flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -85,7 +85,7 @@ const InstallGuideModal: React.FC<InstallGuideModalProps> = ({ isOpen, onClose }
         </div>
 
         <div className="p-4 modal-bg-elevated border-t border-surface-border">
-          <button onClick={onClose} className="w-full py-3 bg-brand-primary hover:filter hover:brightness-110 text-white font-bold rounded-xl active:scale-95 transition-all shadow-lg">
+          <button onClick={onClose} className="w-full py-3 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color font-bold rounded-xl active:scale-95 transition-all shadow-lg">
             {tCommon('understand')}
           </button>
         </div>

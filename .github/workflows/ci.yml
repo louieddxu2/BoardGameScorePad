@@ -39,6 +39,9 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit
 
+      - name: Check semantic theme contract
+        run: npm run check:theme
+
       - name: Run core tests
         run: npm run test:core
 

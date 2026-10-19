@@ -1,80 +1,99 @@
-// @ts-nocheck
-import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import { describe, expect, it } from 'vitest';
+import { inspectThemeContract } from '../../scripts/theme-contract';
 
-/**
- * UI Consistency Check Radar
- * -------------------------
- * This script scans components for hardcoded Tailwind color classes 
- * (e.g., bg-slate-900) that should be replaced with semantic tokens
- * (e.g., bg-modal-bg) to ensure theme compatibility.
- */
+const css = `
+:root {
+    --c-white: 255 255 255;
+    --c-amber-900: 120 53 15;
+    --c-txt-on-color: var(--c-white);
+    --c-txt-primary: 248 250 252;
+    --c-surface-bg-alt: 23 31 45;
+}
+html[data-theme='light'] {
+    --c-txt-primary: 15 23 42;
+    --c-surface-bg-alt: 248 250 252;
+}`;
+const config = { theme: { extend: { colors: {
+    txt: { primary: 'rgb(var(--c-txt-primary) / <alpha-value>)', 'on-color': 'rgb(var(--c-txt-on-color) / <alpha-value>)' },
+    surface: { alt: 'rgb(var(--c-surface-bg-alt) / <alpha-value>)' },
+    amber: { 900: 'rgb(var(--c-amber-900) / <alpha-value>)' },
+} } } };
+const file = 'src/components/Example.tsx';
+const inspect = (content: string, stylesheet = css) => inspectThemeContract(stylesheet, config, [{ file, content }]);
 
-// Regex to detect direct palette color usage (e.g., bg-slate-900)
-const HARDCODED_COLOR_REGEX = /\b(bg|text|border|ring|shadow|from|to|via)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(\d+)\b/g;
-
-// Regex to detect legacy rgba(var(--c-...)) patterns that should be replaced with token/opacity
-const LEGACY_SEMANTIC_REGEX = /rgba\(var\(--c-[\w-]+\)\s*[\/,]\s*[\d\.]+\)/g;
-
-const EXCLUDE_PATHS = [
-    'index.css',
-    'colors.ts',
-    'ui-consistency.test.ts',
-    path.join('data', ''), 
-    'node_modules',
-    'dist'
-];
-
-function getAllFiles(dirPath: string, arrayOfFiles: string[] = []) {
-    const files = fs.readdirSync(dirPath);
-
-    files.forEach(function(file) {
-        const fullPath = path.join(dirPath, file);
-        if (fs.statSync(fullPath).isDirectory()) {
-            arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
-        } else {
-            if (file.endsWith('.tsx')) {
-                arrayOfFiles.push(fullPath);
-            }
-        }
+describe('Semantic theme contract', () => {
+    it('accepts semantic roles, opacity modifiers and shared inherited constants', () => {
+        expect(inspect('<div className="bg-surface-alt/50 text-txt-primary"><span className="text-txt-on-color" /></div>')).toEqual([]);
     });
 
-    return arrayOfFiles;
-}
+    it('finds nonexistent utilities in template branches, even beside an old ignore marker', () => {
+        const issues = inspect('const cls = `${selected ? "hover:bg-surface-recessed/50" : "bg-surface-alt"}`; // @ui-ignore');
+        expect(issues).toEqual([{ file, line: 1, kind: 'unknown-color', token: 'bg-surface-recessed/50' }]);
+    });
 
-describe('UI Consistency: Semantic Color Check', () => {
-    const files = getAllFiles('src');    
-    files.forEach(file => {
-        // Skip if path is in EXCLUDE_PATHS
-        if (EXCLUDE_PATHS.some(p => file.includes(p))) return;
+    it('keeps light mappings mandatory for theme-dependent roles instead of inheriting a dark surface', () => {
+        expect(inspect('', css.replace('--c-surface-bg-alt: 248 250 252;', '')))
+            .toContainEqual({ file: 'src/index.css', line: 1, kind: 'missing-light-mapping', token: 'surface-alt: --c-surface-bg-alt' });
+    });
 
-        it(`should not have hardcoded colors in ${file}`, () => {
-            const content = fs.readFileSync(file, 'utf-8');
-            const lines = content.split('\n');
-            const violations: string[] = [];
+    it('finds component-only variables that were never registered with Tailwind', () => {
+        expect(inspect('const style = { color: "rgb(var(--c-txt-on-dark))" };')).toEqual([
+            { file, line: 1, kind: 'dark', token: 'undefined-variable: --c-txt-on-dark' },
+            { file, line: 1, kind: 'light', token: 'undefined-variable: --c-txt-on-dark' },
+        ]);
+    });
 
-            lines.forEach((line, index) => {
-                // Ignore lines marked with @ui-ignore
-                if (line.includes('@ui-ignore')) return;
+    it('checks primitive definitions instead of skipping their entire palette', () => {
+        expect(inspect('', css.replace('--c-amber-900: 120 53 15;', '')).map(issue => issue.token)).toEqual([
+            'amber-900: undefined-variable: --c-amber-900', 'amber-900: undefined-variable: --c-amber-900',
+        ]);
+    });
 
-                // Ignore pure comments (start of line)
-                const trimmed = line.trim();
-                if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
-                
-                const matches = line.match(HARDCODED_COLOR_REGEX);
-                const legacyMatches = line.match(LEGACY_SEMANTIC_REGEX);
-                
-                if (matches || legacyMatches) {
-                    const allFound = [...(matches || []), ...(legacyMatches || [])];
-                    violations.push(`Line ${index + 1}: ${trimmed} (Found: ${allFound.join(', ')})`);
-                }
-            });
+    it('checks aliases and CSS property references against the effective light theme', () => {
+        const issues = inspect('', css.replace('--c-surface-bg-alt: 248 250 252;', '--c-surface-bg-alt: var(--c-missing);')
+            + '\n.panel { color: rgb(var(--c-css-only)); }');
+        expect(issues).toEqual(expect.arrayContaining([
+            expect.objectContaining({ file: 'tailwind.config.js', kind: 'light', token: 'surface-alt: undefined-variable: --c-missing' }),
+            expect.objectContaining({ file: 'src/index.css', kind: 'dark', token: 'undefined-variable: --c-css-only' }),
+        ]));
+    });
 
-            if (violations.length > 0) {
-                const message = `Found ${violations.length} hardcoded color(s) in ${file}:\n` + violations.join('\n');
-                expect(violations.length, message).toBe(0);
-            }
-        });
+    it('rejects circular aliases without looping', () => {
+        expect(inspect('', css.replace('--c-txt-primary: 248 250 252;', '--c-txt-primary: var(--c-txt-primary);')))
+            .toContainEqual(expect.objectContaining({ kind: 'dark', token: 'variable-cycle: --c-txt-primary -> --c-txt-primary' }));
+    });
+
+    it('rejects embedded alpha when Tailwind already supplies the alpha', () => {
+        expect(inspect('', css.replace('--c-surface-bg-alt: 248 250 252;', '--c-surface-bg-alt: 248 250 252 / 0.4;')))
+            .toContainEqual({ file: 'tailwind.config.js', line: 1, kind: 'double-alpha', token: 'light: surface-alt' });
+    });
+
+    it.each([
+        ['black/white utilities', '<div className="bg-black/20 text-white" />', ['bg-black/20', 'text-white']],
+        ['palette utility', '<div className="hover:bg-slate-900" />', ['bg-slate-900']],
+        ['literal color', 'const style = { color: "#fff" };', ['#fff']],
+        ['inline primitive variable', 'const style = { color: "rgb(var(--c-white))" };', ['--c-white']],
+    ])('rejects unreviewed fixed colors: %s', (_label, content, tokens) => {
+        expect(inspect(content).map(issue => issue.token)).toEqual(tokens);
+    });
+
+    it('scopes exceptions by file and spelling without hiding unknown roles or variables', () => {
+        const exceptions = [{ file, tokens: /^bg-white$/, reason: 'QR quiet zone.' }];
+        const sources = [
+            { file, content: '<div className="bg-white bg-surface-typo" style={{color:"var(--c-typo)"}} />' },
+            { file: 'src/components/Other.tsx', content: '<div className="bg-white" />' },
+        ];
+        expect(inspectThemeContract(css, config, sources, exceptions)).toEqual(expect.arrayContaining([
+            expect.objectContaining({ file, kind: 'unknown-color', token: 'bg-surface-typo' }),
+            expect.objectContaining({ file, kind: 'dark', token: 'undefined-variable: --c-typo' }),
+            expect.objectContaining({ file: 'src/components/Other.tsx', kind: 'fixed-color', token: 'bg-white' }),
+        ]));
+        expect(inspectThemeContract(css, config, [{ file, content: '<div className="bg-white" />' }], exceptions)).toEqual([]);
+    });
+
+    it('ignores comments instead of treating examples or commented definitions as code', () => {
+        expect(inspect('// bg-black and var(--c-missing)\nconst cls = "text-txt-primary";')).toEqual([]);
+        expect(inspect('', css.replace('--c-amber-900: 120 53 15;', '/* --c-amber-900: 120 53 15; */')))
+            .toContainEqual(expect.objectContaining({ file: 'tailwind.config.js', token: 'amber-900: undefined-variable: --c-amber-900' }));
     });
 });

@@ -60,7 +60,7 @@ const UpwardSelectMenu = <T extends string>({
             <button
               key={option.value}
               onClick={() => onSelect(option.value)}
-              className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-surface-border/50 last:border-0 hover:bg-surface-bg-alt flex items-center justify-between gap-2 ${
+              className={`w-full text-left px-3 py-2.5 text-xs font-bold border-b border-surface-border/50 last:border-0 hover:bg-surface-alt flex items-center justify-between gap-2 ${
                 isSelected ? 'text-brand-primary bg-brand-primary/10' : 'text-txt-primary'
               }`}
             >

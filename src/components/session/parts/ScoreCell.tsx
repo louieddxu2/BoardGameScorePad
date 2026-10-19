@@ -166,7 +166,7 @@ const CellContentProduct: React.FC<CellContentProps> = ({ parts, displayScore, h
     const ub = column.subUnits?.[1] || '';
 
     const productUI = hasInput ? (
-        <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? '' : 'bg-surface-bg-alt/80 border border-surface-border'}`}>
+        <span className={`absolute bottom-1 right-1 flex items-baseline px-1 rounded max-w-full overflow-hidden ${screenshotMode ? '' : 'bg-surface-alt/80 border border-surface-border'}`}>
             <span className="text-sm font-bold font-mono text-brand-primary leading-none truncate">{displayA}</span>
             <span className="text-xs text-brand-primary/80 ml-[1px] leading-none">{ua}</span>
             <span className="text-sm text-txt-muted mx-[2px] leading-none">×</span>

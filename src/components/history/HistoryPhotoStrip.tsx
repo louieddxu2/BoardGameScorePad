@@ -22,7 +22,7 @@ const HistoryPhotoStrip: React.FC<HistoryPhotoStripProps> = ({ photoIds, photoCo
                 <button
                     key={thumbnail.id}
                     type="button"
-                    className="w-24 h-20 shrink-0 snap-start overflow-hidden rounded-xl border border-surface-border bg-surface-recessed active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary"
+                    className="w-24 h-20 shrink-0 snap-start overflow-hidden rounded-xl border border-surface-border bg-surface-alt active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-secondary"
                     onClick={() => onPhotoClick(thumbnail.id)}
                     aria-label={`Session Photo ${index + 1}`}
                 >

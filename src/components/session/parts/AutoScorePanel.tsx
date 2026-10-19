@@ -34,7 +34,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
     const finalScore = calculateColumnScore(column, [], context);
 
     return (
-        <div className="flex flex-col flex-1 min-h-0 w-full bg-surface-recessed text-txt-primary select-text p-[6px]">
+        <div className="flex flex-col flex-1 min-h-0 w-full bg-surface-alt text-txt-primary select-text p-[6px]">
             {/* Header Info - Use a more robust grid layout: auto for ends, 1fr for the flexible middle */}
             <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[8px] pb-[6px] border-b border-surface-border mb-[6px] shrink-0">
 
@@ -46,7 +46,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                 {/* Formula - Fills remaining space */}
                 <div className="min-w-0">
                     <div className="text-[10px] uppercase font-bold text-txt-muted">{t('auto_panel_title')}</div>
-                    <div className="overflow-x-auto no-scrollbar bg-black/20 rounded-[4px] py-[4px] border border-surface-border">
+                    <div className="overflow-x-auto no-scrollbar bg-app-bg-deep rounded-[4px] py-[4px] border border-surface-border">
                         <div className="text-sm font-mono text-txt-title font-bold whitespace-nowrap tracking-wide px-[8px]">
                             {column.formula}
                         </div>
@@ -126,8 +126,8 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                             }
 
                             return (
-                                <div key={varName} className="flex items-center gap-[12px] bg-surface-recessed/50 p-[8px] rounded-[8px] border border-surface-border">
-                                    <div className="w-[32px] h-[32px] flex items-center justify-center bg-surface-recessed rounded-[4px] font-mono font-bold text-brand-secondary text-sm border border-surface-border">
+                                <div key={varName} className="flex items-center gap-[12px] bg-surface-alt/50 p-[8px] rounded-[8px] border border-surface-border">
+                                    <div className="w-[32px] h-[32px] flex items-center justify-center bg-surface-alt rounded-[4px] font-mono font-bold text-brand-secondary text-sm border border-surface-border">
                                         {varName}
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -142,7 +142,7 @@ const AutoScorePanel: React.FC<AutoScorePanelProps> = ({ column, player, allColu
                                         )}
                                     </div>
                                     <ArrowRight size="0.875em" className="text-txt-muted shrink-0" />
-                                    <div className="bg-surface-recessed px-[12px] py-[4px] rounded-[4px] text-txt-primary font-mono font-bold text-sm w-[48px] text-center border border-surface-border">
+                                    <div className="bg-surface-alt px-[12px] py-[4px] rounded-[4px] text-txt-primary font-mono font-bold text-sm w-[48px] text-center border border-surface-border">
                                         {formatScore(value)}
                                     </div>
                                 </div>

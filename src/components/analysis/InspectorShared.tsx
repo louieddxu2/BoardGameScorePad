@@ -228,7 +228,7 @@ export const DataList = ({ title, table, icon: Icon, isBGG = false }: { title: s
                         <button
                             key={item.id}
                             onClick={() => setSelectedId(item.id)}
-                            className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center ${selectedId === item.id ? 'bg-brand-primary text-white shadow-md' : 'bg-surface-bg text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'}`}
+                            className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center ${selectedId === item.id ? 'bg-brand-primary text-txt-on-color shadow-md' : 'bg-surface-bg text-txt-secondary hover:bg-surface-hover hover:text-txt-primary'}`}
                         >
                             <div className="flex flex-col min-w-0">
                                 <span className="truncate font-bold">{item.name || item.id}</span>
@@ -244,7 +244,7 @@ export const DataList = ({ title, table, icon: Icon, isBGG = false }: { title: s
                                     </span>
                                 )}
                             </div>
-                            {!isBGG && <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedId === item.id ? 'bg-brand-secondary text-white' : 'bg-surface-bg text-txt-muted'}`}>{item.usageCount || 0}</span>}
+                            {!isBGG && <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedId === item.id ? 'bg-brand-secondary text-txt-on-color' : 'bg-surface-bg text-txt-muted'}`}>{item.usageCount || 0}</span>}
                         </button>
                     ))}
                     {data.length === 0 && (

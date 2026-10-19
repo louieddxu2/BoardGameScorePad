@@ -32,7 +32,7 @@ export const AdvancedFilterChimney: React.FC<AdvancedFilterChimneyProps> = ({
                             key={scenario.id}
                             onClick={() => setSearchFilters(p => ({ ...p, [scenario.key]: !isActive }))}
                             className={`h-8 text-xs font-black rounded-lg border transition-all ${isActive 
-                                ? 'bg-brand-primary text-white border-brand-primary shadow-sm' 
+                                ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-sm'
                                 : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'}`}
                         >
                             {scenario.label}
@@ -52,7 +52,7 @@ export const AdvancedFilterChimney: React.FC<AdvancedFilterChimneyProps> = ({
                         playerFilter: p.playerFilter === 'playable' ? 'none' : 'playable'
                     }))}
                     className={`h-8 text-xs font-black rounded-lg border transition-all ${searchFilters.playerFilter === 'playable'
-                            ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                            ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-sm'
                             : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'
                         }`}
                 >
@@ -64,7 +64,7 @@ export const AdvancedFilterChimney: React.FC<AdvancedFilterChimneyProps> = ({
                         playerFilter: p.playerFilter === 'best' ? 'none' : 'best'
                     }))}
                     className={`h-8 text-xs font-black rounded-lg border transition-all ${searchFilters.playerFilter === 'best'
-                            ? 'bg-brand-primary text-white border-brand-primary shadow-sm'
+                            ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-sm'
                             : 'bg-surface-bg/40 border-surface-border text-txt-primary hover:border-txt-primary'
                         }`}
                 >
@@ -85,7 +85,7 @@ export const AdvancedFilterChimney: React.FC<AdvancedFilterChimneyProps> = ({
                         <button
                             key={r}
                             onClick={() => setSearchFilters(p => ({ ...p, rating: p.rating === r ? null : r }))}
-                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.rating === r ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.rating === r ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
                         >
                             {r}+
                         </button>
@@ -106,7 +106,7 @@ export const AdvancedFilterChimney: React.FC<AdvancedFilterChimneyProps> = ({
                         <button
                             key={c}
                             onClick={() => setSearchFilters(p => ({ ...p, complexity: p.complexity === c ? null : c }))}
-                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.complexity === c ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.complexity === c ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
                         >
                             {c === 'light' ? t('selector_filter_complexity_light') : c === 'mid' ? t('selector_filter_complexity_mid') : t('selector_filter_complexity_heavy')}
                         </button>
@@ -127,7 +127,7 @@ export const AdvancedFilterChimney: React.FC<AdvancedFilterChimneyProps> = ({
                         <button
                             key={d}
                             onClick={() => setSearchFilters(p => ({ ...p, duration: p.duration === d ? null : d }))}
-                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.duration === d ? 'bg-brand-primary text-white border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
+                            className={`h-8 text-xs font-black rounded-md border transition-all ${searchFilters.duration === d ? 'bg-brand-primary text-txt-on-color border-brand-primary shadow-sm' : 'bg-app-bg-deep border-surface-border text-txt-primary hover:border-txt-primary'}`}
                         >
                             {t('selector_filter_duration_unit').replace('{m}', `<${d}`)}
                         </button>

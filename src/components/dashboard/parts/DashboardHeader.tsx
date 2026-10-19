@@ -263,7 +263,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button
                 onClick={onCloudClick}
                 disabled={isSyncing}
-                className={`btn-cloud-status ${isSyncing ? 'bg-surface-bg-alt border-surface-border cursor-wait' :
+                className={`btn-cloud-status ${isSyncing ? 'bg-surface-alt border-surface-border cursor-wait' :
                   isConnected ? 'connected' : 'disconnected'
                   }`}
                 // [Update] Display storage size in tooltip
@@ -276,7 +276,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => setIsSearchActive(true)} className="p-2 text-txt-muted hover:text-txt-primary hover:bg-surface-bg-alt rounded-lg transition-colors">
+              <button onClick={() => setIsSearchActive(true)} className="p-2 text-txt-muted hover:text-txt-primary hover:bg-surface-alt rounded-lg transition-colors">
                 <Search size={20} />
               </button>
 
@@ -285,8 +285,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               {!isInstalled && (
                 <button
                   className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-lg ${canInstall 
-                    ? 'btn-action-primary text-white' 
-                    : 'bg-surface-bg-alt hover:bg-surface-bg-hover border border-surface-border text-txt-secondary hover:text-txt-primary'}`}
+                    ? 'btn-action-primary text-txt-on-color'
+                    : 'bg-surface-alt hover:bg-surface-hover border border-surface-border text-txt-secondary hover:text-txt-primary'}`}
                   onClick={canInstall ? onInstallClick : onShowInstallGuide}
                 >
                   <div className="relative">

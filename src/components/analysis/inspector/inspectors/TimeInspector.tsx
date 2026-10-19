@@ -34,12 +34,12 @@ const TimeInspector = () => {
             <button
                 key={item.id}
                 onClick={() => setSelectedId(item.id)}
-                className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center active:scale-[0.98] ${isSelected ? 'bg-brand-primary text-white shadow-md' : 'modal-bg-elevated text-txt-secondary border border-surface-border/50 hover:modal-bg-recessed hover:text-txt-primary'}`}
+                className={`w-full text-left p-2 rounded-lg text-xs transition-all flex justify-between items-center active:scale-[0.98] ${isSelected ? 'bg-brand-primary text-txt-on-color shadow-md' : 'modal-bg-elevated text-txt-secondary border border-surface-border/50 hover:modal-bg-recessed hover:text-txt-primary'}`}
             >
                 <span className="truncate font-bold flex items-center gap-1.5">
                     {label}
                 </span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-surface-border/50 text-txt-muted'}`}>{item.usageCount || 0}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded ${isSelected ? 'bg-white/20 text-txt-on-color' : 'bg-surface-border/50 text-txt-muted'}`}>{item.usageCount || 0}</span>
             </button>
         );
     };

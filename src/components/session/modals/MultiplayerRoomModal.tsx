@@ -67,13 +67,13 @@ const MultiplayerRoomModal: React.FC<MultiplayerRoomModalProps> = ({ isOpen, joi
                 )}
               </div>
             )}
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-surface-border bg-surface-recessed px-3 py-2.5 text-sm font-medium text-txt-secondary">
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-surface-border bg-surface-alt px-3 py-2.5 text-sm font-medium text-txt-secondary">
               <UsersRound size={17} className="shrink-0 text-brand-primary" />
               <span>{connectionCount > 0 ? t('multiplayer_connected_count', { count: connectionCount }) : t('multiplayer_waiting')}</span>
             </div>
             {onCloseRoom && (
               <div className="mt-5 border-t border-surface-border pt-4">
-                <button type="button" onClick={() => { void onCloseRoom(); }} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-status-danger bg-status-danger px-3 py-3 text-base font-bold text-white transition-colors hover:bg-status-danger/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-status-danger">
+                <button type="button" onClick={() => { void onCloseRoom(); }} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-status-danger bg-status-danger px-3 py-3 text-base font-bold text-txt-on-color transition-colors hover:bg-status-danger/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-status-danger">
                   <LogOut size={18} className="shrink-0" />
                   <span>{t('multiplayer_close_room')}</span>
                 </button>

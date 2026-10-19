@@ -66,7 +66,7 @@ const ScannerControls: React.FC<ScannerControlsProps> = ({
             <button
                 onClick={onConfirm}
                 disabled={!canConfirm}
-                className="bg-brand-primary hover:filter hover:brightness-110 text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all disabled:bg-surface-bg-alt disabled:text-txt-muted disabled:shadow-none disabled:active:scale-100"
+                className="bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all disabled:bg-surface-alt disabled:text-txt-muted disabled:shadow-none disabled:active:scale-100"
             >
                 <ArrowRight size={24} />
             </button>

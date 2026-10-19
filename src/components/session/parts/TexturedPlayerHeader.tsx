@@ -129,7 +129,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
 
       {participantCount > 0 && (
         <div
-          className="absolute top-1 right-1 z-20 pointer-events-none flex items-center gap-0.5 px-1 py-0.5 rounded bg-modal-backdrop/70 text-txt-primary border border-white/10 shadow-sm"
+          className="absolute top-1 right-1 z-20 pointer-events-none flex items-center gap-0.5 px-1 py-0.5 rounded bg-modal-backdrop/70 text-txt-primary border border-surface-border/50 shadow-sm"
           title={t('multiplayer_player_claimed', { count: participantCount })}
         >
           <UsersRound size={11} />
@@ -139,7 +139,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
 
       {isEditableByParticipant && (
         <div
-          className="absolute top-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-primary border border-white/10 shadow-sm"
+          className="absolute top-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-primary border border-surface-border/50 shadow-sm"
           title={t('multiplayer_player_editable')}
         >
           <Pencil size={10} />
@@ -147,7 +147,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       )}
 
       {canManageParticipantClaims && !isEditableByParticipant && (
-        <div className="absolute top-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-muted border border-white/10 shadow-sm">
+        <div className="absolute top-1 right-1 z-20 pointer-events-none flex items-center justify-center w-4 h-4 rounded bg-modal-backdrop/70 text-txt-muted border border-surface-border/50 shadow-sm">
           <Ban size={10} />
         </div>
       )}

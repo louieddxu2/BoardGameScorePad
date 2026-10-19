@@ -84,6 +84,9 @@ try {
     Write-Host "Running TypeScript type-check..." -ForegroundColor White
     Invoke-CheckedCommand "npx.cmd" @("tsc", "--noEmit")
 
+    Write-Host "Checking semantic theme contract..." -ForegroundColor White
+    Invoke-CheckedCommand "npm.cmd" @("run", "check:theme")
+
     Write-Host "Running core tests..." -ForegroundColor White
     Invoke-CheckedCommand "npx.cmd" @(
         "vitest",

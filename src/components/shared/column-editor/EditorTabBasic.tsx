@@ -37,13 +37,13 @@ const SumPartsSubSettings: React.FC<{
             <div className="space-y-2">
                 <label className="block text-xs font-bold text-txt-muted uppercase mb-2">{t('col_display_in_grid')}</label>
                 <div className="flex bg-modal-bg-elevated rounded-lg p-1 border border-surface-border">
-                    <button onClick={() => onChange({ showPartsInGrid: true })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === true ? 'bg-brand-secondary text-white shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
+                    <button onClick={() => onChange({ showPartsInGrid: true })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === true ? 'bg-brand-secondary text-txt-on-color shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                         {t('col_display_std')}
                     </button>
-                    <button onClick={() => onChange({ showPartsInGrid: false })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === false ? 'bg-brand-secondary text-white shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
+                    <button onClick={() => onChange({ showPartsInGrid: false })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === false ? 'bg-brand-secondary text-txt-on-color shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                         {t('col_display_total')}
                     </button>
-                    <button onClick={() => onChange({ showPartsInGrid: 'parts_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === 'parts_only' ? 'bg-brand-secondary text-white shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
+                    <button onClick={() => onChange({ showPartsInGrid: 'parts_only' })} className={`flex-1 py-2 rounded-md text-xs font-bold transition-all ${currentMode === 'parts_only' ? 'bg-brand-secondary text-txt-on-color shadow-sm' : 'text-txt-secondary hover:text-txt-primary'}`}>
                         {t('col_display_parts')}
                     </button>
                 </div>
@@ -419,7 +419,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                     <div className="animate-in fade-in slide-in-from-top-2 pt-4 pl-4 border-l-2 border-brand-secondary ml-4">
                         <div className="grid grid-cols-3 gap-2">
                             {(['floor', 'ceil', 'round'] as const).map(mode => (
-                                <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-brand-secondary border-brand-secondary text-white' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary'}`}>
+                                <button key={mode} onClick={() => onChange({ rounding: mode })} className={`py-2 px-1 rounded-lg border text-xs font-bold ${column.rounding === mode ? 'bg-brand-secondary border-brand-secondary text-txt-on-color' : 'bg-modal-bg-elevated border-surface-border text-txt-secondary'}`}>
                                     {mode === 'floor' ? t('col_round_floor') : mode === 'ceil' ? t('col_round_ceil') : t('col_round_round')}
                                 </button>
                             ))}

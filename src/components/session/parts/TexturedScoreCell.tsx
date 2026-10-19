@@ -87,7 +87,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
     // Ink Styles
     const inkStyle: React.CSSProperties = {
         fontFamily: '"Kalam", "Caveat", cursive',
-        color: autoError ? 'rgb(var(--c-status-danger))' : 'rgb(var(--c-txt-on-dark))', // Theme-aware color on dark texture
+        color: autoError ? 'rgb(var(--c-status-danger))' : 'rgb(var(--c-txt-primary))', // Theme-aware color on dark texture
         transform: hasInput ? `rotate(${((player.id.charCodeAt(0) + column.id.charCodeAt(0)) % 5) - 2}deg)` : 'none',
         textShadow: 'none',
         mixBlendMode: 'multiply',
@@ -150,7 +150,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 );
             } else if (isLabelOnly) {
                 // Label Only Mode
-                const labelColorBase = column.color || 'rgb(var(--c-txt-on-dark))';
+                const labelColorBase = column.color || 'rgb(var(--c-txt-primary))';
                 layoutContent = (
                     <div className="flex flex-col items-center justify-center w-full h-full leading-tight overflow-hidden">
                         {options.map((opt, optIdx) => {
@@ -183,7 +183,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                 onClick={undefined}
                 className={`w-full h-full relative cursor-default select-none overflow-hidden transition-all pointer-events-none`}
                 style={{
-                    backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-recessed))',
+                    backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-bg-alt))',
                     minHeight: effectiveMinHeight,
                 }}
             >
@@ -256,7 +256,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             const renderMode = column.renderMode || 'standard';
 
             if (renderMode === 'label_only') {
-                const labelColorBase = column.color || 'rgb(var(--c-txt-on-dark))';
+                const labelColorBase = column.color || 'rgb(var(--c-txt-primary))';
                 const totalLines = options.reduce((acc, opt) => acc + opt.label.split(/\r\n|\r|\n/).length, 0);
                 
                 return (
@@ -368,7 +368,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
             {...touchHandlers}
             className={`w-full h-full relative ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} select-none overflow-hidden transition-all ${isActive ? '' : (isEditable ? 'ring-1 ring-inset ring-brand-primary/45' : (isReadOnly ? 'saturate-[0.78]' : 'hover:brightness-95'))}`}
             style={{
-                backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-recessed))',
+                backgroundColor: skipTextureRendering ? 'transparent' : 'rgb(var(--c-surface-bg-alt))',
                 minHeight: effectiveMinHeight,
             }}
         >

@@ -108,8 +108,8 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                 <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar py-0.5 w-full">
                                     {[
                                         isRatingHighlighted && ratingVal && (
-                                            <span key="rating" className="inline-flex items-center bg-amber-500/10 text-amber-500 border border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)] px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium transition-colors"> {/* @ui-ignore */}
-                                                <Trophy size={12} className="mr-0.5 shrink-0 fill-amber-500/50 text-amber-500" /> {/* @ui-ignore */}
+                                            <span key="rating" className="inline-flex items-center bg-amber-500/10 text-amber-500 border border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)] px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium transition-colors">
+                                                <Trophy size={12} className="mr-0.5 shrink-0 fill-amber-500/50 text-amber-500" />
                                                 {ratingVal}
                                             </span>
                                         ),
@@ -120,17 +120,17 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                             </span>
                                         ),
                                         isCoopHighlighted && (
-                                            <span key="coop" className="inline-flex items-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-[0_0_6px_rgba(16,185,129,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
+                                            <span key="coop" className="inline-flex items-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-[0_0_6px_rgba(16,185,129,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5">
                                                 🤝 {t('selector_filter_coop')}
                                             </span>
                                         ),
                                         isPartyHighlighted && (
-                                            <span key="party" className="inline-flex items-center bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/40 shadow-[0_0_6px_rgba(217,70,239,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
+                                            <span key="party" className="inline-flex items-center bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/40 shadow-[0_0_6px_rgba(217,70,239,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5">
                                                 🎉 {t('selector_filter_party')}
                                             </span>
                                         ),
                                         isFamilyHighlighted && (
-                                            <span key="family" className="inline-flex items-center bg-amber-500/15 text-amber-400 border border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5"> {/* @ui-ignore */}
+                                            <span key="family" className="inline-flex items-center bg-amber-500/15 text-amber-400 border border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)] px-1.5 py-0.5 rounded text-[9px] leading-none shrink-0 font-bold mr-0.5">
                                                 🏡 {t('selector_filter_family')}
                                             </span>
                                         ),
@@ -144,23 +144,23 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                             [
                                                 bestPlayersStr ? {
                                                     key: 'best', highlighted: !!isBestPlayersHighlighted, node: (
-                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isBestPlayersHighlighted ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}> {/* @ui-ignore */}
-                                                            <Star size={12} className={`mr-0.5 shrink-0 transition-colors ${isBestPlayersHighlighted ? 'fill-amber-500/50 text-amber-500' : 'fill-amber-400/20 text-amber-500/80'}`} /> {/* @ui-ignore */}
+                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isBestPlayersHighlighted ? 'bg-amber-500/10 text-amber-500 border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)]' : 'bg-surface-alt/80 text-txt-secondary border-surface-border/30'}`}>
+                                                            <Star size={12} className={`mr-0.5 shrink-0 transition-colors ${isBestPlayersHighlighted ? 'fill-amber-500/50 text-amber-500' : 'fill-amber-400/20 text-amber-500/80'}`} />
                                                             {bestPlayersStr}
                                                         </span>
                                                     )
                                                 } : null,
                                                 supportedPlayersStr ? {
                                                     key: 'sup', highlighted: !!isSupportedPlayersHighlighted, node: (
-                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isSupportedPlayersHighlighted ? 'bg-sky-500/10 text-sky-500 border-sky-500/40 shadow-[0_0_6px_rgba(14,165,233,0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}> {/* @ui-ignore */}
-                                                            <Users size={12} className={`mr-0.5 shrink-0 transition-colors ${isSupportedPlayersHighlighted ? 'text-sky-500' : 'text-sky-500/80'}`} /> {/* @ui-ignore */}
+                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isSupportedPlayersHighlighted ? 'bg-sky-500/10 text-sky-500 border-sky-500/40 shadow-[0_0_6px_rgba(14,165,233,0.2)]' : 'bg-surface-alt/80 text-txt-secondary border-surface-border/30'}`}>
+                                                            <Users size={12} className={`mr-0.5 shrink-0 transition-colors ${isSupportedPlayersHighlighted ? 'text-sky-500' : 'text-sky-500/80'}`} />
                                                             {supportedPlayersStr}
                                                         </span>
                                                     )
                                                 } : null,
                                                 complexityVal ? {
                                                     key: 'comp', highlighted: !!isComplexityHighlighted, node: (
-                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isComplexityHighlighted ? 'bg-brand-primary/15 text-brand-primary border-brand-primary/40 shadow-[0_0_6px_rgb(var(--c-brand-primary)_/_0.2)]' : 'bg-surface-bg-alt/80 text-txt-secondary border-surface-border/30'}`}>
+                                                        <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium border transition-colors ${isComplexityHighlighted ? 'bg-brand-primary/15 text-brand-primary border-brand-primary/40 shadow-[0_0_6px_rgb(var(--c-brand-primary)_/_0.2)]' : 'bg-surface-alt/80 text-txt-secondary border-surface-border/30'}`}>
                                                             <Mountain size={12} className={`mr-0.5 shrink-0 transition-colors ${isComplexityHighlighted ? 'text-brand-primary' : 'text-txt-primary/80'}`} />
                                                             {complexityVal}
                                                         </span>
@@ -168,8 +168,8 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                                 } : null,
                                                 yearVal ? {
                                                     key: 'year', highlighted: false, node: (
-                                                        <span className="inline-flex items-center bg-surface-bg-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium"> {/* @ui-ignore */}
-                                                            <Calendar size={12} className="text-emerald-500/80 mr-0.5 shrink-0" /> {/* @ui-ignore */}
+                                                        <span className="inline-flex items-center bg-surface-alt/80 text-txt-secondary border border-surface-border/30 px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium">
+                                                            <Calendar size={12} className="text-emerald-500/80 mr-0.5 shrink-0" />
                                                             {yearVal}
                                                         </span>
                                                     )
@@ -198,7 +198,7 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                 flex flex-col items-center justify-center gap-0.5 w-8 my-1 rounded-md border transition-all group/pin z-20 shrink-0
                                 ${option.isPinned
                                     ? 'bg-status-warning/10 border-status-warning/30 text-status-warning'
-                                    : 'bg-surface-bg border-surface-border text-txt-muted hover:border-txt-secondary hover:text-txt-primary hover:bg-surface-bg-alt'
+                                    : 'bg-surface-bg border-surface-border text-txt-muted hover:border-txt-secondary hover:text-txt-primary hover:bg-surface-alt'
                                 }
                             `}
                             title={option.isPinned ? t('selector_unpin_hint') : t('selector_pin_hint')}

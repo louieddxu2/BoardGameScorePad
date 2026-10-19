@@ -22,7 +22,7 @@ const ScannerSourceSelector: React.FC<ScannerSourceSelectorProps> = ({ onCameraS
         <div className="flex flex-col gap-4">
           <button
             onClick={onCameraSelect}
-            className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-white font-bold rounded-xl flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
+            className="w-full py-4 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color font-bold rounded-xl flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
           >
             <Aperture size={24} /> <span className="text-lg">{t('scan_btn_camera')}</span>
           </button>

@@ -271,7 +271,7 @@ const LayoutEditor: React.FC<LayoutEditorProps> = ({ initialLayout, onSave, onCa
                     </button>
                     <div className="flex gap-3">
                         <button onClick={onCancel} className="px-4 py-2 rounded-lg text-txt-tertiary hover:bg-modal-bg-elevated transition-colors font-bold">{t('layout_cancel')}</button>
-                        <button onClick={() => onSave(rect || undefined)} className="px-6 py-2 rounded-lg bg-brand-primary-deep hover:bg-brand-primary text-white font-bold shadow-lg shadow-brand-primary/20 flex items-center gap-2">
+                        <button onClick={() => onSave(rect || undefined)} className="px-6 py-2 rounded-lg bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color font-bold shadow-lg shadow-brand-primary/20 flex items-center gap-2">
                             {t('layout_save')}
                         </button>
                     </div>

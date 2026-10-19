@@ -171,11 +171,11 @@ const ScanPreview: React.FC<ScanPreviewProps> = ({ imageSrc, template, onBack, o
                     </button>
 
                     {template && (
-                        <button onClick={() => onConfirm('edit_grid')} className="px-4 py-3 bg-status-info hover:filter hover:brightness-110 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 text-sm border border-white/10 active:scale-95 transition-all">
+                        <button onClick={() => onConfirm('edit_grid')} className="px-4 py-3 bg-status-info hover:filter hover:brightness-110 text-txt-on-color rounded-xl font-bold shadow-lg flex items-center gap-2 text-sm border border-white/10 active:scale-95 transition-all">
                             <Edit3 size={18} /> {t('scan_btn_edit_grid')}
                         </button>
                     )}
-                    <button onClick={() => onConfirm('save')} className="px-6 py-3 bg-brand-primary hover:filter hover:brightness-110 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all">
+                    <button onClick={() => onConfirm('save')} className="px-6 py-3 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color rounded-xl font-bold shadow-lg flex items-center gap-2 active:scale-95 transition-all">
                         <Check size={24} />
                     </button>
                 </div>
