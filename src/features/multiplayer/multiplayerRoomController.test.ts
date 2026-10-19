@@ -145,7 +145,7 @@ describe('multiplayer room controller', () => {
     expect(onLocalSession).not.toHaveBeenCalled();
   });
 
-  it('queues a local photo edit behind an in-flight snapshot and drains both before releasing the room', async () => {
+  it('admits a local photo edit immediately while its write stays behind an in-flight snapshot', async () => {
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
     const playerSession = createMultiplayerPlayerSessionFromBootstrap({ bootstrapMessage: host.createBootstrapMessage() });
     let release!: () => void;
@@ -167,7 +167,7 @@ describe('multiplayer room controller', () => {
     const drained = vi.fn();
     const idle = controller.waitForReceivedWrites().then(drained);
     await Promise.resolve();
-    expect(playerSession.session.photos).toBeUndefined();
+    expect(playerSession.session).toMatchObject({ ...media, players: [{ totalScore: 5 }] });
     expect(putSession).toHaveBeenCalledTimes(1);
     expect(drained).not.toHaveBeenCalled();
     release();

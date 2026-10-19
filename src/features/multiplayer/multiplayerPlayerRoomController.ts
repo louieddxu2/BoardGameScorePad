@@ -79,7 +79,7 @@ export const createMultiplayerPlayerRoomController = (options: {
     for (let attempt = 0; ; attempt++) {
       try {
         if (unpersistedSnapshot) {
-          const persisted = await persistMultiplayerSnapshot(unpersistedSnapshot, options.snapshotStore);
+          const persisted = await persistMultiplayerSnapshot(unpersistedSnapshot, options.snapshotStore, isActive);
           unpersistedSnapshot = null;
           if (!persisted) return null;
         }
@@ -252,15 +252,18 @@ export const createMultiplayerPlayerRoomController = (options: {
     },
 
     applyLocalSessionMedia(session: GameSession) {
-      if (options.isActive?.() === false) return Promise.resolve(null);
+      if (!isActive()) return Promise.resolve(null);
+      // Admit local assets synchronously so an immediate leave hands them off
+      // with the visible scores, even while a remote write blocks this queue.
+      if (!options.playerSession.applyLocalSessionMedia(session)) return Promise.resolve(null);
       const task = receiveQueue.then(async () => {
-        if (!options.playerSession.applyLocalSessionMedia(session)) return null;
+        if (!isActive()) return null;
         unpersistedSnapshot = {
           type: 'session:snapshot', roomId: options.playerSession.room.roomId,
           sessionId: session.id, session: options.playerSession.confirmedSession,
           revision: options.playerSession.revision, updatedAt: now(),
         };
-        if (await persistConfirmedChanges() === null) return null;
+        if (await persistConfirmedChanges() === null || !isActive()) return null;
         return options.playerSession.session;
       });
       receiveQueue = task.then(() => undefined, () => undefined);

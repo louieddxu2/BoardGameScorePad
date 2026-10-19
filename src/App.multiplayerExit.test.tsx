@@ -262,6 +262,127 @@ async function discardStartedLocalGame(tap: (element: Element) => void) {
   await waitFor(async () => expect(await db.sessions.count()).toBe(0));
 }
 
+it.each(['keep', 'history'] as const)('participant exit retains four-device scores when saving to %s', async destination => {
+  const tap = createTouchTap();
+  const { board } = await openFourDeviceRoom(tap);
+  const col = board.columns.find(column => column.name === '當前分數')!;
+  await waitFor(() => {
+    for (const [index, score] of [5, 7, 9, 11].entries()) {
+      expect(document.querySelector(`[data-score-cell="p${index + 1}:${col.id}"]`)?.textContent).toContain(String(score));
+    }
+  });
+  let participantPeer: string | undefined;
+  const inputGate = holdUntil(packet => {
+    if (packet.message?.type !== 'score:valuePatch' || packet.message.patch?.actor?.playerId !== 'p2') return false;
+    participantPeer = packet.from;
+    return true;
+  });
+  tap(document.querySelector(`[data-score-cell="p2:${col.id}"]`)!.firstElementChild!);
+  tap(await within(document.querySelector('[data-session-input-panel="true"]')!).findByRole('button', { name: '8' }));
+  await waitFor(() => expect(inputGate.heldCount).toBeGreaterThan(0));
+  const ackGate = holdUntil(packet => packet.to === participantPeer
+    && packet.message?.type === 'score:patch-result' && packet.message.accepted === true
+    && packet.message.snapshot?.session?.players?.[1]?.scores?.[col.id]?.parts?.[0] === 8);
+  await act(async () => {
+    inputGate.release();
+    await fixtures.network!.flush();
+  });
+  await waitFor(() => expect(ackGate.heldCount).toBeGreaterThan(0));
+  expect(host!.session.session.players[1].scores[col.id]?.parts).toEqual([8]);
+  const playerRuntime = renderedRuntime;
+  if (playerRuntime?.role !== 'player') throw new Error('expected_participant_runtime');
+  expect(playerRuntime.session.confirmedSession.players[1].scores[col.id]?.parts).toEqual([7]);
+  expect(document.querySelector(`[data-score-cell="p2:${col.id}"]`)?.textContent).toContain('8');
+  const photoContentIds = { 'local-photo': 'local-photo-content' };
+  const originalPersistSnapshot = multiplayerLocalStore.persistSnapshot!;
+  let mediaWriteStarted!: () => void;
+  let releaseMediaWrite!: () => void;
+  const mediaWriteStartedPromise = new Promise<void>(resolve => { mediaWriteStarted = resolve; });
+  const heldMediaWrite = new Promise<void>(resolve => {
+    releaseMediaWrite = resolve;
+    persistenceRelease = resolve;
+  });
+  persistenceSpy = vi.spyOn(multiplayerLocalStore, 'persistSnapshot').mockImplementation(options => {
+    if (options.session.photoContentIds?.['local-photo'] !== photoContentIds['local-photo']) return originalPersistSnapshot(options);
+    mediaWriteStarted();
+    return heldMediaWrite.then(() => originalPersistSnapshot(options));
+  });
+  let pendingMedia!: ReturnType<typeof playerRuntime.controller.applyLocalSessionMedia>;
+  await act(() => {
+    pendingMedia = playerRuntime.controller.applyLocalSessionMedia({ ...playerRuntime.session.session,
+      photos: ['local-photo'], photoContentIds });
+  });
+  await mediaWriteStartedPromise;
+  expect(playerRuntime.session.session).toMatchObject({ photos: ['local-photo'], photoContentIds });
+  expect(playerRuntime.session.session.players.map(player => player.scores[col.id]?.parts)).toEqual([[5], [8], [9], [11]]);
+
+  tap(screen.getByRole('button', { name: 'Multiplayer room' }));
+  tap(screen.getByRole('button', { name: 'Leave multiplayer room' }));
+  await waitFor(() => expect(multiplayerSessionManager.get('exit-test-room')).toBeNull());
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Leave multiplayer room' })).toBeNull());
+  await waitFor(() => expect(host!.getParticipantClaims()).toEqual({ p3: 1, p4: 1 }));
+  for (const [index, score] of [5, 8, 9, 11].entries()) {
+    expect(document.querySelector(`[data-score-cell="p${index + 1}:${col.id}"]`)?.textContent).toContain(String(score));
+  }
+
+  tap(document.querySelector('svg.lucide-arrow-left')!.closest('button')!);
+  await screen.findByText('Return to Menu');
+  tap(screen.getByRole('button', { name: destination === 'keep' ? /Save Draft/ : /Finish Game/ }));
+  if (destination === 'history') {
+    await waitFor(async () => expect((await db.history.get('shared-session'))?.players
+      .map(player => player.scores[col.id]?.parts)).toEqual([[5], [8], [9], [11]]));
+  }
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Multiplayer room' })).toBeNull());
+  await screen.findByText('Other board', { exact: true });
+  await waitFor(() => {
+    const dashboard = screen.getByText('Other board', { exact: true }).closest('div.absolute.inset-0.z-0.flex.flex-col');
+    expect(dashboard).not.toBeNull();
+    expect(dashboard).not.toHaveClass('invisible');
+  }, { timeout: 8_000 });
+  await waitFor(() => expect(screen.queryByText('Return to Menu')).toBeNull());
+
+  if (destination === 'keep') {
+    const savedSession = await db.sessions.get('shared-session');
+    expect(scoreParts(savedSession, col.id)).toEqual([[5], [8], [9], [11]]);
+    expect(savedSession).toMatchObject({ photos: ['local-photo'], photoContentIds });
+    expect(await db.history.get('shared-session')).toBeUndefined();
+  } else {
+    const savedHistory = await db.history.get('shared-session');
+    expect(savedHistory?.players.map(player => player.scores[col.id]?.parts)).toEqual([[5], [8], [9], [11]]);
+    expect(savedHistory).toMatchObject({ photos: ['local-photo'], photoContentIds });
+    expect(await db.sessions.get('shared-session')).toBeUndefined();
+  }
+  releaseMediaWrite();
+  persistenceRelease = undefined;
+  expect(await pendingMedia).toBeNull();
+  if (destination === 'keep') {
+    const savedSession = await db.sessions.get('shared-session');
+    expect(scoreParts(savedSession, col.id)).toEqual([[5], [8], [9], [11]]);
+    expect(savedSession).toMatchObject({ photos: ['local-photo'], photoContentIds });
+    expect(await db.history.get('shared-session')).toBeUndefined();
+  } else {
+    const savedHistory = await db.history.get('shared-session');
+    expect(savedHistory?.players.map(player => player.scores[col.id]?.parts)).toEqual([[5], [8], [9], [11]]);
+    expect(savedHistory).toMatchObject({ photos: ['local-photo'], photoContentIds });
+    expect(await db.sessions.get('shared-session')).toBeUndefined();
+  }
+  await act(async () => {
+    ackGate.release({ deliverAfterClose: true });
+    await fixtures.network!.flush();
+  });
+  if (destination === 'keep') {
+    const savedSession = await db.sessions.get('shared-session');
+    expect(scoreParts(savedSession, col.id)).toEqual([[5], [8], [9], [11]]);
+    expect(savedSession).toMatchObject({ photos: ['local-photo'], photoContentIds });
+    expect(await db.history.get('shared-session')).toBeUndefined();
+  } else {
+    const savedHistory = await db.history.get('shared-session');
+    expect(savedHistory?.players.map(player => player.scores[col.id]?.parts)).toEqual([[5], [8], [9], [11]]);
+    expect(savedHistory).toMatchObject({ photos: ['local-photo'], photoContentIds });
+    expect(await db.sessions.get('shared-session')).toBeUndefined();
+  }
+}, 15_000);
+
 function holdUntil(predicate: (packet: { from: string; to: string; message: any }) => boolean) {
   const gate = fixtures.network!.holdPackets(predicate);
   packetGates.push(gate);

@@ -11,6 +11,7 @@ import {
 } from './multiplayerPersistence';
 import type { SessionCompletedMessage } from './protocol';
 import { createScoreStateSyncAdapter } from './scoreStateSyncAdapter';
+import { generateId } from '../../utils/idGenerator';
 
 const multiplayerRoomCleanupTables = [
   db.multiplayerRooms,
@@ -41,13 +42,17 @@ const replaceExistingSession = async (session: GameSession, shouldPersist?: () =
   return replaced ? count : 0;
 };
 
-export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHistoryStore & MultiplayerSnapshotStore & MultiplayerCompletionReleaseStore & {
+type MultiplayerLocalStore = MultiplayerBootstrapStore & MultiplayerHistoryStore & MultiplayerSnapshotStore & MultiplayerCompletionReleaseStore & {
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
   getRoomBySessionId(sessionId: string): Promise<MultiplayerRoomRecord | undefined>;
   getSession(sessionId: string): Promise<GameSession | undefined>;
   purgeRoomData(roomId: string): Promise<void>;
+  purgeOwnedRoomData(roomId: string, shouldPurge: () => boolean): Promise<void>;
   deleteRoom(roomId: string): Promise<void>;
-} = {
+};
+
+/** Each page stamps its existing room writes; no extra transaction or schema index. */
+export const createMultiplayerLocalStore = (localOwnerId = generateId()): MultiplayerLocalStore => ({
   async getTemplate(id: string): Promise<GameTemplate | undefined> {
     return (await db.templates.get(id)) ?? await db.builtins.get(id);
   },
@@ -58,7 +63,7 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
     return db.sessions.put(session);
   },
   putRoom(room: MultiplayerRoomRecord) {
-    return db.multiplayerRooms.put(room);
+    return db.multiplayerRooms.put({ ...room, localOwnerId });
   },
   persistBootstrap({ template, session, room, requireExistingSession, shouldPersist }: MultiplayerBootstrapRecords) {
     const tables = template
@@ -72,7 +77,7 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
         await db.sessions.put(session);
       }
       if (template) await db.templates.put(template);
-      await db.multiplayerRooms.put(room);
+      await db.multiplayerRooms.put({ ...room, localOwnerId });
       return true;
     });
   },
@@ -88,11 +93,11 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   updateRoomRevision(roomId: string, revision: number, updatedAt: number) {
     return db.multiplayerRooms.update(roomId, { revision, updatedAt });
   },
-  persistSnapshot({ session, roomId, revision, updatedAt }) {
+  persistSnapshot({ session, roomId, revision, updatedAt, shouldPersist }) {
     return db.transaction('rw', [db.sessions, db.multiplayerRooms], async () => {
       // A snapshot updates an existing owner, unlike first-join bootstrap.
       // Replace the whole row atomically, but never upsert a deleted session.
-      const count = await replaceExistingSession(session);
+      const count = await replaceExistingSession(session, shouldPersist);
       if (count === 0) return false;
       await db.multiplayerRooms.update(roomId, { templateId: session.templateId, revision, updatedAt });
       return true;
@@ -130,10 +135,23 @@ export const multiplayerLocalStore: MultiplayerBootstrapStore & MultiplayerHisto
   async purgeRoomData(roomId: string): Promise<void> {
     await db.transaction('rw', multiplayerRoomCleanupTables, () => purgeMultiplayerRoomData(roomId));
   },
+  async purgeOwnedRoomData(roomId, shouldPurge): Promise<void> {
+    await db.transaction('rw', [db.sessions, ...multiplayerRoomCleanupTables], async () => {
+      const room = await db.multiplayerRooms.get(roomId);
+      // Compare and delete atomically: an old page cannot purge a new join.
+      // Unclaimed legacy rooms and other pages' rooms stay protected while
+      // their session exists. Deleted sessions leave only safe-to-purge orphans.
+      if (room && room.localOwnerId !== localOwnerId && await db.sessions.get(room.sessionId)) return;
+      if (!shouldPurge()) return;
+      await purgeMultiplayerRoomData(roomId);
+    });
+  },
   deleteRoom(roomId: string): Promise<void> {
     return this.purgeRoomData(roomId);
   },
-};
+});
+
+export const multiplayerLocalStore = createMultiplayerLocalStore();
 
 export const createLocalScoreStateSyncAdapter = (roomId: string, role: 'host' | 'player', options?: {
   applyRemoteBootstrap?: (message: Parameters<typeof persistMultiplayerBootstrap>[0]) => boolean | Promise<boolean>;

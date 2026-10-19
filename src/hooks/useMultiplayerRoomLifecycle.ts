@@ -492,20 +492,27 @@ export const useMultiplayerRoomLifecycle = ({
     const transport = participantTransportRef.current;
     participantTransportRef.current = null;
     releaseParticipantTabClaim(activeRoom.roomId);
-    clearVisibleMultiplayerRoomState();
-    setPendingJoin(null);
-    setPendingMultiplayerClaimIds(null);
-    setIsMultiplayerTransitioning(false);
     try {
       if (managedRoom?.runtime?.role === 'player') managedRoom.runtime.leaveRoom();
       else transport?.stop?.();
     } catch (err) {
       console.warn('[multiplayer] Failed to stop participant transport:', err);
     }
-    await multiplayerSessionManager.closeRoom(activeRoom.roomId, {
-      deleteLocalRoom: true,
-      awaitLocalCleanup: false,
-    });
+    // Preserve the visible projection, including local inputs awaiting ACK.
+    // Ordinary autosave/exit now owns it; stopped receives cannot overwrite it.
+    try {
+      const localSession = managedRoom?.runtime?.session.session ?? managedRoom?.session;
+      if (localSession) appDataRef.current.updateSession(localSession);
+    } finally {
+      clearVisibleMultiplayerRoomState();
+      setPendingJoin(null);
+      setPendingMultiplayerClaimIds(null);
+      setIsMultiplayerTransitioning(false);
+      await multiplayerSessionManager.closeRoom(activeRoom.roomId, {
+        deleteLocalRoom: true,
+        awaitLocalCleanup: false,
+      });
+    }
   }, [clearVisibleMultiplayerRoomState, releaseParticipantTabClaim, setPendingJoin]);
 
   const releaseMultiplayerRoomForSession = useCallback(async (sessionId: string) => {

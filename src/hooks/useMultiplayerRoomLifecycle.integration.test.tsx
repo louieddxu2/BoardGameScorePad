@@ -119,6 +119,7 @@ const appData = {
   isDbReady: true,
   activeSessions: [],
   resumeSessionById: vi.fn(async () => true),
+  updateSession: vi.fn(),
   currentSession: null,
   activeTemplate: null,
 } as any;
@@ -174,6 +175,7 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
     returnToDashboard.mockClear();
     showToast.mockClear();
     appData.resumeSessionById.mockClear();
+    appData.updateSession.mockClear();
     vi.mocked(saveParticipantBinding).mockReset().mockResolvedValue(bindingRecord);
     vi.mocked(multiplayerSessionManager.setConnectionStatus).mockClear();
     sessionStorage.clear();
@@ -465,6 +467,8 @@ describe('useMultiplayerRoomLifecycle QR integration', () => {
 
     expect(mocks.runtime.leaveRoom).toHaveBeenCalledTimes(1);
     expect(mocks.closeRoom).toHaveBeenCalledTimes(1);
+    expect(appData.updateSession).toHaveBeenCalledWith(mocks.runtime.session.session);
+    expect(appData.updateSession.mock.invocationCallOrder[0]).toBeLessThan(mocks.closeRoom.mock.invocationCallOrder[0]);
     expect(result.current.activeMultiplayerRoom).toBeNull();
     expect(createMultiplayerPlayerRoomRuntime).toHaveBeenCalledTimes(1);
     expect(mocks.closeRoom).toHaveBeenCalledWith('room-1', { deleteLocalRoom: true, awaitLocalCleanup: false });

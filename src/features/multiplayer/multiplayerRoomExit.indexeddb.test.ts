@@ -1,9 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
-import type { GameSession, GameTemplate } from '../../types';
+import type {
+  GameSession,
+  GameTemplate,
+  MultiplayerOutboxRecord,
+  MultiplayerParticipantBindingRecord,
+  MultiplayerPatchReceiptRecord,
+  MultiplayerRoomRecord,
+  MultiplayerSequenceRecord,
+} from '../../types';
 import { createMultiplayerPlayerRoomRuntime } from './multiplayerRoomRuntime';
 import { createMultiplayerSessionManager } from './multiplayerSessionManager';
-import { multiplayerLocalStore } from './multiplayerLocalStore';
+import { createMultiplayerLocalStore, multiplayerLocalStore } from './multiplayerLocalStore';
 import { multiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { multiplayerParticipantBindingStore } from './multiplayerParticipantBinding';
 import { MULTIPLAYER_PROTOCOL_VERSION } from './protocol';
@@ -11,6 +19,8 @@ import { act, renderHook } from '@testing-library/react';
 import { useSessionManager } from '../../hooks/useSessionManager';
 import { cleanupService } from '../../services/cleanupService';
 import Dexie from 'dexie';
+import type { SessionSnapshotMessage } from './protocol';
+import { persistMultiplayerSnapshot } from './multiplayerPersistence';
 
 // Keep Dexie's actual transaction and promise-zone implementation. Only the
 // browser storage backend is simulated; no production/user database is opened.
@@ -109,6 +119,129 @@ describe('participant room exit with real Dexie transactions', () => {
     ]));
     expect(saved).toEqual(session);
     expect(room).toBeDefined();
+  });
+
+  it('keeps a same-room rejoin and its delivery data when the old page drains later', async () => {
+    const oldStore = createMultiplayerLocalStore();
+    const newStore = createMultiplayerLocalStore();
+    const session: GameSession = { id: 'game', templateId: 'board', name: 'Old', startTime: 1,
+      status: 'active', players: [] };
+    const room: MultiplayerRoomRecord = { roomId: 'room', sessionId: session.id, templateId: session.templateId,
+      role: 'player' as const, hostDeviceId: 'host', status: 'active' as const,
+      revision: 1, createdAt: 1, updatedAt: 1 };
+    await oldStore.persistBootstrap({ session, room });
+
+    let finishDrain!: () => void;
+    const drain = new Promise<void>(resolve => { finishDrain = resolve; });
+    const runtime = { role: 'player', session: { session }, stop: vi.fn(), whenIdle: () => drain } as any;
+    const manager = createMultiplayerSessionManager(oldStore);
+    manager.register(room.roomId, runtime);
+
+    await manager.closeRoom(room.roomId, { deleteLocalRoom: true, awaitLocalCleanup: false });
+    // The cleanup is intentionally still pending, but no IndexedDB transaction is open.
+    const freshSession: GameSession = { ...session, name: 'New page session' };
+    expect(await newStore.persistBootstrap({ session: freshSession, room: { ...room, revision: 7 } })).toBe(true);
+    const binding: MultiplayerParticipantBindingRecord = { id: 'binding', roomId: room.roomId,
+      sessionId: session.id, deviceId: 'device', playerId: 'p1', updatedAt: 7 };
+    const outbox: MultiplayerOutboxRecord = { id: 'outbox', roomId: room.roomId, sessionId: session.id,
+      deviceId: 'device', opId: 'op', message: { value: 7 }, createdAt: 7, updatedAt: 7 };
+    const receipt: MultiplayerPatchReceiptRecord = { id: 'receipt', roomId: room.roomId, sessionId: session.id,
+      deviceId: 'device', opId: 'op', acceptedRevision: 7, updatedAt: 7 };
+    const sequence: MultiplayerSequenceRecord = { id: `${room.roomId}:device`, nextSequence: 8, updatedAt: 7 };
+    await db.multiplayerParticipantBindings.put(binding);
+    await db.multiplayerOutbox.put(outbox);
+    await db.multiplayerPatchReceipts.put(receipt);
+    await db.multiplayerSequences.put(sequence);
+
+    finishDrain();
+    await manager.waitForRoomCleanup(room.roomId);
+
+    expect(await db.sessions.get(session.id)).toEqual(freshSession);
+    expect(await db.multiplayerRooms.get(room.roomId)).toMatchObject({ revision: 7, localOwnerId: expect.any(String) });
+    expect(await db.multiplayerParticipantBindings.get('binding')).toBeDefined();
+    expect(await db.multiplayerOutbox.get('outbox')).toBeDefined();
+    expect(await db.multiplayerPatchReceipts.get('receipt')).toBeDefined();
+    expect(await db.multiplayerSequences.get(`${room.roomId}:device`)).toBeDefined();
+  });
+
+  it('rechecks the generation guard inside the transaction before purging an owned room', async () => {
+    const store = createMultiplayerLocalStore();
+    const session: GameSession = { id: 'owned-game', templateId: 'board', name: 'Owned', startTime: 1,
+      status: 'active', players: [] };
+    const room: MultiplayerRoomRecord = { roomId: 'owned-room', sessionId: session.id, templateId: session.templateId,
+      role: 'player' as const, hostDeviceId: 'host', status: 'active' as const,
+      revision: 1, createdAt: 1, updatedAt: 1 };
+    await store.persistBootstrap({ session, room });
+    const outbox: MultiplayerOutboxRecord = { id: 'owned-outbox', roomId: room.roomId,
+      sessionId: session.id, deviceId: 'device', opId: 'op', message: {}, createdAt: 1, updatedAt: 1 };
+    await db.multiplayerOutbox.put(outbox);
+
+    const shouldPurge = vi.fn(() => false);
+    await store.purgeOwnedRoomData(room.roomId, shouldPurge);
+    expect(await db.multiplayerRooms.get(room.roomId)).toBeDefined();
+    expect(await db.multiplayerOutbox.get('owned-outbox')).toBeDefined();
+    expect(shouldPurge).toHaveBeenCalledOnce();
+
+    await store.purgeOwnedRoomData(room.roomId, () => true);
+    expect(await db.multiplayerRooms.get(room.roomId)).toBeUndefined();
+    expect(await db.multiplayerOutbox.get('owned-outbox')).toBeUndefined();
+  });
+
+  it.each([
+    { localOwnerId: undefined, sessionExists: true },
+    { localOwnerId: undefined, sessionExists: false },
+    { localOwnerId: 'closed-page', sessionExists: true },
+    { localOwnerId: 'closed-page', sessionExists: false },
+  ])('protects a foreign or legacy room only while its session exists ($localOwnerId, $sessionExists)', async ({ localOwnerId, sessionExists }) => {
+    const store = createMultiplayerLocalStore();
+    const session: GameSession = { id: 'legacy-game', templateId: 'board', name: 'Legacy', startTime: 1,
+      status: 'active', players: [] };
+    const room: MultiplayerRoomRecord = { roomId: 'legacy-room', sessionId: session.id, localOwnerId,
+      templateId: session.templateId, role: 'player', hostDeviceId: 'host', status: 'active',
+      revision: 1, createdAt: 1, updatedAt: 1 };
+    const binding: MultiplayerParticipantBindingRecord = { id: 'legacy-binding', roomId: room.roomId,
+      sessionId: session.id, deviceId: 'device', playerId: 'p1', updatedAt: 1 };
+    const outbox: MultiplayerOutboxRecord = { id: 'legacy-outbox', roomId: room.roomId,
+      sessionId: session.id, deviceId: 'device', opId: 'op', message: { value: 1 }, createdAt: 1, updatedAt: 1 };
+    const receipt: MultiplayerPatchReceiptRecord = { id: 'legacy-receipt', roomId: room.roomId,
+      sessionId: session.id, deviceId: 'device', opId: 'op', acceptedRevision: 1, updatedAt: 1 };
+    const sequence: MultiplayerSequenceRecord = { id: `${room.roomId}:device`, nextSequence: 2, updatedAt: 1 };
+
+    if (sessionExists) await db.sessions.put(session);
+    await db.multiplayerRooms.put(room); // Not owned by the current store/page.
+    await db.multiplayerParticipantBindings.put(binding);
+    await db.multiplayerOutbox.put(outbox);
+    await db.multiplayerPatchReceipts.put(receipt);
+    await db.multiplayerSequences.put(sequence);
+
+    await store.purgeOwnedRoomData(room.roomId, () => true);
+
+    expect(await db.multiplayerRooms.get(room.roomId) !== undefined).toBe(sessionExists);
+    expect(await db.multiplayerParticipantBindings.get(binding.id) !== undefined).toBe(sessionExists);
+    expect(await db.multiplayerOutbox.get(outbox.id) !== undefined).toBe(sessionExists);
+    expect(await db.multiplayerPatchReceipts.get(receipt.id) !== undefined).toBe(sessionExists);
+    expect(await db.multiplayerSequences.get(sequence.id) !== undefined).toBe(sessionExists);
+    expect(await db.sessions.get(session.id) !== undefined).toBe(sessionExists);
+  });
+
+  it('does not overwrite an existing session with a late snapshot after the runtime becomes inactive', async () => {
+    const store = createMultiplayerLocalStore();
+    const session: GameSession = { id: 'snapshot-game', templateId: 'board', name: 'Saved locally', startTime: 1,
+      status: 'active', players: [] };
+    const room: MultiplayerRoomRecord = { roomId: 'snapshot-room', sessionId: session.id,
+      templateId: session.templateId, role: 'player', hostDeviceId: 'host', status: 'active',
+      revision: 1, createdAt: 1, updatedAt: 1 };
+    await store.persistBootstrap({ session, room });
+    const lateSnapshot: SessionSnapshotMessage = {
+      type: 'session:snapshot', roomId: room.roomId, sessionId: session.id,
+      session: { ...session, name: 'Late remote snapshot' }, revision: 2, updatedAt: 2,
+    };
+    let activityChecks = 0;
+    const isActive = () => ++activityChecks === 1;
+
+    expect(await persistMultiplayerSnapshot(lateSnapshot, store, isActive)).toBeNull();
+    expect(activityChecks).toBe(2);
+    expect(await db.sessions.get(session.id)).toEqual(session);
   });
 
   it.each([false, true])('can leave, discard, delete and start again (writes pending: %s)', async (writesPending) => {

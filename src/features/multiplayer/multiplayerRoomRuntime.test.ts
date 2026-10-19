@@ -202,7 +202,7 @@ describe('multiplayer room runtime', () => {
     participant.stop();
   });
 
-  it('cancels queued remote messages while draining already-admitted local media on participant exit', async () => {
+  it('cancels queued remote and stopped media persistence while preserving the local projection on participant exit', async () => {
     const store = createRuntimeStore();
     const host = createMultiplayerHostSession({ roomId: 'room-1', hostDeviceId: 'host', template, session });
     const onSessionSnapshot = vi.fn();
@@ -220,17 +220,23 @@ describe('multiplayer room runtime', () => {
     const firstSnapshot = host.applyLocalSession({ ...host.session, players: [{ ...session.players[0], scores: { points: { parts: [1] } } }] })!;
     const first = participant.receive(firstSnapshot);
     await writing;
-    const media = participant.controller.applyLocalSessionMedia({ ...session, photos: ['local-photo'] });
+    const media = participant.controller.applyLocalSessionMedia({ ...session, photos: ['local-photo'],
+      photoContentIds: { 'local-photo': 'local-content' } });
+    expect(participant.session.session).toMatchObject({ photos: ['local-photo'],
+      photoContentIds: { 'local-photo': 'local-content' }, players: [{ totalScore: 1, scores: { points: { parts: [1] } } }] });
     host.applyLocalBoard({ ...template, name: 'Changed' }, host.session);
     const queued = [participant.receive(firstSnapshot), participant.receive(host.createBootstrapMessage()), participant.receive(host.complete())];
     participant.stop();
     release();
     expect(await first).toBe(false);
     expect(await Promise.all(queued)).toEqual([false, false, false]);
-    expect(await media).toMatchObject({ photos: ['local-photo'], players: [{ totalScore: 1 }] });
+    expect(await media).toBeNull();
     await participant.whenIdle?.();
-    expect(await store.getSession(session.id)).toMatchObject({ status: 'active', photos: ['local-photo'], players: [{ totalScore: 1 }] });
-    expect(putSession).toHaveBeenCalledTimes(2);
+    const persisted = await store.getSession(session.id);
+    expect(persisted).toMatchObject({ status: 'active', players: [{ totalScore: 1, scores: { points: { parts: [1] } } }] });
+    expect(persisted).not.toHaveProperty('photos');
+    expect(persisted).not.toHaveProperty('photoContentIds');
+    expect(putSession).toHaveBeenCalledTimes(1);
     expect(onSessionSnapshot).not.toHaveBeenCalled();
     expect(onOwnershipReturned).not.toHaveBeenCalled();
     expect(sendToHost).not.toHaveBeenCalled();
@@ -308,12 +314,8 @@ describe('multiplayer room runtime', () => {
     release();
     await idle;
     expect(drained).toHaveBeenCalledOnce();
-    if (role === 'host') {
-      expect(await admitted).toBeNull();
-      expect(onSessionSnapshot).not.toHaveBeenCalled();
-    } else {
-      expect(await admitted).toMatchObject({ photoContentIds: { photo: 'before-stop' } });
-    }
+    expect(await admitted).toBeNull();
+    expect(onSessionSnapshot).not.toHaveBeenCalled();
     expect(await store.getSession(session.id)).toMatchObject({ photoContentIds: { photo: 'before-stop' } });
     saveSpy.mockRestore();
     onSessionSnapshot.mockClear();

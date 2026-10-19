@@ -68,7 +68,9 @@ const snapshot = (state: MultiplayerRoomState): MultiplayerRoomState => ({
  * Keeps P2P rooms alive independently of a mounted score-sheet view. A UI can
  * attach and detach freely; only an explicit close stops the transport.
  */
-export const createMultiplayerSessionManager = (): MultiplayerSessionManager => {
+export const createMultiplayerSessionManager = (
+  store: Pick<typeof multiplayerLocalStore, 'purgeOwnedRoomData'> = multiplayerLocalStore,
+): MultiplayerSessionManager => {
   const rooms = new Map<string, MultiplayerRoomState>();
   const cleanupTasks = new Map<string, Promise<void>>();
   const cleanupGenerations = new Map<string, number>();
@@ -217,7 +219,8 @@ export const createMultiplayerSessionManager = (): MultiplayerSessionManager => 
       // UI guards, and a fresh QR join must be able to supersede this purge.
       const cleanup = Promise.all([previousCleanup, drain]).then(() => {
         if (!options?.deleteLocalRoom || (cleanupGenerations.get(roomId) ?? 0) !== cleanupGeneration) return;
-        return multiplayerLocalStore.purgeRoomData(roomId);
+        return store.purgeOwnedRoomData(roomId,
+          () => (cleanupGenerations.get(roomId) ?? 0) === cleanupGeneration);
       }).catch((err) => {
         console.warn('[multiplayerSessionManager] Failed to purge local room data on close:', err);
       });

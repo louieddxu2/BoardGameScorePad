@@ -52,6 +52,7 @@ export interface MultiplayerSnapshotStore {
     roomId: string;
     revision: number;
     updatedAt: number;
+    shouldPersist?: () => boolean;
   }): Promise<unknown>;
   /** A false result must not commit a receipt, sequence, or room revision. */
   persistAcceptedSnapshot?(options: {
@@ -185,11 +186,14 @@ export const persistMultiplayerBootstrap = async (
 
 export const persistMultiplayerSnapshot = async (
   message: SessionSnapshotMessage,
-  store: MultiplayerSnapshotStore
+  store: MultiplayerSnapshotStore,
+  shouldPersist?: () => boolean,
 ): Promise<GameSession | null> => {
   if (!isSessionSnapshotMessage(message)) {
     throw new Error('invalid_session_snapshot');
   }
+
+  if (shouldPersist?.() === false) return null;
 
   const session = cloneJson(message.session);
   if (store.persistSnapshot) {
@@ -198,6 +202,7 @@ export const persistMultiplayerSnapshot = async (
       roomId: message.roomId,
       revision: message.revision,
       updatedAt: message.updatedAt,
+      ...(shouldPersist ? { shouldPersist } : {}),
     });
     if (persisted === false) return null; // The local record was retired; never recreate it.
   } else {

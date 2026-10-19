@@ -213,6 +213,8 @@ export interface GameSession extends GameIdentity {
 
 export interface MultiplayerRoomRecord {
   roomId: string;
+  /** Local page ownership only; never sent in the multiplayer protocol. */
+  localOwnerId?: string;
   sessionId: string;
   templateId: string;
   hostDeviceId: string;
