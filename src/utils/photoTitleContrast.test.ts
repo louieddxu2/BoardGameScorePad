@@ -61,6 +61,7 @@ describe('photo title contrast', () => {
         expect(context.getImageData).toHaveBeenCalledTimes(2);
         expect(root.style.getPropertyValue('--photo-result-background')).toBe(getPhotoResultPalette(photoPixels).background);
         expect(root.style.getPropertyValue('--photo-result-card')).toBe(getPhotoResultPalette(photoPixels).card);
+        expect(root.style.getPropertyValue('--photo-result-identity')).toBe(getPhotoResultPalette(photoPixels).identity);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(getPhotoResultPalette(photoPixels).border);
         expect(root.style.getPropertyValue('--photo-title-color')).toBe('#111827');
         expect(root.style.getPropertyValue('--photo-title-background')).toBe('none');
@@ -81,6 +82,7 @@ describe('photo title contrast', () => {
         const { root, context } = setupPhoto();
         root.style.setProperty('--photo-result-background', 'hsl(0, 44%, 22%)');
         root.style.setProperty('--photo-result-card', 'hsl(0, 37%, 30%)');
+        root.style.setProperty('--photo-result-identity', 'hsl(0, 37%, 26%)');
         root.style.setProperty('--photo-result-border', 'rgba(200,100,100,0.45)');
         context.getImageData.mockImplementation(() => { throw new DOMException('Blocked', 'SecurityError'); });
         await prepareScorePhotoTitle(root, new AbortController().signal);
@@ -89,6 +91,7 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-title-background')).toBe(PHOTO_TITLE_FALLBACK.background);
         expect(root.style.getPropertyValue('--photo-result-background')).toBe(PHOTO_RESULT_FALLBACK.background);
         expect(root.style.getPropertyValue('--photo-result-card')).toBe(PHOTO_RESULT_FALLBACK.card);
+        expect(root.style.getPropertyValue('--photo-result-identity')).toBe(PHOTO_RESULT_FALLBACK.identity);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
     });
 

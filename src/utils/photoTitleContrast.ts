@@ -102,6 +102,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-title-background', appearance.background);
     root.style.setProperty('--photo-result-background', palette.background);
     root.style.setProperty('--photo-result-card', palette.card);
+    root.style.setProperty('--photo-result-identity', palette.identity);
     root.style.setProperty('--photo-result-border', palette.border);
     root.style.setProperty('--photo-result-text', palette.text);
     root.style.setProperty('--photo-result-muted', palette.muted);

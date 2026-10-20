@@ -27,11 +27,12 @@ describe('photo name and surface contrast', () => {
                 expect(contrast(text, luminance(palette.background))).toBeGreaterThan(4.5);
                 expect(contrast(luminance(palette.muted), luminance(palette.background))).toBeGreaterThan(4.5);
                 expect(contrast(luminance(palette.winner), luminance(palette.card))).toBeGreaterThan(3);
+                expect(contrast(luminance(palette.winner), luminance(palette.identity))).toBeGreaterThan(3);
                 // Test the difficult case: exactly the same name and card color.
                 const element = document.createElement('span');
-                element.style.color = palette.card;
+                element.style.color = palette.identity;
                 const outline = getPhotoPlayerNameShadow(element.style.color).includes('#ffffff') ? 1 : 0;
-                expect(contrast(outline, luminance(palette.card))).toBeGreaterThanOrEqual(4.5);
+                expect(contrast(outline, luminance(palette.identity))).toBeGreaterThanOrEqual(4.5);
             }
         }
         for (const color of ['#000000', '#ffffff', '#ff0000', '#00d000', '#0000ff', '#808080', '#ffff00']) {

@@ -1,6 +1,7 @@
 interface PhotoResultPalette {
     background: string;
     card: string;
+    identity: string;
     border: string;
     text: string;
     muted: string;
@@ -8,12 +9,12 @@ interface PhotoResultPalette {
 }
 
 export const PHOTO_RESULT_FALLBACK: Readonly<PhotoResultPalette> = {
-    background: '#1e293b', card: '#334155', border: '#64748b',
+    background: '#1e293b', card: '#334155', identity: '#293649', border: '#64748b',
     text: '#f8fafc', muted: '#cbd5e1', winner: '#fbbf24',
 };
 
 const LIGHT_NEUTRAL: Readonly<PhotoResultPalette> = {
-    background: '#f1f5f9', card: '#ffffff', border: '#94a3b8',
+    background: '#f1f5f9', card: '#ffffff', identity: '#e8edf2', border: '#94a3b8',
     text: '#0f172a', muted: '#475569', winner: '#854d0e',
 };
 
@@ -61,6 +62,6 @@ export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPal
     // Opaque surfaces keep the sampled hue visible instead of diluting it over app gray.
     // The photo controls both surfaces and text, independently of the app theme.
     return isLight
-        ? { ...neutral, background: tone(1, 92), card: tone(0.85, 96), border: tone(1, 64) }
-        : { ...neutral, background: tone(1, 22), card: tone(0.85, 30), border: tone(1, 52) };
+        ? { ...neutral, background: tone(1, 92), card: tone(0.85, 96), identity: tone(0.85, 92), border: tone(1, 64) }
+        : { ...neutral, background: tone(1, 22), card: tone(0.85, 30), identity: tone(0.85, 26), border: tone(1, 52) };
 };

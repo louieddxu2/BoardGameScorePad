@@ -13,6 +13,7 @@ describe('photo result palette', () => {
         const palette = getPhotoResultPalette(source);
         expect(palette.background).toBe('hsl(124, 44%, 22%)');
         expect(palette.card).toBe('hsl(124, 37%, 30%)');
+        expect(palette.identity).toBe('hsl(124, 37%, 26%)');
         expect(palette.border).toBe('hsl(124, 44%, 52%)');
         expect(source).toEqual(before);
     });
@@ -26,6 +27,8 @@ describe('photo result palette', () => {
             expect(dark.card).toBe(`hsl(${hue}, 37%, 30%)`);
             expect(light.background).toBe(`hsl(${hue}, 44%, 92%)`);
             expect(light.card).toBe(`hsl(${hue}, 37%, 96%)`);
+            expect(dark.identity).toBe(`hsl(${hue}, 37%, 26%)`);
+            expect(light.identity).toBe(`hsl(${hue}, 37%, 92%)`);
             expect(dark.card).not.toBe(dark.background);
             expect(light.card).not.toBe(light.background);
         }
@@ -39,6 +42,7 @@ describe('photo result palette', () => {
         const bright = getPhotoResultPalette(new Uint8ClampedArray([240, 240, 240, 255, 0, 0, 0, 0]));
         expect(bright.background).toBe('#f1f5f9');
         expect(bright.text).toBe('#0f172a');
+        expect(bright.identity).toBe('#e8edf2');
         const dark = getPhotoResultPalette(new Uint8ClampedArray([30, 30, 30, 255, 255, 255, 255, 0]));
         expect(dark).toEqual(PHOTO_RESULT_FALLBACK);
         expect(getPhotoResultPalette(new Uint8ClampedArray())).toEqual(PHOTO_RESULT_FALLBACK);

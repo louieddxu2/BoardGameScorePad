@@ -242,8 +242,9 @@ describe('photo-first score export layout', () => {
       const identity = entry.querySelector('[data-score-photo-identity]')!;
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');
-      expect(identity).toHaveStyle({ backgroundColor: 'rgb(var(--c-surface-bg))', borderRadius: '8px' });
-      expect((identity as HTMLElement).style.boxShadow).toContain('rgb(var(--c-surface-border))');
+      expect(identity).toHaveStyle({ borderRadius: '8px' });
+      expect((identity as HTMLElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
+      expect((identity as HTMLElement).style.boxShadow).toBe('');
       expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
       if (players[index].isAnonymous) expect(identity.querySelector('[data-sticker-icon]')).not.toBeNull();
       else {
@@ -261,7 +262,7 @@ describe('photo-first score export layout', () => {
       expect(crown.parentElement).toHaveStyle({ padding: '10px 28px 6px', maxWidth: '100%' });
       expect(crown).toHaveStyle({ top: '0px', right: '0px' });
       expect(crown).toHaveClass('text-status-warning');
-      expect((crown as SVGElement).style.color).toBe(''); // Follows the neutral UI plate, not the photo.
+      expect((crown as SVGElement).style.color).toBe('var(--photo-result-winner, #fbbf24)');
       expect(crown).toHaveAttribute('width', '24');
     }
 
@@ -275,7 +276,7 @@ describe('photo-first score export layout', () => {
     expect(metadata.lastElementChild).toHaveStyle({ marginLeft: 'auto', textAlign: 'right' });
   });
 
-  it('keeps default identities on the neutral UI surface and preserves explicitly chosen player colors', () => {
+  it('preserves default and explicitly chosen identity colors on photo-derived surfaces', () => {
     const players: OverlayData['players'] = [
       { ...createPlayer('p1', 'Default name', 10), color: 'transparent' },
       { ...createPlayer('p2', 'Private name', 20), color: '', isAnonymous: true },

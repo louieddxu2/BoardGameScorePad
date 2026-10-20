@@ -172,9 +172,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 // Reserve space within the name box for its superscript crown.
                                 style={{
                                     maxWidth: '100%', minHeight: 50, padding: isCoop ? '10px 8px 6px' : '10px 28px 6px', textAlign: 'center',
-                                    // Keep colored identities on the familiar opaque UI surface, not the photo hue.
-                                    backgroundColor: 'rgb(var(--c-surface-bg))', borderRadius: 8,
-                                    boxShadow: 'inset 0 0 0 1px rgb(var(--c-surface-border))',
+                                    // A small tonal step separates identities without an unrelated UI-colored plate.
+                                    backgroundColor: `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`, borderRadius: 8,
                                 }}
                             >
                                 {isWinner && !isCoop && (
@@ -182,7 +181,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                         data-score-photo-winner="true"
                                         size={24}
                                         className="absolute text-status-warning fill-current"
-                                        style={{ top: 0, right: 0 }}
+                                        style={{ top: 0, right: 0, color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})` }}
                                     />
                                 )}
                                 {p.isAnonymous ? (
