@@ -29,10 +29,12 @@ it('updates mounted player tints and keeps light auto rows continuous with their
         const view = render(<LanguageProvider><ScoreGrid session={session} template={template}
             editingCell={null} editingPlayerId={null} onCellClick={noop} onPlayerHeaderClick={noop}
             onColumnHeaderClick={noop} onUpdateTemplate={noop} onAddColumn={noop}
-            scrollContainerRef={scroll} contentRef={content} isEditMode={false} zoomLevel={1} panelDockOffset="0px" />
+            scrollContainerRef={scroll} contentRef={content} isEditMode={false} zoomLevel={1} panelDockOffset="0px"
+            participantClaimCounts={{ red: 2 }} />
         </LanguageProvider>);
         const playerHeader = view.container.querySelector('[data-player-header-id="red"]') as HTMLElement;
         const headerPaint = playerHeader.style.backgroundColor;
+        expect(view.getByText('2').parentElement).toHaveClass('bg-modal-backdrop/70', 'text-[rgb(var(--c-player-badge-ink))]');
         for (const theme of ['dark', 'light', 'sage']) {
             document.documentElement.setAttribute('data-theme', theme);
             const read = createColorReader();

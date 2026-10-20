@@ -98,6 +98,22 @@ describe('Three-theme visual contract', () => {
         expect(Number(root.get('--player-surface-border-opacity'))).toBeCloseTo(64 / 255, 6);
     });
 
+    it('pairs dark-overlay ink with the actual badge and hint paint, not light-theme body text', () => {
+        for (const theme of APP_THEME_ORDER) {
+            // White is the brightest possible photo/surface behind these dark overlays.
+            const white = { r: 255, g: 255, b: 255, a: 1 };
+            const backdrop = color(theme, '--c-modal-backdrop');
+            const badge = compositeColors({ ...backdrop, a: 0.7 }, white);
+            const hint = compositeColors({ ...backdrop, a: 0.9 }, white);
+            expect(contrastOnBackground(color(theme, '--c-player-badge-ink'), badge), `${theme}: badge text`).toBeGreaterThanOrEqual(4.5);
+            expect(contrastOnBackground(color(theme, '--c-player-badge-muted-ink'), badge), `${theme}: muted badge icon`).toBeGreaterThanOrEqual(3);
+            expect(contrastOnBackground(color(theme, '--c-input-hint-ink'), hint), `${theme}: swipe hint`).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(color('dark', '--c-player-badge-ink')).toEqual(color('dark', '--c-txt-primary'));
+        expect(color('dark', '--c-player-badge-muted-ink')).toEqual(color('dark', '--c-txt-muted'));
+        expect(color('dark', '--c-input-hint-ink')).toEqual(color('dark', '--c-brand-primary'));
+    });
+
     it('uses the selected palette for mobile browser chrome without a second hardcoded palette', () => {
         const previous = document.documentElement.getAttribute('data-theme');
         const previousAppearance = document.documentElement.getAttribute('data-theme-appearance');

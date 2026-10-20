@@ -3,6 +3,8 @@ import { expect, it, vi } from 'vitest';
 import { LanguageProvider } from '../../../i18n';
 import type { Player } from '../../../types';
 import InputPanelHeader from './InputPanelHeader';
+import appCss from '../../../index.css?raw';
+import { createColorReader } from '../../../utils/color';
 
 it('renders valid live player-color tints without rewriting the saved player color', () => {
     const player: Player = { id: 'player', name: 'Ada', color: 'rgb(var(--c-p-emerald))', scores: {}, totalScore: 0 };
@@ -14,4 +16,34 @@ it('renders valid live player-color tints without rewriting the saved player col
     expect(header.style.borderColor).toBe('rgb(var(--c-p-emerald) / var(--player-surface-border-opacity))');
     expect(screen.getByText('Ada')).toHaveStyle({ color: player.color });
     expect(player.color).toBe('rgb(var(--c-p-emerald))');
+});
+
+it('keeps player names colored but makes small context labels neutral and opaque on light surfaces', () => {
+    const style = document.createElement('style');
+    style.textContent = [...appCss.matchAll(/(?::root|html\[data-theme='(?:light|sage)'\])\s*\{[^}]*\}/g)]
+        .map(match => match[0]).join('\n');
+    document.head.appendChild(style);
+    const previous = document.documentElement.getAttribute('data-theme');
+    const player: Player = { id: 'white', name: 'Ada', color: 'rgb(var(--c-p-white))', scores: {}, totalScore: 0 };
+    try {
+        const { container } = render(<LanguageProvider><InputPanelHeader player={player} isEditingPlayer={false}
+            col={{ id: 'harvest', name: 'Harvest', inputType: 'keypad', formula: 'a1', isScoring: true }}
+            onClear={vi.fn()} onDirectionToggle={vi.fn()} direction="horizontal" showSwipeHint />
+        </LanguageProvider>);
+        const label = screen.getByText(text => text.replace(/\u00ad/g, '') === 'Harvest');
+        for (const theme of ['dark', 'light', 'sage']) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const read = createColorReader();
+            const ink = theme === 'dark' ? player.color : 'rgb(var(--c-txt-secondary))';
+            expect(read(label.style.color)).toEqual(read(ink));
+            const opacity = Number(getComputedStyle(document.documentElement).getPropertyValue('--input-context-opacity'));
+            expect(opacity).toBe(theme === 'dark' ? 0.7 : 1);
+            expect(screen.getByText('Ada')).toHaveStyle({ color: player.color });
+        }
+        expect(container.querySelector('.animate-swipe-hint-enter > span')).toHaveClass('text-[rgb(var(--c-input-hint-ink))]');
+    } finally {
+        style.remove();
+        if (previous === null) document.documentElement.removeAttribute('data-theme');
+        else document.documentElement.setAttribute('data-theme', previous);
+    }
 });

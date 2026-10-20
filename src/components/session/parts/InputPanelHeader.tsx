@@ -25,6 +25,12 @@ const InputPanelHeader: React.FC<{
     const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
     const bgColor = isTransparent ? 'rgb(var(--c-player-header-neutral-bg))' : withColorOpacity(player.color, 'var(--player-surface-tint-opacity)');
     const borderColor = isTransparent ? 'rgb(var(--c-input-border))' : withColorOpacity(player.color, 'var(--player-surface-border-opacity)');
+    // Player identity stays colored; supporting labels use neutral ink on light surfaces.
+    // The fallback preserves the original player ink in the dark palette.
+    const contextStyle: React.CSSProperties = {
+        color: `var(--input-context-ink, ${displayColor})`,
+        opacity: 'var(--input-context-opacity)',
+    };
 
     // Auto columns cannot be cleared manually
     const isAuto = col?.inputType === 'auto';
@@ -38,21 +44,21 @@ const InputPanelHeader: React.FC<{
             {/* Swipe Hint Overlay */}
             {showSwipeHint && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-modal-backdrop/90 animate-swipe-hint-enter">
-                    <span className="text-xs font-bold text-brand-primary flex items-center gap-2">
+                    <span className="text-xs font-bold text-[rgb(var(--c-input-hint-ink))] flex items-center gap-2">
                         <span className="animate-swipe-hint-left">←</span>
                         <span>{t('input_swipe_hint')}</span>
                         <span className="animate-swipe-hint-right">→</span>
                     </span>
                     {/* Downward chevron pointing to swipeable area */}
-                    <span className="text-brand-primary/60 text-[10px] leading-none mt-0.5">▼</span>
+                    <span className="text-[rgb(var(--c-input-hint-ink)_/_0.6)] text-[10px] leading-none mt-0.5">▼</span>
                 </div>
             )}
             {/* Left Section: Info (Flexible) */}
             <div className="flex items-center min-w-0 flex-1 gap-1.5">
                 {isEditingPlayer ? (
                     <>
-                        <Edit size={12} className="shrink-0" style={{ color: displayColor }} />
-                        <span className="text-[10px] shrink-0 font-bold opacity-70 uppercase tracking-tighter" style={{ color: displayColor }}>
+                        <Edit size={12} className="shrink-0" style={{ color: contextStyle.color }} />
+                        <span className="text-[10px] shrink-0 font-bold uppercase tracking-tighter" style={contextStyle}>
                             {t('input_edit_player')}
                         </span>
                         <div className="w-px h-3 bg-surface-border shrink-0" />
@@ -74,7 +80,7 @@ const InputPanelHeader: React.FC<{
                             {player.name}
                         </ContrastText>
                         <div className="w-px h-3 bg-surface-border shrink-0" />
-                        <span className="text-xs font-bold opacity-70 truncate" style={{ color: displayColor }}>
+                        <span className="text-xs font-bold truncate" style={contextStyle}>
                             {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
                         </span>
                     </>
