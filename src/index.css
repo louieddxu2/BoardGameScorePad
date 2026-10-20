@@ -211,25 +211,25 @@ html[data-ios-safari-browser='true'] {
   --c-keypad-btn-active: 79 70 229; /* indigo-600 */
 }
 
-/* WARM PAPER: neutral desk, warm reading surfaces and restrained forest accents. */
+/* WARM PAPER: warm paper surfaces and restrained forest accents. */
 html[data-theme='light'] {
   color-scheme: light;
   --btn-primary-hover-brightness: 0.95;
-  --c-app-bg: 240 242 239;
-  --c-app-bg-deep: 228 232 225;
+  --c-app-bg: 243 240 232;
+  --c-app-bg-deep: 233 229 218;
   --c-txt-title: 38 45 42;
   --c-txt-primary: 38 45 42;
   --c-txt-secondary: 68 77 70;
   --c-txt-tertiary: 82 90 82;
-  --c-txt-muted: 98 104 95;
-  --c-surface-bg: 252 252 249;
-  --c-surface-bg-alt: 230 234 229;
-  --c-surface-border: 209 215 207;
+  --c-txt-muted: 101 95 84;
+  --c-surface-bg: 253 251 247;
+  --c-surface-bg-alt: 235 230 219;
+  --c-surface-border: 214 206 189;
   --c-brand-primary: 20 94 72;
   --c-brand-primary-deep: 18 81 63;
   --c-brand-secondary: 88 70 151;
-  --c-surface-hover: 225 231 223;
-  --c-surface-border-hover: 155 168 154;
+  --c-surface-hover: 228 221 206;
+  --c-surface-border-hover: 161 149 127;
   --c-card-txt-hover: var(--c-txt-primary);
 
   /* Modal System */
