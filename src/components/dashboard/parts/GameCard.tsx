@@ -75,7 +75,7 @@ const GameCard: React.FC<GameCardProps> = ({
     }
   };
 
-  const baseClasses = "bg-surface-bg rounded-xl border border-surface-border p-3 shadow-ui-soft hover:bg-surface-hover transition-all cursor-pointer relative flex flex-col h-20 group";
+  const baseClasses = "bg-surface-bg rounded-xl border border-surface-border p-3 hover:bg-surface-hover transition-colors cursor-pointer relative flex flex-col h-20 group";
 
   if (mode === 'active' || mode === 'pinned' || mode === 'recent') {
     const isActive = mode === 'active';
@@ -83,7 +83,7 @@ const GameCard: React.FC<GameCardProps> = ({
     return (
       <div
         onClick={onClick}
-        className={`flex h-12 cursor-pointer items-center rounded-xl border bg-surface-bg shadow-ui-soft transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}
+        className={`flex h-12 cursor-pointer items-center rounded-xl border bg-surface-bg transition-colors hover:bg-surface-hover ${isActive ? 'border-brand-primary/40' : 'border-surface-border'}`}
       >
         <button
           type="button"
@@ -143,7 +143,7 @@ const GameCard: React.FC<GameCardProps> = ({
   return (
     <div 
       onClick={onClick} 
-      className={`${baseClasses} hover:border-surface-border-hover hover:shadow-ui-floating hover:-translate-y-0.5 active:scale-[0.98] ${mode === 'system' ? 'hover:border-brand-secondary/20' : 'hover:border-brand-primary/20'}`}
+      className={`${baseClasses} hover:border-surface-border-hover active:scale-[0.98]`}
     >
       <div className="flex items-start justify-between gap-1 pr-7">
         <h3 className={`text-sm font-bold leading-tight line-clamp-2 group-hover:text-txt-card-hover transition-colors ${mode === 'system' ? 'text-txt-primary pr-2 opacity-90' : 'text-txt-primary'}`}>{template.name}</h3>

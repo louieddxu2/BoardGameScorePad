@@ -31,7 +31,7 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
       className={`
             bg-status-success hover:opacity-90 active:opacity-80 text-txt-on-color
             flex flex-col items-center justify-center 
-            shadow-lg shadow-status-success/20 touch-manipulation transition-all active:scale-95 
+            shadow-ui-soft touch-manipulation transition-all active:scale-95
             border-[rgb(var(--c-input-border))] relative
             ${mode === 'compact'
           // Compact: Fixed height (h-14) to match input, full rounded corners, border
@@ -63,7 +63,7 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
         <button
           onMouseDown={(e) => e.preventDefault()}
           onClick={onNext}
-          className="col-start-4 row-start-2 bg-status-success hover:opacity-90 active:opacity-80 text-txt-on-color flex flex-col items-center justify-center shadow-lg shadow-status-success/20 touch-manipulation transition-all active:scale-95 border-l border-b border-r border-[rgb(var(--c-input-border))] rounded-b-xl rounded-t-none h-[48px] w-full relative"
+          className="col-start-4 row-start-2 bg-status-success hover:opacity-90 active:opacity-80 text-txt-on-color flex flex-col items-center justify-center shadow-ui-soft touch-manipulation transition-all active:scale-95 border-l border-b border-r border-[rgb(var(--c-input-border))] rounded-b-xl rounded-t-none h-[48px] w-full relative"
         >
           {nextButtonContent ? nextButtonContent : <ButtonIcon size={24} />}
         </button>

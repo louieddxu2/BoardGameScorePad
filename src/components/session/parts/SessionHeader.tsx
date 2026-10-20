@@ -100,7 +100,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
   };
 
   return (
-    <div className="safe-area-top-compact flex-none modal-bg-elevated px-2 pb-2 flex items-center justify-between border-b border-surface-border shadow-md z-20 transition-colors">
+    <div className="safe-area-top-compact flex-none modal-bg-elevated px-2 pb-2 flex items-center justify-between border-b border-surface-border z-20 transition-colors">
       <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
         <button
           onMouseDown={preventBlur}
@@ -170,7 +170,7 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         {canEditTemplate && <button
           onMouseDown={preventBlur}
           onClick={onToggleEditMode}
-          className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-brand-secondary border-brand-secondary text-txt-on-color shadow-lg' : 'modal-bg-elevated border-surface-border text-txt-muted hover:text-txt-primary'}`}
+          className={`p-2 rounded-lg transition-colors border ${isEditMode ? 'bg-brand-secondary border-brand-secondary text-txt-on-color shadow-ui-soft' : 'modal-bg-elevated border-surface-border text-txt-muted hover:text-txt-primary'}`}
           title={isEditMode ? t('session_lock_edit') : t('session_unlock_edit')}
         >
           {isEditMode ? <Unlock size={20} /> : <Lock size={20} />}

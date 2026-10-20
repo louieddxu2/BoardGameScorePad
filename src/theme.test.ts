@@ -43,6 +43,11 @@ describe('Three-theme visual contract', () => {
     });
 
     it('keeps compact text readable across new surfaces, tinted notices and solid controls', () => {
+        const secondaryButton: Record<string, string> = {};
+        styles.walkRules('.btn-modal-secondary', rule => {
+            rule.walkDecls(declaration => { secondaryButton[declaration.prop] = declaration.value; });
+        });
+        expect(secondaryButton.color).toBe('rgb(var(--c-modal-btn-sec-text))');
         for (const theme of APP_THEME_ORDER.filter(id => id !== 'dark')) {
             const backgrounds = ['--c-app-bg', '--c-app-bg-deep', '--c-surface-bg', '--c-surface-bg-alt', '--c-surface-hover', '--c-modal-bg-recessed', '--c-grid-cell-bg', '--c-grid-cell-bg-alt'];
             for (const bg of backgrounds) {

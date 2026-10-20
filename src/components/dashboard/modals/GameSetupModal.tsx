@@ -137,7 +137,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 <div className="col-span-1 row-span-1 border-b border-surface-border modal-bg-elevated rounded-none p-0.5">
                                     <button
                                         onClick={onResume}
-                                        className="w-full h-full bg-brand-primary hover:filter hover:brightness-110 active:brightness-90 text-txt-on-color rounded-lg flex flex-col items-center justify-center gap-1 shadow-inner active:scale-95 transition-all"
+                                        className="w-full h-full bg-brand-primary hover:filter hover:brightness-110 active:brightness-90 text-txt-on-color rounded-lg flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
                                     >
                                         <Play size={24} fill="currentColor" />
                                         <span className="text-sm font-bold opacity-90 leading-tight whitespace-pre-line text-center">{t('setup_resume_btn')}</span>
@@ -203,20 +203,20 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                         <button
                                             disabled={playerCount <= 1}
                                             onClick={() => setPlayerCount(c => Math.max(1, c - 1))}
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-lg border ${playerCount <= 1 ? 'opacity-20 cursor-not-allowed bg-surface-alt border-surface-border' : 'bg-status-danger/10 border-status-danger/30 text-status-danger hover:bg-status-danger/20'}`}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 border ${playerCount <= 1 ? 'opacity-20 cursor-not-allowed bg-surface-alt border-surface-border' : 'bg-status-danger/10 border-status-danger/30 text-status-danger hover:bg-status-danger/20'}`}
                                         >
                                             <Minus size={20} strokeWidth={3} />
                                         </button>
 
                                         <div className="min-w-[2rem] flex flex-col items-center justify-center">
-                                            <span className="text-3xl font-black font-mono modal-title leading-none tracking-tighter drop-shadow-sm">{playerCount}</span>
+                                            <span className="text-3xl font-black font-mono modal-title leading-none tracking-tighter">{playerCount}</span>
                                             <span className="text-[9px] text-txt-muted uppercase font-bold">{t('player_unit')}</span>
                                         </div>
 
                                         <button
                                             disabled={playerCount >= 12}
                                             onClick={() => setPlayerCount(c => Math.min(12, c + 1))}
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 shadow-lg border ${playerCount >= 12 ? 'opacity-20 cursor-not-allowed bg-surface-alt border-surface-border' : 'bg-status-success/10 border-status-success/30 text-status-success hover:bg-status-success/20'}`}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 border ${playerCount >= 12 ? 'opacity-20 cursor-not-allowed bg-surface-alt border-surface-border' : 'bg-status-success/10 border-status-success/30 text-status-success hover:bg-status-success/20'}`}
                                         >
                                             <Plus size={20} strokeWidth={3} />
                                         </button>
@@ -229,7 +229,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                     <span className="text-[10px] text-txt-muted leading-none">{t('setup_and')}</span>
                                     <button
                                         onClick={handleStartClick}
-                                        className="w-full flex-1 max-h-12 bg-brand-secondary hover:filter hover:brightness-110 active:brightness-90 text-txt-on-color rounded-lg shadow-md active:scale-95 transition-all flex items-center justify-center"
+                                        className="w-full flex-1 max-h-12 bg-brand-secondary hover:filter hover:brightness-110 active:brightness-90 text-txt-on-color rounded-lg shadow-ui-soft active:scale-95 transition-all flex items-center justify-center"
                                     >
                                         <span className="text-xs font-bold leading-tight text-center">{t('setup_start_new_btn')}</span>
                                     </button>
@@ -297,7 +297,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
                                 {/* Player Count */}
                                 <div className="w-full max-w-[200px] flex flex-col items-center gap-1 z-10">
                                     <span className="text-xs text-txt-muted font-bold uppercase tracking-widest">{t('setup_players')}</span>
-                                    <div className="flex items-center justify-between w-full modal-bg-elevated p-1 shadow-inner border border-surface-border rounded-xl">
+                                    <div className="flex items-center justify-between w-full modal-bg-elevated p-1 border border-surface-border rounded-xl">
                                         <button
                                             disabled={playerCount <= 1}
                                             onClick={() => setPlayerCount(c => Math.max(1, c - 1))}
@@ -318,7 +318,7 @@ const GameSetupModal: React.FC<GameSetupModalProps> = ({
 
                                 <button
                                     onClick={handleStartClick}
-                                    className="w-full bg-brand-secondary hover:filter hover:brightness-110 text-txt-on-color font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all z-10"
+                                    className="w-full bg-brand-secondary hover:filter hover:brightness-110 text-txt-on-color font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-ui-soft active:scale-95 transition-all z-10"
                                 >
                                     <Play size={20} fill="currentColor" /> {t('setup_start_btn')}
                                 </button>

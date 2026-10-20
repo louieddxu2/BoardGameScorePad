@@ -188,7 +188,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   return (
     <header
-      className="safe-area-top flex flex-col bg-app-bg/95 backdrop-blur-md border-b border-surface-border sticky top-0 z-30 transition-all duration-300 shadow-sm"
+      className="safe-area-top flex flex-col bg-app-bg border-b border-surface-border sticky top-0 z-30 transition-colors duration-300"
       onClick={handleHeaderClick}
     >
       <div className="p-2.5 flex items-center gap-2 h-[58px]">
@@ -222,7 +222,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               {/* Logo: Toggle Theme */}
               <button
                 type="button"
-                className="bg-surface-alt min-w-[44px] min-h-[44px] flex items-center justify-center p-1.5 rounded-lg border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
+                className="bg-surface-alt min-w-[44px] min-h-[44px] flex items-center justify-center p-1.5 rounded-xl border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
                 onClick={(e) => { e.stopPropagation(); onToggleTheme(); }}
                 title={themeControlLabel}
                 aria-label={themeControlLabel}
@@ -242,7 +242,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               {/* Unified Toggle Button - Width 56px, tight padding */}
               <button
                 onClick={toggleView}
-                className="relative h-9 w-[56px] bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-alt/80 transition-colors shrink-0 group active:scale-95 shadow-inner"
+                className="relative h-9 w-[56px] bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group active:scale-95"
                 title={viewMode === 'library' ? tCloud('cloud_tab_history') : tCloud('cloud_tab_templates')}
               >
                 {/* Central Slash (Background) */}
@@ -294,7 +294,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
               {!isInstalled && (
                 <button
-                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow-lg ${canInstall 
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${canInstall
                     ? 'btn-action-primary text-txt-on-color'
                     : 'bg-surface-alt hover:bg-surface-hover border border-surface-border text-txt-secondary hover:text-txt-primary'}`}
                   onClick={canInstall ? onInstallClick : onShowInstallGuide}

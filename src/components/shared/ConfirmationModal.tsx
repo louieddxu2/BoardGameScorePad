@@ -55,7 +55,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </div>
           )}
           <h3 className="text-xl font-bold text-txt-primary">{title}</h3>
-          <p className="text-txt-secondary text-sm whitespace-pre-wrap">{message}</p>
+          <p className="text-txt-secondary text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
         </div>
         <div className="flex gap-3">
           {!hideCancel && (
@@ -68,7 +68,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           )}
           <button
             onClick={onConfirm}
-            className={`flex-1 py-3 rounded-xl text-txt-on-color font-bold shadow-lg transition-all active:scale-95 ${isDangerous
+            className={`flex-1 py-3 rounded-xl text-txt-on-color font-bold shadow-ui-soft transition-all active:scale-95 ${isDangerous
                 ? 'bg-status-danger hover:brightness-110'
                 : 'bg-brand-primary hover:brightness-110'
               }`}

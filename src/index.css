@@ -262,6 +262,7 @@ html[data-theme='light'] {
   --shadow-soft: 0 1px 2px rgba(38, 45, 42, 0.045);
   --shadow-floating: 0 20px 45px -12px rgba(38, 45, 42, 0.2);
   --shadow-cloud-connected: none;
+  --btn-shadow-active: 0 2px 5px -1px rgb(var(--c-brand-primary) / 0.14);
   --filter-icon-active: drop-shadow(0 1px 1px rgba(38, 45, 42, 0.12));
 
   /* Grid / Scoreboard System */
@@ -337,6 +338,7 @@ html[data-theme='sage'] {
   --shadow-soft: 0 1px 2px rgba(29, 51, 46, 0.05);
   --shadow-floating: 0 20px 45px -12px rgba(29, 51, 46, 0.22);
   --shadow-cloud-connected: none;
+  --btn-shadow-active: 0 2px 5px -1px rgb(var(--c-brand-primary) / 0.14);
   --filter-icon-active: drop-shadow(0 1px 1px rgba(29, 51, 46, 0.12));
 
   /* Keep botanical color around the table, rather than across every stripe. */
@@ -475,12 +477,21 @@ html[data-theme='sage'] {
   }
 
   .btn-modal-secondary {
-    @apply flex-1 py-3 rounded-xl font-medium transition-all active:scale-95 text-txt-primary;
+    @apply flex-1 py-3 rounded-xl font-medium transition-colors active:scale-95;
     background-color: rgb(var(--c-modal-btn-sec-bg));
+    color: rgb(var(--c-modal-btn-sec-text));
   }
 
   .btn-modal-secondary:hover {
-    filter: brightness(0.95);
+    background-color: rgb(var(--c-surface-hover));
+  }
+
+  .btn-action-primary:focus-visible,
+  .btn-ghost-action:focus-visible,
+  .btn-cloud-status:focus-visible,
+  .btn-modal-secondary:focus-visible {
+    outline: 2px solid rgb(var(--c-brand-primary));
+    outline-offset: 2px;
   }
 
   .modal-bg-elevated {

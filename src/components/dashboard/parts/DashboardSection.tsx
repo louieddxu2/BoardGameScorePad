@@ -35,14 +35,14 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
     <div className={`${compact ? 'mb-4 last:mb-4' : 'mb-8 last:mb-5'} animate-in fade-in duration-500`}>
       <div 
         onClick={onToggle} 
-        className={`flex items-center justify-between bg-surface-alt rounded-full border border-surface-border cursor-pointer hover:bg-surface-alt hover:shadow-ui-soft transition-all active:scale-[0.99] ${compact ? 'min-h-9 px-3' : 'p-2.5 px-4'}`}
+        className={`flex items-center justify-between rounded-xl border border-transparent cursor-pointer hover:bg-surface-hover transition-colors active:scale-[0.99] ${compact ? 'min-h-9 px-3' : 'p-2.5 px-4'}`}
       >
         <div className="flex items-center gap-2">
           {isOpen ? <ChevronDown size={18} className={iconColorClass}/> : <ChevronRight size={18} className="text-txt-muted"/>}
-          <h3 className={`text-sm font-black flex items-center gap-2 tracking-tight ${titleColorClass}`}>
+          <h3 className={`text-sm font-semibold flex items-center gap-2 tracking-tight ${titleColorClass}`}>
             <span className={iconColorClass}>{icon}</span> 
             {title} 
-            <span className="text-[10px] font-mono bg-surface-bg text-txt-secondary px-2 py-0.5 rounded-full min-w-5 text-center shadow-inner">{count}</span>
+            <span className="text-[11px] font-mono font-medium bg-surface-alt text-txt-secondary px-2 py-0.5 rounded-md min-w-5 text-center">{count}</span>
           </h3>
         </div>
         {actionButton}
