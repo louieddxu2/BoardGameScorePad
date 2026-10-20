@@ -44,7 +44,7 @@ describe('Three-theme visual contract', () => {
 
     it('keeps compact text readable across new surfaces, tinted notices and solid controls', () => {
         for (const theme of APP_THEME_ORDER.filter(id => id !== 'dark')) {
-            const backgrounds = ['--c-app-bg', '--c-app-bg-deep', '--c-surface-bg', '--c-surface-bg-alt', '--c-surface-hover', '--c-modal-bg-recessed'];
+            const backgrounds = ['--c-app-bg', '--c-app-bg-deep', '--c-surface-bg', '--c-surface-bg-alt', '--c-surface-hover', '--c-modal-bg-recessed', '--c-grid-cell-bg', '--c-grid-cell-bg-alt'];
             for (const bg of backgrounds) {
                 for (const ink of ['--c-txt-primary', '--c-txt-secondary', '--c-txt-tertiary', '--c-txt-muted']) {
                     expect(contrastOnBackground(color(theme, ink), color(theme, bg)), `${theme}: ${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
@@ -77,6 +77,25 @@ describe('Three-theme visual contract', () => {
         }
         expect(getContrastTextStyles('rgb(var(--c-p-black))', 'sage', { isTextureMode: true }))
             .toEqual(getContrastTextStyles('rgb(var(--c-p-black))', 'dark', { isTextureMode: true }));
+    });
+
+    it('separates quiet light table stripes from recessed panels and preserves dark tint strengths', () => {
+        for (const theme of ['light', 'sage'] as const) {
+            const stripeRatio = contrastOnBackground(color(theme, '--c-grid-cell-bg-alt'), color(theme, '--c-grid-cell-bg'))!;
+            expect(stripeRatio, `${theme}: stripe must remain visible but understated`).toBeGreaterThan(1.03);
+            expect(stripeRatio).toBeLessThan(1.08);
+            expect(color(theme, '--c-grid-cell-bg-alt')).not.toEqual(color(theme, '--c-surface-bg-alt'));
+            expect(color(theme, '--c-grid-auto-bg')).toEqual(color(theme, '--c-grid-cell-bg'));
+            expect(color(theme, '--c-grid-auto-bg-alt')).toEqual(color(theme, '--c-grid-cell-bg-alt'));
+            expect(color(theme, '--c-grid-auto-border')).toEqual(color(theme, '--c-grid-cell-border'));
+            expect(Number(themes.get(theme)?.get('--player-surface-tint-opacity'))).toBeLessThanOrEqual(0.05);
+        }
+        expect(color('dark', '--c-grid-auto-bg-alt')).toEqual(color('dark', '--c-grid-auto-bg'));
+        expect(color('dark', '--c-grid-auto-border')).toEqual(color('dark', '--c-grid-auto-bg'));
+        expect(color('dark', '--c-grid-header-border')).toEqual(color('dark', '--c-surface-border'));
+        expect(color('dark', '--c-player-header-neutral-bg')).toEqual(color('dark', '--c-surface-bg-alt'));
+        expect(Number(root.get('--player-surface-tint-opacity'))).toBeCloseTo(32 / 255, 6);
+        expect(Number(root.get('--player-surface-border-opacity'))).toBeCloseTo(64 / 255, 6);
     });
 
     it('uses the selected palette for mobile browser chrome without a second hardcoded palette', () => {

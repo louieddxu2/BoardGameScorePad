@@ -10,8 +10,8 @@ it('renders valid live player-color tints without rewriting the saved player col
         player={player} isEditingPlayer onClear={vi.fn()} onDirectionToggle={vi.fn()} direction="horizontal"
     /></LanguageProvider>);
     const header = container.firstElementChild as HTMLElement;
-    expect(header.style.backgroundColor).toBe('rgb(var(--c-p-emerald) / 0.12549)');
-    expect(header.style.borderColor).toBe('rgb(var(--c-p-emerald) / 0.25098)');
+    expect(header.style.backgroundColor).toBe('rgb(var(--c-p-emerald) / var(--player-surface-tint-opacity))');
+    expect(header.style.borderColor).toBe('rgb(var(--c-p-emerald) / var(--player-surface-border-opacity))');
     expect(screen.getByText('Ada')).toHaveStyle({ color: player.color });
     expect(player.color).toBe('rgb(var(--c-p-emerald))');
 });

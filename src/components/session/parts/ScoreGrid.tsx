@@ -265,7 +265,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
             rect={template.globalVisuals?.playerLabelRect}
             fallbackContent={<span className="font-bold text-sm text-txt-muted">{t('grid_player')}</span>}
             onClick={isEditMode && onOpenSettings ? onOpenSettings : undefined}
-            className={`sticky left-0 border-r border-b border-surface-border flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'} ${isEditMode ? 'cursor-pointer hover:bg-surface-hover' : ''}`}
+            className={`sticky left-0 border-r border-b border-[rgb(var(--c-grid-header-border))] flex items-center justify-center z-30 shadow-sm shrink-0 overflow-hidden ${isTextureMode ? 'p-0' : 'p-2'} ${isEditMode ? 'cursor-pointer hover:bg-surface-hover' : ''}`}
             style={{ 
                 ...itemColStyle,
                 backgroundColor: 'rgb(var(--c-grid-cell-bg))'

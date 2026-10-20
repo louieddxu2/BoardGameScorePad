@@ -128,13 +128,20 @@ export const formatColor = ({ r, g, b, a }: RgbaColor): string =>
 
 /** Multiply opacity. Fixed player channels stay live without DOM reads; arbitrary
  * variables are resolved because their value may already contain an alpha channel. */
-export function withColorOpacity(color: string, opacity: number): string | undefined {
-    if (typeof color !== 'string' || !Number.isFinite(opacity)) return undefined;
+export function withColorOpacity(color: string, opacity: number | `var(--${string})`): string | undefined {
+    if (typeof color !== 'string' || (typeof opacity === 'number'
+        ? !Number.isFinite(opacity) : !/^var\(--[\w-]+\)$/.test(opacity))) return undefined;
+    // CSS owns theme-dependent strength, so mounted headers update without reads or effects.
+    const alphaValue = (alpha: number) => typeof opacity === 'number'
+        ? formatNumber(alpha * clamp(opacity))
+        : alpha === 1 ? opacity : `calc(${formatNumber(alpha)} * ${opacity})`;
     const variable = color.match(/^rgba?\(\s*(var\(\s*--c-p-[\w-]+\s*\))\s*(?:\/\s*([\d.]+%?))?\s*\)$/i);
     if (variable) {
         const alpha = variable[2] === undefined ? 1 : channel(variable[2], 1);
-        return alpha === null ? undefined : `rgb(${variable[1]} / ${formatNumber(alpha * clamp(opacity))})`;
+        return alpha === null ? undefined : `rgb(${variable[1]} / ${alphaValue(alpha)})`;
     }
     const parsed = readColor(color);
-    return parsed ? formatColor({ ...parsed, a: parsed.a * clamp(opacity) }) : undefined;
+    if (!parsed) return undefined;
+    return typeof opacity === 'number' ? formatColor({ ...parsed, a: parsed.a * clamp(opacity) })
+        : `rgb(${formatNumber(parsed.r)} ${formatNumber(parsed.g)} ${formatNumber(parsed.b)} / ${alphaValue(parsed.a)})`;
 }

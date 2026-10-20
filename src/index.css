@@ -190,7 +190,13 @@ html[data-ios-safari-browser='true'] {
   --c-grid-cell-bg-alt: 30 41 59 / 0.5; /* slate-800/50 */
   --c-grid-cell-border: 30 41 59;      /* slate-800 */
   --c-grid-auto-bg: var(--c-brand-primary) / 0.1;
+  --c-grid-auto-bg-alt: var(--c-grid-auto-bg);
+  --c-grid-auto-border: var(--c-grid-auto-bg);
+  --c-grid-header-border: var(--c-surface-border);
   --c-grid-active-ring: var(--c-brand-primary);
+  --player-surface-tint-opacity: 0.12549;
+  --player-surface-border-opacity: 0.25098;
+  --c-player-header-neutral-bg: var(--c-surface-bg-alt);
 
   /* --- Input System Tokens --- */
   --c-input-bg: 15 23 42;          /* slate-900 */
@@ -255,16 +261,23 @@ html[data-theme='light'] {
   --filter-icon-active: drop-shadow(0 1px 1px rgba(38, 45, 42, 0.12));
 
   /* Grid / Scoreboard System */
-  --c-grid-cell-bg: var(--c-surface-bg);
-  --c-grid-cell-bg-alt: var(--c-surface-bg-alt);
-  --c-grid-cell-border: var(--c-surface-border);
-  --c-grid-auto-bg: var(--c-brand-primary) / 0.05;
+  /* Reading surfaces are quiet, not the same paint as recessed panels. */
+  --c-grid-cell-bg: 251 250 247;
+  --c-grid-cell-bg-alt: 245 244 240;
+  --c-grid-cell-border: 221 219 211;
+  --c-grid-auto-bg: var(--c-grid-cell-bg);
+  --c-grid-auto-bg-alt: var(--c-grid-cell-bg-alt);
+  --c-grid-auto-border: var(--c-grid-cell-border);
+  --c-grid-header-border: var(--c-grid-cell-border);
   --c-grid-active-ring: var(--c-brand-primary);
+  --player-surface-tint-opacity: 0.045;
+  --player-surface-border-opacity: 0.18;
+  --c-player-header-neutral-bg: var(--c-grid-cell-bg-alt);
 
   /* --- Input System Tokens --- */
-  --c-input-bg: var(--c-app-bg);
-  --c-input-header-bg: var(--c-app-bg-deep);
-  --c-input-border: var(--c-surface-border);
+  --c-input-bg: var(--c-grid-cell-bg);
+  --c-input-header-bg: var(--c-grid-cell-bg-alt);
+  --c-input-border: var(--c-grid-cell-border);
   --c-keypad-btn-bg: var(--c-surface-bg);
   --c-keypad-btn-text: var(--c-txt-primary);
   --c-keypad-btn-active: var(--c-brand-secondary);
@@ -317,14 +330,21 @@ html[data-theme='sage'] {
   --shadow-cloud-connected: none;
   --filter-icon-active: drop-shadow(0 1px 1px rgba(29, 51, 46, 0.12));
 
-  --c-grid-cell-bg: var(--c-surface-bg);
-  --c-grid-cell-bg-alt: var(--c-surface-bg-alt);
-  --c-grid-cell-border: var(--c-surface-border);
-  --c-grid-auto-bg: var(--c-brand-primary) / 0.05;
+  /* Keep botanical color around the table, rather than across every stripe. */
+  --c-grid-cell-bg: 247 250 248;
+  --c-grid-cell-bg-alt: 240 244 241;
+  --c-grid-cell-border: 217 225 220;
+  --c-grid-auto-bg: var(--c-grid-cell-bg);
+  --c-grid-auto-bg-alt: var(--c-grid-cell-bg-alt);
+  --c-grid-auto-border: var(--c-grid-cell-border);
+  --c-grid-header-border: var(--c-grid-cell-border);
   --c-grid-active-ring: var(--c-brand-primary);
-  --c-input-bg: var(--c-app-bg);
-  --c-input-header-bg: var(--c-app-bg-deep);
-  --c-input-border: var(--c-surface-border);
+  --player-surface-tint-opacity: 0.035;
+  --player-surface-border-opacity: 0.16;
+  --c-player-header-neutral-bg: var(--c-grid-cell-bg-alt);
+  --c-input-bg: var(--c-grid-cell-bg);
+  --c-input-header-bg: var(--c-grid-cell-bg-alt);
+  --c-input-border: var(--c-grid-cell-border);
   --c-keypad-btn-bg: var(--c-surface-bg);
   --c-keypad-btn-text: var(--c-txt-primary);
   --c-keypad-btn-active: var(--c-brand-secondary);

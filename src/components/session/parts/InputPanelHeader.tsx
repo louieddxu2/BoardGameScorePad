@@ -23,8 +23,8 @@ const InputPanelHeader: React.FC<{
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
     const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
-    const bgColor = isTransparent ? 'rgb(var(--c-surface-bg-alt))' : withColorOpacity(player.color, 32 / 255);
-    const borderColor = isTransparent ? 'rgb(var(--c-surface-border))' : withColorOpacity(player.color, 64 / 255);
+    const bgColor = isTransparent ? 'rgb(var(--c-player-header-neutral-bg))' : withColorOpacity(player.color, 'var(--player-surface-tint-opacity)');
+    const borderColor = isTransparent ? 'rgb(var(--c-input-border))' : withColorOpacity(player.color, 'var(--player-surface-border-opacity)');
 
     // Auto columns cannot be cleared manually
     const isAuto = col?.inputType === 'auto';

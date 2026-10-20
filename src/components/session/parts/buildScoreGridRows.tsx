@@ -90,7 +90,7 @@ export function buildScoreGridRows({
             onColumnHeaderClick(e, col);
           }}
           {...getDragHandlers(col.id)}
-          className={`sticky left-0 border-r-2 border-b border-surface-border flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-surface-hover') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
+          className={`sticky left-0 border-r-2 border-b border-[rgb(var(--c-grid-header-border))] flex flex-col justify-center transition-colors z-20 group select-none shrink-0 overflow-hidden ${isEditMode ? (isDragging ? 'cursor-grabbing' : 'cursor-grab hover:bg-surface-hover') : 'cursor-default'} ${isTextureMode ? 'p-0' : 'p-2'} `}
           style={{
             ...itemColStyle,
             backgroundColor: headerBg,

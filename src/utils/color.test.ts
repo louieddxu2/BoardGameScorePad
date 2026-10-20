@@ -81,6 +81,18 @@ describe('Opacity and solid-background contrast', () => {
         expect(getSolidTextChoice('rgba(255,255,255,.1)', { backdrop: '#000' })).toBe('light');
     });
 
+    it('keeps theme-controlled tint strength live and multiplies existing alpha without style reads', () => {
+        const computed = vi.spyOn(globalThis, 'getComputedStyle');
+        const opacity = 'var(--player-surface-tint-opacity)';
+        expect(withColorOpacity('rgb(var(--c-p-blue))', opacity)).toBe(`rgb(var(--c-p-blue) / ${opacity})`);
+        expect(withColorOpacity('rgb(var(--c-p-blue) / 40%)', opacity)).toBe(`rgb(var(--c-p-blue) / calc(0.4 * ${opacity}))`);
+        expect(withColorOpacity('#ff000080', opacity)).toBe(`rgb(255 0 0 / calc(0.501961 * ${opacity}))`);
+        expect(withColorOpacity('rgba(10,20,30,.4)', opacity)).toBe(`rgb(10 20 30 / calc(0.4 * ${opacity}))`);
+        expect(withColorOpacity('not-a-color', opacity)).toBeUndefined();
+        expect(withColorOpacity('#fff', 'var(--missing) trailing' as typeof opacity)).toBeUndefined();
+        expect(computed).not.toHaveBeenCalled();
+    });
+
     it('compares the supplied foregrounds rather than tone names or the application theme label', () => {
         const computed = vi.spyOn(globalThis, 'getComputedStyle');
         expect(getSolidTextChoice('#10b981')).toBe('dark');

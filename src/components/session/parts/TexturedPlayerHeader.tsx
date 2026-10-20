@@ -80,7 +80,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
   const hasTexture = !!(baseImage && rect);
 
   const containerStyle: React.CSSProperties = {
-    backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : withColorOpacity(effectiveColor, 32 / 255)),
+    backgroundColor: bgUrl ? 'transparent' : (isTransparent ? 'transparent' : withColorOpacity(effectiveColor, 'var(--player-surface-tint-opacity)')),
     borderBottomColor: isTransparent ? 'transparent' : effectiveColor,
     borderBottomWidth: isTransparent ? '0px' : '2px',
     // [Fix]: When texture is present (bgUrl loaded), remove min-height constraint to let aspect-ratio drive the height.
@@ -104,7 +104,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
       title={canManageParticipantClaims ? t('multiplayer_player_claim_action') : undefined}
       // [CRITICAL CHANGE] Always enforce min-width 3.375rem (approx 54px).
       // Even in textured mode, if columns get too thin, we want scrolling, not illegible text.
-      className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] shadow-lg' : ''} ${!bgUrl ? 'border-r border-b border-surface-border' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
+      className={`relative flex-auto w-auto min-w-[3.375rem] flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${isEditing ? 'z-20 ring-2 ring-inset ring-[rgb(var(--c-grid-active-ring))] shadow-lg' : ''} ${!bgUrl ? 'border-r border-b border-[rgb(var(--c-grid-header-border))]' : ''} ${baseImage ? 'p-0' : 'p-2'} ${className}`}
       style={containerStyle}
     >
       <SmartTextureLayer bgUrl={bgUrl} rect={rect} />

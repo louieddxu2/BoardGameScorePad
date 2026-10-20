@@ -381,14 +381,15 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
     const containerStyle: React.CSSProperties = forceWidth ? { width: forceWidth, minWidth: forceWidth } : {};
 
     const isStandardAuto = !baseImage && column.isAuto;
+    const autoBg = isAlt ? 'rgba(var(--c-grid-auto-bg-alt))' : 'rgba(var(--c-grid-auto-bg))';
     let visualStyles: React.CSSProperties = {};
     let visualClasses = '';
 
     if (screenshotMode) {
         if (baseImage) visualClasses = `bg-transparent h-full`;
         else if (isStandardAuto) {
-            visualClasses = `h-full border-[rgba(var(--c-grid-auto-bg))]`;
-            visualStyles = { backgroundColor: 'rgba(var(--c-grid-auto-bg))' };
+            visualClasses = `h-full border-[rgba(var(--c-grid-auto-border))]`;
+            visualStyles = { backgroundColor: autoBg };
         }
         else {
             const bg = isAlt ? 'rgba(var(--c-grid-cell-bg-alt))' : 'transparent';
@@ -406,9 +407,9 @@ const ScoreCell: React.FC<ScoreCellProps> = (props) => {
         }
 
         if (isStandardAuto) {
-            bg = 'rgba(var(--c-grid-auto-bg))';
-            border = 'rgba(var(--c-grid-auto-bg))';
-            hoverBg = 'rgba(var(--c-grid-auto-bg))'; // Keep it stable or slightly brighter?
+            bg = autoBg;
+            border = 'rgba(var(--c-grid-auto-border))';
+            hoverBg = autoBg;
         }
 
         visualClasses = `${minHeightClass}`;
