@@ -216,7 +216,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     </div>
                 }
             >
-                <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
+                <div className={`grid grid-cols-2 gap-3 mt-3 ${animClass}`}>
                     {userTemplates.map(tData => (
                         <GameCard
                             key={tData.id}
@@ -254,7 +254,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     ) : undefined
                 }
             >
-                <div className={`grid grid-cols-2 gap-4 mt-4 ${animClass}`}>
+                <div className={`grid grid-cols-2 gap-3 mt-3 ${animClass}`}>
                     {systemTemplates.map(tData => {
                         const isNew = newBadgeIds.includes(tData.id);
                         return (

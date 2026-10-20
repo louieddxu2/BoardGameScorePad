@@ -195,7 +195,7 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(pinnedButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(recentButton.closest('.grid')).toHaveClass('grid-cols-1');
         expect(screen.getByText('Library Game').closest('.grid')).toHaveClass('grid-cols-2');
-        expect(screen.getByText('我的遊戲庫').parentElement?.parentElement).toHaveClass('p-2.5');
+        expect(screen.getByText('我的遊戲庫').parentElement?.parentElement).toHaveClass('min-h-10');
 
         const activeRow = activeButton.parentElement!;
         const pinnedRow = pinnedButton.parentElement!;
