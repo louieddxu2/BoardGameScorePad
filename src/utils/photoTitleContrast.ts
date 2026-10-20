@@ -1,5 +1,6 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoTextOutline } from './photoTextContrast';
+import { getPhotoPlayerNameShadow, getPhotoTextOutline } from './photoTextContrast';
+import { createColorReader } from './color';
 
 interface TitleAppearance {
     color: string;
@@ -107,4 +108,10 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-result-text', palette.text);
     root.style.setProperty('--photo-result-muted', palette.muted);
     root.style.setProperty('--photo-result-winner', palette.winner);
+    // Sampling already knows the actual backing: refine each name once, before capture.
+    const read = createColorReader();
+    for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
+        name.style.textShadow = name.dataset.scorePhotoName === 'default' ? 'none'
+            : getPhotoPlayerNameShadow(name.style.color, palette.identity, read);
+    }
 };

@@ -72,10 +72,41 @@ describe('photo title contrast', () => {
         context.getImageData.mockReturnValueOnce({ data: pixels(80, 90) })
             .mockReturnValueOnce({ data: new Uint8ClampedArray([200, 40, 20, 255]) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(root.style.getPropertyValue('--photo-result-background')).toBe(PHOTO_RESULT_FALLBACK.background);
-        expect(root.style.getPropertyValue('--photo-result-card')).toBe(PHOTO_RESULT_FALLBACK.card);
+        const expected = getPhotoResultPalette(pixels(80, 90));
+        expect(root.style.getPropertyValue('--photo-result-background')).toBe(expected.background);
+        expect(root.style.getPropertyValue('--photo-result-card')).toBe(expected.card);
         expect(context.drawImage).toHaveBeenCalledTimes(2);
         expect(context.getImageData).toHaveBeenCalledTimes(2);
+    });
+
+    it('refreshes each name against the sampled backing when photos change, without additional sampling', async () => {
+        const { root, context } = setupPhoto();
+        const name = document.createElement('span');
+        name.dataset.scorePhotoName = 'custom';
+        name.style.color = '#111111';
+        name.textContent = 'Player';
+        const defaultName = document.createElement('span');
+        defaultName.dataset.scorePhotoName = 'default';
+        defaultName.style.color = 'var(--photo-result-text, #f8fafc)';
+        root.append(name, defaultName);
+        context.getImageData.mockReturnValue({ data: pixels(240) });
+        await prepareScorePhotoTitle(root, new AbortController().signal);
+        expect(name.style.textShadow).toBe('none');
+        expect(defaultName.style.textShadow).toBe('none');
+
+        context.getImageData.mockReturnValue({ data: pixels(20) });
+        await prepareScorePhotoTitle(root, new AbortController().signal);
+        expect(name.style.textShadow).toContain('1.25px 1.25px 0 #ffffff');
+        expect(defaultName.style.textShadow).toBe('none');
+        expect(name.style.color).toBe('rgb(17, 17, 17)');
+        expect(name.textContent).toBe('Player');
+        expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
+
+        context.getImageData.mockReturnValue({ data: pixels(240) });
+        await prepareScorePhotoTitle(root, new AbortController().signal);
+        expect(name.style.textShadow).toBe('none');
+        expect(context.drawImage).toHaveBeenCalledTimes(6);
+        expect(context.getImageData).toHaveBeenCalledTimes(6);
     });
 
     it('does not break sharing when pixel access is blocked', async () => {
@@ -123,6 +154,11 @@ describe('photo title contrast', () => {
 
     it('does not apply sampled colors or title styles after the composition has been cancelled', async () => {
         const { root, context } = setupPhoto();
+        const name = document.createElement('span');
+        name.dataset.scorePhotoName = 'custom';
+        name.style.color = '#111111';
+        name.style.textShadow = 'none';
+        root.append(name);
         const controller = new AbortController();
         context.getImageData.mockImplementation(() => {
             controller.abort();
@@ -130,5 +166,6 @@ describe('photo title contrast', () => {
         });
         await prepareScorePhotoTitle(root, controller.signal);
         expect(root.getAttribute('style')).toBeNull();
+        expect(name.style.textShadow).toBe('none');
     });
 });

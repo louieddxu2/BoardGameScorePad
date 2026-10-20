@@ -28,10 +28,10 @@ describe('photo name and surface contrast', () => {
                 expect(contrast(luminance(palette.muted), luminance(palette.background))).toBeGreaterThan(4.5);
                 expect(contrast(luminance(palette.winner), luminance(palette.card))).toBeGreaterThan(3);
                 expect(contrast(luminance(palette.winner), luminance(palette.identity))).toBeGreaterThan(3);
-                // Test the difficult case: exactly the same name and card color.
+                // Test the difficult case: exactly the same name and identity color.
                 const element = document.createElement('span');
                 element.style.color = palette.identity;
-                const outline = getPhotoPlayerNameShadow(element.style.color).includes('#ffffff') ? 1 : 0;
+                const outline = getPhotoPlayerNameShadow(element.style.color, palette.identity).includes('#ffffff') ? 1 : 0;
                 expect(contrast(outline, luminance(palette.identity))).toBeGreaterThanOrEqual(4.5);
             }
         }
@@ -49,5 +49,16 @@ describe('photo name and surface contrast', () => {
         expect(getPhotoPlayerNameShadow('rgb(var(--c-txt-secondary))')).toContain('#000000');
         document.documentElement.style.setProperty('--c-txt-secondary', '30 41 59');
         expect(getPhotoPlayerNameShadow('rgb(var(--c-txt-secondary))')).toContain('#ffffff');
+    });
+
+    it('removes unnecessary outlines and uses the actual backing and alpha to protect low-contrast names', () => {
+        expect(getPhotoPlayerNameShadow('#111111', '#eeeeee')).toBe('none');
+        expect(getPhotoPlayerNameShadow('#eeeeee', '#111111')).toBe('none');
+        expect(getPhotoPlayerNameShadow('#888888', '#ffffff')).toContain('-0.5px -0.5px');
+        expect(getPhotoPlayerNameShadow('#aaaaaa', '#ffffff')).toContain('-0.85px -0.85px');
+        expect(getPhotoPlayerNameShadow('#ffffff', '#ffffff')).toContain('-1.25px -1.25px 0 #000000');
+        expect(getPhotoPlayerNameShadow('#111111', '#111111')).toContain('-1.25px -1.25px 0 #ffffff');
+        expect(getPhotoPlayerNameShadow('rgba(0,0,0,0.1)', '#ffffff')).toContain('0 #000000');
+        expect(getPhotoPlayerNameShadow('rgb(var(--missing))', '#ffffff')).toContain('1.25px');
     });
 });

@@ -251,7 +251,7 @@ describe('photo-first score export layout', () => {
         expect(identity).toHaveTextContent(players[index].name);
         expect(identity.querySelector('span')).toHaveStyle({ fontSize: '32px', overflowWrap: 'anywhere' });
         expect(identity.querySelector('span')).toHaveStyle({ color: players[index].color });
-        expect(identity.querySelector('span')?.style.textShadow).toContain('1.25px 1.25px 0 #000000');
+        expect(identity.querySelector('span')?.style.textShadow).toContain('0.5px 0.5px 0 #000000');
       }
     });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');
@@ -283,9 +283,10 @@ describe('photo-first score export layout', () => {
       createPlayer('p3', 'Chosen color', 30),
     ];
     const { container, getByText } = renderOverlay(baseData(players, ['p3'], 'HIGHEST_WINS'));
-    expect(getByText('Default name').style.color).toBe('rgb(var(--c-txt-secondary))');
-    expect(getByText('Default name').style.textShadow).not.toContain('--photo-result');
-    expect(container.querySelector('[data-sticker-icon]')).toHaveAttribute('stroke', 'rgb(var(--c-txt-secondary))');
+    expect(getByText('Default name').style.color).toBe('var(--photo-result-text, #f8fafc)');
+    expect(getByText('Default name').style.textShadow).toBe('none');
+    expect(getByText('Default name')).toHaveAttribute('data-score-photo-name', 'default');
+    expect(container.querySelector('[data-sticker-icon]')).toHaveAttribute('stroke', 'var(--photo-result-text, #f8fafc)');
     expect(container.querySelector('[data-sticker-outline]')?.getAttribute('stroke')).not.toContain('--photo-result');
     expect(getByText('Chosen color')).toHaveStyle({ color: '#ef4444' });
   });

@@ -1,3 +1,6 @@
+import { formatColor, parseColor, type RgbaColor } from './color';
+import { contrastOnBackground } from './colorContrast';
+
 interface PhotoResultPalette {
     background: string;
     card: string;
@@ -13,9 +16,32 @@ export const PHOTO_RESULT_FALLBACK: Readonly<PhotoResultPalette> = {
     text: '#f8fafc', muted: '#cbd5e1', winner: '#fbbf24',
 };
 
-const LIGHT_NEUTRAL: Readonly<PhotoResultPalette> = {
-    background: '#f1f5f9', card: '#ffffff', identity: '#e8edf2', border: '#94a3b8',
-    text: '#0f172a', muted: '#475569', winner: '#854d0e',
+const DARK_INK = parseColor('#0f172a')!;
+const LIGHT_INK = parseColor('#f8fafc')!;
+const WHITE = parseColor('#ffffff')!;
+const BLACK = parseColor('#000000')!;
+// Leave a little headroom for image-export channel rounding.
+const TEXT_CONTRAST = 4.6;
+const mix = (from: RgbaColor, to: RgbaColor, amount: number): RgbaColor => ({
+    r: from.r + (to.r - from.r) * amount,
+    g: from.g + (to.g - from.g) * amount,
+    b: from.b + (to.b - from.b) * amount,
+    a: 1,
+});
+const minimumContrast = (ink: RgbaColor, surfaces: RgbaColor[]) =>
+    Math.min(...surfaces.map(surface => contrastOnBackground(ink, surface)!));
+
+/** Keep a decorative seed as close as possible while meeting every backing's contrast. */
+const readableTint = (seed: RgbaColor, ink: RgbaColor, surfaces: RgbaColor[], target: number): RgbaColor => {
+    if (minimumContrast(seed, surfaces) >= target) return seed;
+    let low = 0;
+    let high = 1;
+    for (let step = 0; step < 8; step++) {
+        const amount = (low + high) / 2;
+        if (minimumContrast(mix(seed, ink, amount), surfaces) >= target) high = amount;
+        else low = amount;
+    }
+    return mix(seed, ink, high);
 };
 
 /** Pick a common color from a tiny sample, ignoring transparent/near-gray pixels. */
@@ -24,11 +50,19 @@ export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPal
     let dominant: { red: number; green: number; blue: number; count: number } | undefined;
     let brightness = 0;
     let opaqueCount = 0;
+    let totalRed = 0;
+    let totalGreen = 0;
+    let totalBlue = 0;
     for (let i = 0; i < pixels.length; i += 4) {
         if (pixels[i + 3] < 128) continue;
-        const [red, green, blue] = [pixels[i], pixels[i + 1], pixels[i + 2]];
+        const red = pixels[i];
+        const green = pixels[i + 1];
+        const blue = pixels[i + 2];
         // Include neutral pixels in the light/dark decision, but not in the hue histogram.
         brightness += red * 0.299 + green * 0.587 + blue * 0.114;
+        totalRed += red;
+        totalGreen += green;
+        totalBlue += blue;
         opaqueCount++;
         if (Math.max(red, green, blue) - Math.min(red, green, blue) < 20) continue;
         // Four bins per channel bound the histogram to 64 entries.
@@ -41,27 +75,41 @@ export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPal
         buckets.set(key, bucket);
         if (!dominant || bucket.count > dominant.count) dominant = bucket;
     }
-    const isLight = opaqueCount > 0 && brightness / opaqueCount >= 160;
-    const neutral = isLight ? LIGHT_NEUTRAL : PHOTO_RESULT_FALLBACK;
-    if (!dominant) return { ...neutral };
+    if (opaqueCount === 0) return { ...PHOTO_RESULT_FALLBACK };
 
-    const red = dominant.red / dominant.count;
-    const green = dominant.green / dominant.count;
-    const blue = dominant.blue / dominant.count;
-    const max = Math.max(red, green, blue);
-    const min = Math.min(red, green, blue);
-    const delta = max - min;
-    // Opposite muted colors in the same bin can average back to gray.
-    if (delta < 20) return { ...neutral };
-    const sector = max === red ? (green - blue) / delta
-        : max === green ? (blue - red) / delta + 2 : (red - green) / delta + 4;
-    const hue = Math.round((sector * 60 + 360) % 360);
-    const saturation = delta / (255 - Math.abs(max + min - 255));
-    const mutedSaturation = Math.min(44, Math.max(24, saturation * 65));
-    const tone = (scale: number, lightness: number) => `hsl(${hue}, ${Math.round(mutedSaturation * scale)}%, ${lightness}%)`;
-    // Opaque surfaces keep the sampled hue visible instead of diluting it over app gray.
-    // The photo controls both surfaces and text, independently of the app theme.
-    return isLight
-        ? { ...neutral, background: tone(1, 92), card: tone(0.85, 96), identity: tone(0.85, 92), border: tone(1, 64) }
-        : { ...neutral, background: tone(1, 22), card: tone(0.85, 30), identity: tone(0.85, 26), border: tone(1, 52) };
+    // A continuous curve gently deepens midtones so the panel does not look washed out.
+    const level = 24 + Math.pow(brightness / opaqueCount / 255, 1.5) * 216;
+    const red = dominant ? dominant.red / dominant.count : totalRed / opaqueCount;
+    const green = dominant ? dominant.green / dominant.count : totalGreen / opaqueCount;
+    const blue = dominant ? dominant.blue / dominant.count : totalBlue / opaqueCount;
+    const dominantBrightness = red * 0.299 + green * 0.587 + blue * 0.114;
+    // A tiny colored object in a neutral photo must not tint the whole score panel.
+    const strength = dominant ? 0.38 * Math.min(1, dominant.count / opaqueCount * 5) : 0.38;
+    const channel = (value: number) => Math.max(0, Math.min(255, level + (value - dominantBrightness) * strength));
+    const background = { r: channel(red), g: channel(green), b: channel(blue), a: 1 };
+    const card = mix(background, WHITE, 0.07);
+    const identity = mix(card, BLACK, 0.035);
+    let surfaces = [background, card, identity];
+    const ink = minimumContrast(DARK_INK, surfaces) >= minimumContrast(LIGHT_INK, surfaces) ? DARK_INK : LIGHT_INK;
+    // Midtones occasionally need a small collective shift to keep scores/captions readable.
+    // Binary search is bounded and runs on three colors, not on additional image pixels.
+    if (minimumContrast(ink, surfaces) < TEXT_CONTRAST) {
+        const anchor = ink === DARK_INK ? WHITE : BLACK;
+        let low = 0;
+        let high = 1;
+        for (let step = 0; step < 8; step++) {
+            const amount = (low + high) / 2;
+            if (minimumContrast(ink, surfaces.map(surface => mix(surface, anchor, amount))) >= TEXT_CONTRAST) high = amount;
+            else low = amount;
+        }
+        surfaces = surfaces.map(surface => mix(surface, anchor, high));
+    }
+    const [base, tile, name] = surfaces;
+    const gold = parseColor(ink === LIGHT_INK ? '#fbbf24' : '#854d0e')!;
+    return {
+        background: formatColor(base), card: formatColor(tile), identity: formatColor(name),
+        border: formatColor(mix(tile, ink, 0.14)), text: formatColor(ink),
+        muted: formatColor(readableTint(mix(ink, base, 0.24), ink, surfaces, TEXT_CONTRAST)),
+        winner: formatColor(readableTint(gold, ink, surfaces, 3.1)),
+    };
 };

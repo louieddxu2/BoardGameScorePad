@@ -1,4 +1,5 @@
-import { getRelativeLuminance } from './ui';
+import { readColor, type ColorReader } from './color';
+import { compositeColors, contrastOnBackground, relativeLuminance } from './colorContrast';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
 export const getPhotoTextOutline = (color: string, softShadow: string, width = 2): string => [
@@ -9,12 +10,24 @@ export const getPhotoTextOutline = (color: string, softShadow: string, width = 2
 ].join(', ');
 
 /** Preserve the player's fill color, with a legible edge even on a similarly colored card. */
-const getPhotoPlayerOutlineColor = (color: string): string => {
-    const luminance = getRelativeLuminance(color);
+const getPhotoPlayerOutlineColor = (luminance: number): string => {
     const whiteContrast = 1.05 / (luminance + 0.05);
     const blackContrast = (luminance + 0.05) / 0.05;
     return whiteContrast > blackContrast ? '#ffffff' : '#000000';
 };
 
-export const getPhotoPlayerNameShadow = (color: string): string =>
-    getPhotoTextOutline(getPhotoPlayerOutlineColor(color), '0 2px 3px rgba(0,0,0,0.25)', 1.25);
+export const getPhotoPlayerNameShadow = (color: string, background?: string, read: ColorReader = readColor): string => {
+    const foreground = read(color);
+    const backing = background ? read(background) : null;
+    if (foreground && backing?.a === 1) {
+        const contrast = contrastOnBackground(foreground, backing)!;
+        if (contrast >= 4.5) return 'none';
+        const paint = compositeColors(foreground, backing);
+        const outline = getPhotoPlayerOutlineColor(relativeLuminance(paint));
+        const width = contrast >= 3 ? 0.5 : contrast >= 2 ? 0.85 : 1.25;
+        return getPhotoTextOutline(outline, '0 1px 2px rgba(0,0,0,0.12)', width);
+    }
+    // Before sampling, or for unsupported CSS colors, retain the conservative outline.
+    const outline = getPhotoPlayerOutlineColor(foreground ? relativeLuminance(foreground) : 0);
+    return getPhotoTextOutline(outline, '0 2px 3px rgba(0,0,0,0.25)', 1.25);
+};

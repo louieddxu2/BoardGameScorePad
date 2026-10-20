@@ -150,7 +150,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         ? (isWinner ? t('screenshot_outcome_win') : t('screenshot_outcome_loss'))
                         : p.totalScore;
                     const hasDefaultColor = !p.color || p.color === 'transparent';
-                    const playerColor = hasDefaultColor ? 'rgb(var(--c-txt-secondary))' : p.color;
+                    const playerColor = hasDefaultColor ? RESULT_TEXT : p.color;
                     const scoreFontSize = Math.min(56, (playerWidth - 64) / (String(displayScore).length * 0.65));
 
                     return (
@@ -189,10 +189,13 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                         className="[&_svg]:w-[36px] [&_svg]:h-[36px]" />
                                 ) : (
                                     <span
+                                        data-score-photo-name={hasDefaultColor ? 'default' : 'custom'}
                                         className="font-bold"
                                         style={{
                                             display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere',
-                                            color: playerColor, textShadow: getPhotoPlayerNameShadow(playerColor),
+                                            color: playerColor,
+                                            textShadow: hasDefaultColor ? 'none'
+                                                : getPhotoPlayerNameShadow(playerColor, PHOTO_RESULT_FALLBACK.identity),
                                         }}
                                     >
                                         {p.name}
