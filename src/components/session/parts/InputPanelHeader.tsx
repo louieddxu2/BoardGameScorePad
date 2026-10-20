@@ -66,6 +66,8 @@ const InputPanelHeader: React.FC<{
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow"
                             color={displayColor}
+                            background={bgColor}
+                            backdrop="rgb(var(--c-modal-bg))"
                         >
                             {player.name}
                         </ContrastText>
@@ -76,6 +78,8 @@ const InputPanelHeader: React.FC<{
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow max-w-[40%]"
                             color={displayColor}
+                            background={bgColor}
+                            backdrop="rgb(var(--c-modal-bg))"
                         >
                             {player.name}
                         </ContrastText>

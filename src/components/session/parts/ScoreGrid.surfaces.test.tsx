@@ -14,7 +14,7 @@ it('updates mounted player tints and keeps light auto rows continuous with their
     document.head.appendChild(style);
     const previousTheme = document.documentElement.getAttribute('data-theme');
     const template: GameTemplate = { id: 'table', name: 'Table', createdAt: 1, columns: [
-        { id: 'input', name: 'Input', inputType: 'keypad', formula: 'a1', isScoring: true },
+        { id: 'input', name: 'Input', color: '#f97316', inputType: 'keypad', formula: 'a1', isScoring: true },
         { id: 'auto-alt', name: 'Auto alt', inputType: 'auto', isAuto: true, formula: '0', isScoring: true },
         { id: 'auto-base', name: 'Auto base', inputType: 'auto', isAuto: true, formula: '0', isScoring: true },
     ] };
@@ -26,6 +26,7 @@ it('updates mounted player tints and keeps light auto rows continuous with their
     const content = createRef<HTMLDivElement>();
     const noop = vi.fn();
     try {
+        document.documentElement.setAttribute('data-theme', 'light');
         const view = render(<LanguageProvider><ScoreGrid session={session} template={template}
             editingCell={null} editingPlayerId={null} onCellClick={noop} onPlayerHeaderClick={noop}
             onColumnHeaderClick={noop} onUpdateTemplate={noop} onAddColumn={noop}
@@ -34,6 +35,9 @@ it('updates mounted player tints and keeps light auto rows continuous with their
         </LanguageProvider>);
         const playerHeader = view.container.querySelector('[data-player-header-id="red"]') as HTMLElement;
         const headerPaint = playerHeader.style.backgroundColor;
+        const inputLabel = view.getByText(text => text.replace(/\u00ad/g, '') === 'Input');
+        expect(inputLabel).toHaveStyle({ color: '#f97316' });
+        expect(inputLabel.style.textShadow).toContain('0.5px 0 0 rgba(62,29,6,0.65)');
         expect(view.getByText('2').parentElement).toHaveClass('bg-modal-backdrop/70', 'text-[rgb(var(--c-player-badge-ink))]');
         for (const theme of ['dark', 'light', 'sage']) {
             document.documentElement.setAttribute('data-theme', theme);

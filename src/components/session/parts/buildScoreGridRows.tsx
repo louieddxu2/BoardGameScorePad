@@ -7,6 +7,7 @@ import { GripVertical, Settings } from 'lucide-react';
 import { ContrastText } from '../../shared/ContrastText';
 import { injectSoftHyphens } from '../../../utils/text';
 import { buildScoreGridOverlay } from './buildScoreGridOverlay';
+import { createColorReader } from '../../../utils/color';
 
 type ProcessedScoreColumn = ScoreColumn & { resolvedDisplayMode: string; overlayColumns: ScoreColumn[] };
 
@@ -41,6 +42,7 @@ export function buildScoreGridRows({
   itemColStyle, getDragHandlers, renderIndicators, aiStatus, onColumnHeaderClick, onCellClick, editingCell,
   leftColWidth, minPlayerWidth, containerWidth, previewValue, canEditScore, editablePlayerIds
 }: ScoreGridRowsOptions) {
+  const readColor = createColorReader();
   return processedColumns.map((col, index) => {
     const isDragging = dnd.draggingId === col.id;
     const isDropTarget = dnd.dropTargetId === col.id;
@@ -101,6 +103,8 @@ export function buildScoreGridRows({
               <ContrastText
                 className="text-sm font-bold text-txt-secondary w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate"
                 color={col.color || 'inherit'}
+                background={headerBg}
+                readColor={readColor}
               >
                 {injectSoftHyphens(col.name)}
               </ContrastText>

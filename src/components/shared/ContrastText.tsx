@@ -1,6 +1,7 @@
 import React from 'react';
 import { getContrastTextStyles } from '../../utils/ui';
 import type { AppTheme } from '../../theme';
+import type { ColorReader } from '../../utils/color';
 
 interface ContrastTextProps {
     children: React.ReactNode;
@@ -9,6 +10,9 @@ interface ContrastTextProps {
     style?: React.CSSProperties;
     isTextureMode?: boolean;
     theme?: AppTheme;
+    background?: string;
+    backdrop?: string;
+    readColor?: ColorReader;
 }
 
 /**
@@ -21,9 +25,12 @@ export const ContrastText: React.FC<ContrastTextProps> = ({
     className = '',
     style = {},
     isTextureMode = false,
-    theme
+    theme,
+    background,
+    backdrop,
+    readColor,
 }) => {
-    const contrastStyles = getContrastTextStyles(color, theme, { isTextureMode });
+    const contrastStyles = getContrastTextStyles(color, theme, { isTextureMode, background, backdrop, read: readColor });
 
     return (
         <span 

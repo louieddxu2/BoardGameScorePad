@@ -590,6 +590,12 @@ html[data-theme='sage'] {
     }
   }
 
+  /* A restrained leading edge connects an expanded section to its content.
+     Inset paint does not shift the header or change its touch target. */
+  .dashboard-section-header[data-expanded='true'] {
+    box-shadow: inset 3px 0 0 rgb(var(--c-brand-primary) / 0.65);
+  }
+
   .hyphenate {
     overflow-wrap: break-word;
     word-wrap: break-word;

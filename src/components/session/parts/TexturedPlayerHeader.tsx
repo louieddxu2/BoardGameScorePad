@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { Player } from '../../../types';
 import { getSmartTextureUrl } from '../../../utils/imageProcessing';
-import { getContrastTextStyles } from '../../../utils/ui';
 import { ContrastText } from '../../shared/ContrastText';
 import SmartTextureLayer from './SmartTextureLayer';
 import { COLORS } from '../../../colors'; // Import colors for fallback
@@ -114,6 +113,8 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
         color={bgUrl ? 'rgb(var(--c-slate-50))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor)}
         style={bgUrl ? inkStyle : {}}
         isTextureMode={!!bgUrl}
+        background={bgUrl ? undefined : containerStyle.backgroundColor}
+        backdrop="rgb(var(--c-grid-cell-bg))"
       >
         {player.name}
       </ContrastText>

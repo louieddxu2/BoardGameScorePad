@@ -108,4 +108,32 @@ describe('Opacity and solid-background contrast', () => {
         expect(getContrastTextStyles('rgb(var(--c-p-emerald))', 'light').textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
         expect(computed).not.toHaveBeenCalled();
     });
+
+    it('protects neutral palette ink on known light surfaces and shares the grid color reader', () => {
+        document.documentElement.style.setProperty('--test-color', '249 115 22');
+        const read = createColorReader();
+        const computed = vi.spyOn(globalThis, 'getComputedStyle');
+        const options = { background: '#f5f4f0', read };
+        const orange = getContrastTextStyles('rgb(var(--test-color))', 'light', options);
+        expect(orange.textShadow).toContain('0.5px 0 0 rgba(62,29,6,0.65)');
+        expect(getContrastTextStyles('#f97316', 'sage', options)).toEqual(orange);
+        expect(getContrastTextStyles('#222', 'light', options).textShadow).toBe('none');
+        expect(computed).toHaveBeenCalledTimes(1);
+    });
+
+    it('composites header tints while leaving unknown backgrounds and textured or dark ink unchanged', () => {
+        const options = { background: 'rgba(0,0,0,.9)', backdrop: '#fff' };
+        expect(getContrastTextStyles('#222', 'light', options).textShadow).toContain('rgba(200,200,200,0.8)');
+        expect(getContrastTextStyles('transparent', 'light', options).textShadow).toBe('none');
+        for (const theme of ['dark', 'light'] as const) {
+            const texture = { isTextureMode: true };
+            expect(getContrastTextStyles('#222', theme, { ...options, ...texture }))
+                .toEqual(getContrastTextStyles('#222', theme, texture));
+        }
+        expect(getContrastTextStyles('#222', 'dark', options)).toEqual(getContrastTextStyles('#222', 'dark'));
+        expect(getContrastTextStyles('#fff', 'light', { background: 'inherit' }))
+            .toEqual(getContrastTextStyles('#fff', 'light'));
+        expect(getContrastTextStyles('#fff', 'light', { background: 'transparent' }))
+            .toEqual(getContrastTextStyles('#fff', 'light'));
+    });
 });

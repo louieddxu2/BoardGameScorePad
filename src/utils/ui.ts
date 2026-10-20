@@ -1,6 +1,6 @@
 import { COLOR_TONES } from '../colors';
-import { readColor } from './color';
-import { getSolidTextChoice, relativeLuminance } from './colorContrast';
+import { createColorReader, readColor, type ColorReader } from './color';
+import { compositeColors, contrastOnBackground, getSolidTextChoice, relativeLuminance } from './colorContrast';
 import { getThemeAppearance, resolveAppTheme, type AppTheme } from '../theme';
 
 /**
@@ -98,7 +98,7 @@ export const getCurrentTheme = (): AppTheme => {
 export const getContrastTextStyles = (
     textColorHex: string,
     theme?: AppTheme,
-    options: { isTextureMode?: boolean } = {}
+    options: { isTextureMode?: boolean; background?: string; backdrop?: string; read?: ColorReader } = {}
 ): React.CSSProperties => {
     if (!textColorHex) return {};
     const resolvedTheme = getThemeAppearance(theme ?? getCurrentTheme());
@@ -138,6 +138,34 @@ export const getContrastTextStyles = (
 
     // --- Light UI Environment (Clean Mode) ---
     if (resolvedTheme === 'light') {
+        // Known UI surfaces use actual contrast, not the palette's coarse tone labels.
+        // A reader can be shared by a whole grid render; no element measurements.
+        if (options.background) {
+            const read = options.read ?? createColorReader();
+            const ink = read(textColorHex);
+            if (ink?.a === 0) return { ...styles, textShadow: 'none' };
+            let background = read(options.background);
+            if (background && background.a < 1 && options.backdrop) {
+                const backing = read(options.backdrop);
+                background = backing?.a === 1 ? compositeColors(background, backing) : null;
+            }
+            const ratio = ink && background ? contrastOnBackground(ink, background) : null;
+            if (ink && ratio !== null) {
+                if (ratio >= 4.5) return { ...styles, textShadow: 'none' };
+                const width = ratio >= 3 ? 0.35 : ratio >= 2 ? 0.5 : 0.7;
+                const alpha = ratio >= 3 ? 0.5 : ratio >= 2 ? 0.65 : 0.8;
+                const edge = getSolidTextChoice(options.background, {
+                    backdrop: options.backdrop, read,
+                }) === 'light' ? 255 : 0;
+                // Retain a trace of the selected hue instead of a harsh black/white rim.
+                const channels = [ink.r, ink.g, ink.b].map(channel => Math.round(channel * 0.25 + edge * 0.75));
+                const shadow = `rgba(${channels.join(',')},${alpha})`;
+                return {
+                    ...styles,
+                    textShadow: `${width}px 0 0 ${shadow}, -${width}px 0 0 ${shadow}, 0 ${width}px 0 ${shadow}, 0 -${width}px 0 ${shadow}`,
+                };
+            }
+        }
         // [Symmetric Protection] For light-toned text (e.g., White/Yellow) on White Background
         const isSystemText = varName?.includes('txt-primary') || varName?.includes('txt-secondary');
         const shouldProtectLight = !isSystemText && (tone === 'light' || (!tone && getPerceivedLuminance(textColorHex) > 170));
