@@ -35,8 +35,7 @@ const DashboardSection: React.FC<DashboardSectionProps> = ({
     <div className={`${compact ? 'mb-4 last:mb-4' : 'mb-8 last:mb-5'} animate-in fade-in duration-500`}>
       <div 
         onClick={onToggle} 
-        data-expanded={isOpen}
-        className={`dashboard-section-header flex items-center justify-between gap-2 rounded-xl border cursor-pointer hover:bg-surface-hover transition-colors active:scale-[0.99] ${isOpen ? 'bg-surface-bg border-brand-primary/30' : 'bg-surface-alt border-surface-border'} ${compact ? 'min-h-9 px-3' : 'p-2.5 px-4'}`}
+        className={`flex items-center justify-between gap-2 rounded-xl border cursor-pointer hover:bg-surface-hover transition-colors active:scale-[0.99] ${isOpen ? 'bg-surface-bg border-brand-primary/30' : 'bg-surface-alt border-surface-border'} ${compact ? 'min-h-9 px-3' : 'p-2.5 px-4'}`}
       >
         <div className="flex items-center gap-2">
           {isOpen ? <ChevronDown size={18} className={iconColorClass}/> : <ChevronRight size={18} className="text-txt-muted"/>}
