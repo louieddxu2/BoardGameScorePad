@@ -25,7 +25,7 @@ interface ScoreOverlayGeneratorProps {
 const GENERATOR_WIDTH = 1080;
 const PADDING_PX = 32;
 const GAP_PX = 16;
-const MAX_PLAYER_WIDTH = 220;
+const MAX_PLAYER_WIDTH = 228;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
@@ -192,7 +192,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                         data-score-photo-name={hasDefaultColor ? 'default' : 'custom'}
                                         data-score-photo-color={hasDefaultColor ? undefined : p.color}
                                         style={{
-                                            display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere',
+                                            display: 'block', fontSize: 36, lineHeight: 1.2, overflowWrap: 'anywhere',
                                             ...(hasDefaultColor ? {
                                                 ...getPhotoPlayerNameStyles(PHOTO_RESULT_FALLBACK.text, PHOTO_RESULT_FALLBACK.identity),
                                                 color: playerColor, textShadow: 'none',

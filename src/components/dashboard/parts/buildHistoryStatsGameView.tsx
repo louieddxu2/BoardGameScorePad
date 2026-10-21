@@ -136,7 +136,7 @@ export function buildHistoryStatsGameView({
                           <React.Fragment key={p.id}>
                             {idx > 0 && <span className="text-txt-muted/30 mx-0.5">、</span>}
                             <span className={isWinner ? "font-bold flex items-center gap-0.5 inline-flex" : "inline-flex items-center"}>
-                              {isWinner && <Crown size={10} className="shrink-0 text-status-warning" fill="currentColor" />}
+                              {isWinner && <Crown size={10} className="shrink-0 winner-crown" fill="currentColor" />}
                               <ContrastText
                                 className="truncate"
                                 color={isTransparent ? 'rgb(var(--c-txt-secondary))' : p.color}

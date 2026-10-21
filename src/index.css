@@ -171,6 +171,8 @@ html[data-ios-safari-browser='true'] {
   /* Status Tokens */
   --c-status-danger: 239 68 68;  /* red-500 */
   --c-status-warning: 251 191 36; /* amber-400 */
+  --c-winner-fill: 251 191 36;
+  --c-winner-stroke: 251 191 36;
   --c-status-success: var(--c-brand-primary);
   --c-status-info: 56 189 248;  /* sky-400 */
 
@@ -249,6 +251,8 @@ html[data-theme='light'] {
   /* Status Tokens */
   --c-status-danger: 160 38 48;
   --c-status-warning: 126 76 6;
+  --c-winner-fill: 250 204 21;
+  --c-winner-stroke: 153 105 0;
   --c-status-success: var(--c-brand-primary);
   --c-status-info: 18 88 120;
 
@@ -329,6 +333,8 @@ html[data-theme='sage'] {
 
   --c-status-danger: 148 33 45;
   --c-status-warning: 116 68 8;
+  --c-winner-fill: 250 204 21;
+  --c-winner-stroke: 153 105 0;
   --c-status-success: var(--c-brand-primary);
   --c-status-info: 21 88 123;
   --c-btn-ghost-hover: var(--c-surface-hover);
@@ -395,6 +401,12 @@ html[data-theme='sage'] {
    ============================================================ */
 
 @layer components {
+  /* Gold is an icon fill; warning text keeps its independently readable ink. */
+  .winner-crown {
+    color: rgb(var(--c-winner-fill));
+    stroke: rgb(var(--c-winner-stroke));
+  }
+
   /* Action Buttons */
   .btn-action-primary {
     @apply flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg transition-all duration-200 active:scale-95 focus:outline-none border;

@@ -54,10 +54,13 @@ describe('photo name and surface contrast', () => {
         const round = (color: RgbaColor): RgbaColor => ({
             r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b), a: color.a,
         });
-        for (let value = 0; value <= 255; value++) {
-            const palette = getPhotoResultPalette(new Uint8ClampedArray([value, value, value, 255]));
+        const samples = Array.from({ length: 256 }, (_, value) => [
+            [value, value, value], [value, value * 0.65, value * 0.4], [value * 0.4, value * 0.65, value],
+        ]).flat();
+        for (const sample of samples) {
+            const palette = getPhotoResultPalette(new Uint8ClampedArray([...sample, 255]));
             const background = parseColor(palette.identity)!;
-            for (const color of ['#1f2937', '#facc15', '#ef4444', '#ffffff', 'rgba(0,0,0,.4)']) {
+            for (const color of ['#1f2937', '#facc15', '#ef4444', '#3b82f6', '#ffffff', 'rgba(0,0,0,.4)']) {
                 const style = getPhotoPlayerNameStyles(color, palette.identity);
                 if (style.textShadow !== 'none') continue;
                 const ink = parseColor(style.color!)!;
@@ -69,15 +72,9 @@ describe('photo name and surface contrast', () => {
                     expect(style).not.toHaveProperty('transition');
                 }
                 expect(luminance(style.color!)).toBeLessThanOrEqual(luminance(color));
-                if (style.color === color && contrastOnBackground(ink, background)! < 4.5) {
-                    // This backing only permits light text at the target contrast.
-                    // Preserve the selected color rather than whitening or changing the plate.
-                    expect(contrastOnBackground(parseColor('#000')!, background)!).toBeLessThan(4.51);
-                    continue;
-                }
-                expect(contrastOnBackground(ink, background), `${value}: ${color} CSS`).toBeGreaterThanOrEqual(4.5);
+                expect(contrastOnBackground(ink, background), `${sample}: ${color} CSS`).toBeGreaterThanOrEqual(4.5);
                 const paint = round(compositeColors(ink, background));
-                expect(contrastOnBackground(paint, round(background)), `${value}: ${color} bitmap`).toBeGreaterThanOrEqual(4.5);
+                expect(contrastOnBackground(paint, round(background)), `${sample}: ${color} bitmap`).toBeGreaterThanOrEqual(4.5);
             }
         }
     });

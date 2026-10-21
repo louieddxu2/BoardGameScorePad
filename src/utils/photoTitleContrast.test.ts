@@ -99,7 +99,11 @@ describe('photo title contrast', () => {
         redName.dataset.scorePhotoName = 'custom';
         redName.dataset.scorePhotoColor = '#ef4444';
         redName.style.color = '#ef4444';
-        root.append(name, defaultName, yellowName, redName);
+        const blueName = document.createElement('span');
+        blueName.dataset.scorePhotoName = 'custom';
+        blueName.dataset.scorePhotoColor = '#3b82f6';
+        blueName.style.color = '#3b82f6';
+        root.append(name, defaultName, yellowName, redName, blueName);
         context.getImageData.mockReturnValue({ data: pixels(240) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toBe('none');
@@ -121,9 +125,12 @@ describe('photo title contrast', () => {
 
         context.getImageData.mockReturnValue({ data: pixels(120) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(redName.style.color).toBe('rgb(239, 68, 68)');
-        expect(redName.style.fontWeight).toBe('400');
-        expect(redName.style.textShadow).toBe('none');
+        for (const coloredName of [redName, blueName]) {
+            expect(coloredName.style.fontWeight).toBe('400');
+            expect(coloredName.style.textShadow).toBe('none');
+            expect(contrastOnBackground(parseColor(coloredName.style.color)!, parseColor(getPhotoResultPalette(pixels(120)).identity)!))
+                .toBeGreaterThanOrEqual(4.5);
+        }
         expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
 
         context.getImageData.mockReturnValue({ data: pixels(20) });
@@ -138,6 +145,8 @@ describe('photo title contrast', () => {
         expect(yellowName.style.color).toBe('rgb(250, 204, 21)');
         expect(yellowName.style.textShadow).toBe(getPhotoPlayerNameShadow('#facc15', getPhotoResultPalette(pixels(20)).identity));
         expect(yellowName.style.filter).toBe('');
+        expect(redName.style.color).toBe('rgb(239, 68, 68)');
+        expect(blueName.style.color).toBe('rgb(59, 130, 246)');
 
         context.getImageData.mockReturnValue({ data: pixels(240) });
         await prepareScorePhotoTitle(root, new AbortController().signal);

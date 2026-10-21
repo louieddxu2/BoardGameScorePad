@@ -70,6 +70,32 @@ describe('Three-theme visual contract', () => {
         }
     });
 
+    it('separates yellow winner fills from warning text and outlines them on light history surfaces', () => {
+        const crown: Record<string, string> = {};
+        styles.walkRules('.winner-crown', rule => {
+            rule.walkDecls(declaration => { crown[declaration.prop] = declaration.value; });
+        });
+        expect(crown.color).toBe('rgb(var(--c-winner-fill))');
+        expect(crown.stroke).toBe('rgb(var(--c-winner-stroke))');
+        for (const theme of ['light', 'sage'] as const) {
+            const fill = color(theme, '--c-winner-fill');
+            expect(fill.r).toBeGreaterThanOrEqual(240);
+            expect(fill.g).toBeGreaterThanOrEqual(190);
+            expect(fill.b).toBeLessThan(40);
+            expect(fill).not.toEqual(color(theme, '--c-status-warning'));
+            for (const token of ['--c-app-bg', '--c-surface-bg', '--c-surface-bg-alt', '--c-surface-hover']) {
+                const backing = color(theme, token);
+                const winnerTint = compositeColors({ ...color(theme, '--c-status-warning'), a: 0.1 }, backing);
+                for (const surface of [backing, winnerTint]) {
+                    expect(contrastOnBackground(color(theme, '--c-winner-stroke'), surface), `${theme}: ${token} crown edge`)
+                        .toBeGreaterThanOrEqual(3);
+                }
+            }
+        }
+        expect(color('dark', '--c-winner-fill')).toEqual(color('dark', '--c-status-warning'));
+        expect(color('dark', '--c-winner-stroke')).toEqual(color('dark', '--c-winner-fill'));
+    });
+
     it('retains all player palette primitives and gives new themes the existing light-ink protection', () => {
         for (const theme of Object.keys(APP_THEMES) as typeof APP_THEME_ORDER) {
             for (const token of [...root.keys()].filter(name => name.startsWith('--c-p-'))) {

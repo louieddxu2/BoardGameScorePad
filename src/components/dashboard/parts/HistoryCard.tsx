@@ -60,7 +60,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ record, onDelete, onClick }) 
                     return (
                         <div key={p.id} className={`flex items-center justify-between text-sm ${isWinner ? 'bg-status-warning/10 -mx-2 px-2 py-1 rounded-lg border border-status-warning/30 shadow-sm' : ''}`}>
                             <div className="flex items-center gap-1.5 overflow-hidden">
-                                {isWinner && <Crown size={14} className="text-status-warning shrink-0" fill="currentColor" />}
+                                {isWinner && <Crown size={14} className="winner-crown shrink-0" fill="currentColor" />}
                                 <ContrastText
                                     className={`truncate font-medium ${isWinner ? 'font-bold' : ''}`}
                                     color={isTransparent ? 'rgb(var(--c-txt-secondary))' : p.color}

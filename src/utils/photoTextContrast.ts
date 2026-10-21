@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { readColor, type ColorReader } from './color';
 import { compositeColors, contrastAfterRounding, relativeLuminance } from './colorContrast';
 import { getContrastTextStyles } from './ui';
+import { PHOTO_DARK_SURFACE_MAX_LUMINANCE } from './photoResultPalette';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
 export const getPhotoTextOutline = (color: string, softShadow: string, width = 2): string => [
@@ -34,10 +35,6 @@ export const getPhotoPlayerNameShadow = (color: string, background?: string, rea
     return getPhotoTextOutline(outline, '0 2px 3px rgba(0,0,0,0.25)', 1.25);
 };
 
-// Reserve heavy styling for unmistakably dark plates (roughly #595959 or darker),
-// not for every surface that happens to benefit from white text.
-const DARK_SURFACE_MAX_LUMINANCE = 0.10;
-
 /** Normal-weight, shadow-free names are the default for photo exports.
  * Only clearly dark backing retains the original bold/outline treatment.
  * Selected player colors may deepen, but never become pale through white mixing. */
@@ -45,7 +42,7 @@ export const getPhotoPlayerNameStyles = (
     color: string, background: string, read: ColorReader = readColor,
 ): CSSProperties => {
     const backing = read(background);
-    if (backing?.a === 1 && relativeLuminance(backing) <= DARK_SURFACE_MAX_LUMINANCE) {
+    if (backing?.a === 1 && relativeLuminance(backing) <= PHOTO_DARK_SURFACE_MAX_LUMINANCE) {
         return {
             color, fontWeight: 700, textShadow: getPhotoPlayerNameShadow(color, background, read),
             WebkitTextStroke: '', filter: '',

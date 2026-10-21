@@ -1,5 +1,5 @@
 import { formatColor, parseColor, type RgbaColor } from './color';
-import { contrastOnBackground } from './colorContrast';
+import { contrastOnBackground, relativeLuminance } from './colorContrast';
 
 interface PhotoResultPalette {
     background: string;
@@ -20,8 +20,12 @@ const DARK_INK = parseColor('#0f172a')!;
 const LIGHT_INK = parseColor('#f8fafc')!;
 const WHITE = parseColor('#ffffff')!;
 const BLACK = parseColor('#000000')!;
+// Palette selection and name styling agree on clearly dark plates (about #595959).
+export const PHOTO_DARK_SURFACE_MAX_LUMINANCE = 0.10;
 // Leave a little headroom for image-export channel rounding.
 const TEXT_CONTRAST = 4.6;
+// Clean, normal-weight colored names need a genuinely light backing, not mid-gray.
+const LIGHT_SURFACE_TEXT_CONTRAST = 7;
 const mix = (from: RgbaColor, to: RgbaColor, amount: number): RgbaColor => ({
     r: from.r + (to.r - from.r) * amount,
     g: from.g + (to.g - from.g) * amount,
@@ -90,16 +94,19 @@ export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPal
     const card = mix(background, WHITE, 0.07);
     const identity = mix(card, BLACK, 0.035);
     let surfaces = [background, card, identity];
-    const ink = minimumContrast(DARK_INK, surfaces) >= minimumContrast(LIGHT_INK, surfaces) ? DARK_INK : LIGHT_INK;
-    // Midtones occasionally need a small collective shift to keep scores/captions readable.
+    const isDark = relativeLuminance(identity) <= PHOTO_DARK_SURFACE_MAX_LUMINANCE;
+    const ink = isDark ? LIGHT_INK : DARK_INK;
+    const surfaceContrast = isDark ? TEXT_CONTRAST : LIGHT_SURFACE_TEXT_CONTRAST;
+    // Keep the photo hue, but lift non-dark midtones together so the scoreboard's
+    // darken-only name policy can meet contrast without whitening player colors.
     // Binary search is bounded and runs on three colors, not on additional image pixels.
-    if (minimumContrast(ink, surfaces) < TEXT_CONTRAST) {
+    if (minimumContrast(ink, surfaces) < surfaceContrast) {
         const anchor = ink === DARK_INK ? WHITE : BLACK;
         let low = 0;
         let high = 1;
         for (let step = 0; step < 8; step++) {
             const amount = (low + high) / 2;
-            if (minimumContrast(ink, surfaces.map(surface => mix(surface, anchor, amount))) >= TEXT_CONTRAST) high = amount;
+            if (minimumContrast(ink, surfaces.map(surface => mix(surface, anchor, amount))) >= surfaceContrast) high = amount;
             else low = amount;
         }
         surfaces = surfaces.map(surface => mix(surface, anchor, high));

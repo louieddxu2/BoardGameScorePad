@@ -230,9 +230,9 @@ describe('photo-first score export layout', () => {
 
     const entries = Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-player]'));
     expect(entries.map(entry => entry.dataset.scorePhotoPlayer)).toEqual(players.map(player => player.id));
-    expect(entries[0]).toHaveStyle({ width: '220px' });
+    expect(entries[0]).toHaveStyle({ width: '228px' });
     // Five players retain three columns and a centered second row, not 4+1.
-    expect(container.querySelector('[data-score-photo-results]')).toHaveStyle({ width: '756px', alignSelf: 'center' });
+    expect(container.querySelector('[data-score-photo-results]')).toHaveStyle({ width: '780px', alignSelf: 'center' });
     entries.forEach((entry, index) => {
       expect(entry).toHaveClass('bg-surface-bg', 'border-2', 'border-surface-border', 'justify-between');
       expect(entry).toHaveStyle({ borderRadius: '12px' });
@@ -249,7 +249,7 @@ describe('photo-first score export layout', () => {
       if (players[index].isAnonymous) expect(identity.querySelector('[data-sticker-icon]')).not.toBeNull();
       else {
         expect(identity).toHaveTextContent(players[index].name);
-        expect(identity.querySelector('span')).toHaveStyle({ fontSize: '32px', overflowWrap: 'anywhere' });
+        expect(identity.querySelector('span')).toHaveStyle({ fontSize: '36px', overflowWrap: 'anywhere' });
         expect(identity.querySelector('span')).toHaveStyle({ color: players[index].color });
         expect(identity.querySelector('span')?.style.textShadow).toContain('0.5px 0.5px 0 #000000');
       }
@@ -299,10 +299,10 @@ describe('photo-first score export layout', () => {
     const players = [createPlayer('p1', 'Alice', 128), createPlayer('p2', 'Bob', 115)];
     const { container } = renderOverlay(baseData(players, ['p1'], 'HIGHEST_WINS'));
     const results = container.querySelector('[data-score-photo-results]')!;
-    expect(results).toHaveStyle({ width: '520px', alignSelf: 'center', maxWidth: '100%' });
+    expect(results).toHaveStyle({ width: '536px', alignSelf: 'center', maxWidth: '100%' });
     expect(results).toHaveClass('justify-center', 'flex-wrap');
     for (const entry of results.querySelectorAll('[data-score-photo-player]')) {
-      expect(entry).toHaveStyle({ width: '220px' });
+      expect(entry).toHaveStyle({ width: '228px' });
     }
     expect(container.firstElementChild).toHaveStyle({ width: '1080px' });
   });
