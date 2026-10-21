@@ -3,6 +3,7 @@ import { getPhotoPlayerNameShadow, getPhotoPlayerNameStyles } from './photoTextC
 import { getPhotoResultPalette } from './photoResultPalette';
 import { compositeColors, contrastOnBackground } from './colorContrast';
 import { parseColor, type RgbaColor } from './color';
+import { getContrastTextStyles } from './ui';
 
 // Independently check the resulting sRGB colors, not just that a shadow property exists.
 const luminance = (color: string) => {
@@ -60,6 +61,13 @@ describe('photo name and surface contrast', () => {
                 const style = getPhotoPlayerNameStyles(color, palette.identity);
                 if (style.textShadow !== 'none') continue;
                 const ink = parseColor(style.color!)!;
+                if (style.fontWeight === 400) {
+                    const scoreboard = getContrastTextStyles(color, 'light', {
+                        cleanOnLight: true, background: palette.identity,
+                    });
+                    expect(style.color).toBe(scoreboard.color ?? color);
+                    expect(style).not.toHaveProperty('transition');
+                }
                 expect(luminance(style.color!)).toBeLessThanOrEqual(luminance(color));
                 if (style.color === color && contrastOnBackground(ink, background)! < 4.5) {
                     // This backing only permits light text at the target contrast.

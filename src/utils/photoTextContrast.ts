@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { readColor, type ColorReader } from './color';
-import { compositeColors, contrastAfterRounding, getReadableLabelInk, relativeLuminance } from './colorContrast';
+import { compositeColors, contrastAfterRounding, relativeLuminance } from './colorContrast';
+import { getContrastTextStyles } from './ui';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
 export const getPhotoTextOutline = (color: string, softShadow: string, width = 2): string => [
@@ -43,7 +44,6 @@ const DARK_SURFACE_MAX_LUMINANCE = 0.10;
 export const getPhotoPlayerNameStyles = (
     color: string, background: string, read: ColorReader = readColor,
 ): CSSProperties => {
-    const foreground = read(color);
     const backing = read(background);
     if (backing?.a === 1 && relativeLuminance(backing) <= DARK_SURFACE_MAX_LUMINANCE) {
         return {
@@ -51,8 +51,11 @@ export const getPhotoPlayerNameStyles = (
             WebkitTextStroke: '', filter: '',
         };
     }
+    // Use the scoreboard's light-label policy directly. Export only needs its ink;
+    // do not copy UI color transitions into a bitmap captured immediately afterward.
+    const lightStyles = getContrastTextStyles(color, 'light', { cleanOnLight: true, background, read });
     return {
-        color: foreground && backing ? getReadableLabelInk(foreground, backing, 'darken') ?? color : color,
+        color: lightStyles.color ?? color,
         fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
     };
 };

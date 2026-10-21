@@ -136,7 +136,7 @@ describe('Opacity and solid-background contrast', () => {
         }
         expect(getContrastTextStyles('#fff', 'light', { ...options, background: 'inherit' })).not.toHaveProperty('color');
         expect(getContrastTextStyles('#fff', 'light', { cleanOnLight: true, background: 'transparent' })).not.toHaveProperty('color');
-        expect(getContrastTextStyles('#222', 'light', { cleanOnLight: true, background: '#111' }).color).toBeDefined();
+        expect(getContrastTextStyles('#222', 'light', { cleanOnLight: true, background: '#111' })).not.toHaveProperty('color');
         expect(getContrastTextStyles('#fff', 'dark', options)).toEqual(getContrastTextStyles('#fff', 'dark'));
         expect(getContrastTextStyles('#fff', 'light', { ...options, isTextureMode: true }))
             .toEqual(getContrastTextStyles('#fff', 'light', { isTextureMode: true }));
