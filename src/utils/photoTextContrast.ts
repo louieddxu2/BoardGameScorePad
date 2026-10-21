@@ -1,5 +1,6 @@
+import type { CSSProperties } from 'react';
 import { readColor, type ColorReader } from './color';
-import { compositeColors, contrastOnBackground, relativeLuminance } from './colorContrast';
+import { compositeColors, contrastOnBackground, getReadableLabelInk, getSolidTextChoice, relativeLuminance } from './colorContrast';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
 export const getPhotoTextOutline = (color: string, softShadow: string, width = 2): string => [
@@ -30,4 +31,24 @@ export const getPhotoPlayerNameShadow = (color: string, background?: string, rea
     // Before sampling, or for unsupported CSS colors, retain the conservative outline.
     const outline = getPhotoPlayerOutlineColor(foreground ? relativeLuminance(foreground) : 0);
     return getPhotoTextOutline(outline, '0 2px 3px rgba(0,0,0,0.25)', 1.25);
+};
+
+/** Photo surfaces, unlike app themes, can change from light to dark per image.
+ * Share the UI label ink adjustment only on light backing; retain dark-photo
+ * outlines and explicitly clear any clean-mode styles from the previous photo. */
+export const getPhotoPlayerNameStyles = (
+    color: string, background: string, read: ColorReader = readColor,
+): CSSProperties => {
+    const foreground = read(color);
+    const backing = read(background);
+    if (foreground && backing?.a === 1 && getSolidTextChoice(background, { read }) === 'dark') {
+        return {
+            color: getReadableLabelInk(foreground, backing) ?? color,
+            textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
+        };
+    }
+    return {
+        color, textShadow: getPhotoPlayerNameShadow(color, background, read),
+        WebkitTextStroke: '', filter: '',
+    };
 };

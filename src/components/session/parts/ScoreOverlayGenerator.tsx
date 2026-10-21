@@ -5,7 +5,7 @@ import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
-import { getPhotoPlayerNameShadow } from '../../../utils/photoTextContrast';
+import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
 
 export interface OverlayData {
@@ -190,12 +190,12 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 ) : (
                                     <span
                                         data-score-photo-name={hasDefaultColor ? 'default' : 'custom'}
+                                        data-score-photo-color={hasDefaultColor ? undefined : p.color}
                                         className="font-bold"
                                         style={{
                                             display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere',
-                                            color: playerColor,
-                                            textShadow: hasDefaultColor ? 'none'
-                                                : getPhotoPlayerNameShadow(playerColor, PHOTO_RESULT_FALLBACK.identity),
+                                            ...(hasDefaultColor ? { color: playerColor, textShadow: 'none' }
+                                                : getPhotoPlayerNameStyles(playerColor, PHOTO_RESULT_FALLBACK.identity)),
                                         }}
                                     >
                                         {p.name}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getPhotoPlayerNameShadow } from './photoTextContrast';
+import { getPhotoPlayerNameShadow, getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getPhotoResultPalette } from './photoResultPalette';
 
 // Independently check the resulting sRGB colors, not just that a shadow property exists.
@@ -17,6 +17,20 @@ const contrast = (first: number, second: number) => (Math.max(first, second) + 0
 afterEach(() => document.documentElement.style.removeProperty('--c-txt-secondary'));
 
 describe('photo name and surface contrast', () => {
+    it('uses clean readable same-hue ink on light photo plates and keeps dark-photo protection unchanged', () => {
+        const original = '#facc15';
+        const style = getPhotoPlayerNameStyles(original, '#eee6d8');
+        expect(style).toMatchObject({ textShadow: 'none', WebkitTextStroke: 0, filter: 'none' });
+        expect(style.color).not.toBe(original);
+        expect(contrast(luminance(style.color!), luminance('#eee6d8'))).toBeGreaterThanOrEqual(4.5);
+        expect(getPhotoPlayerNameStyles('#111111', '#eee6d8').color).toBe('#111111');
+        expect(getPhotoPlayerNameStyles('transparent', '#eee6d8').color).toBe('transparent');
+        expect(getPhotoPlayerNameStyles('#111111', '#111111')).toEqual({
+            color: '#111111', textShadow: getPhotoPlayerNameShadow('#111111', '#111111'),
+            WebkitTextStroke: '', filter: '',
+        });
+    });
+
     it('keeps neutral scores legible and gives colored names a strong edge even when they match the card', () => {
         for (const channels of [[255, 0, 0], [0, 255, 0], [0, 0, 255]]) {
             for (const bright of [false, true]) {

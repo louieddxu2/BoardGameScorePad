@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle } from './photoTitleContrast';
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
+import { parseColor } from './color';
+import { contrastOnBackground } from './colorContrast';
+import { getPhotoPlayerNameShadow } from './photoTextContrast';
 
 const pixels = (...brightness: number[]) => new Uint8ClampedArray(
     brightness.flatMap(value => [value, value, value, 255]),
@@ -88,11 +91,20 @@ describe('photo title contrast', () => {
         const defaultName = document.createElement('span');
         defaultName.dataset.scorePhotoName = 'default';
         defaultName.style.color = 'var(--photo-result-text, #f8fafc)';
-        root.append(name, defaultName);
+        const yellowName = document.createElement('span');
+        yellowName.dataset.scorePhotoName = 'custom';
+        yellowName.dataset.scorePhotoColor = '#facc15';
+        yellowName.style.color = '#facc15';
+        root.append(name, defaultName, yellowName);
         context.getImageData.mockReturnValue({ data: pixels(240) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toBe('none');
         expect(defaultName.style.textShadow).toBe('none');
+        const lightInk = yellowName.style.color;
+        expect(lightInk).not.toBe('rgb(250, 204, 21)');
+        expect(yellowName.style.textShadow).toBe('none');
+        expect(contrastOnBackground(parseColor(lightInk)!, parseColor(getPhotoResultPalette(pixels(240)).identity)!))
+            .toBeGreaterThanOrEqual(4.5);
 
         context.getImageData.mockReturnValue({ data: pixels(20) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
@@ -101,16 +113,26 @@ describe('photo title contrast', () => {
         expect(name.style.color).toBe('rgb(17, 17, 17)');
         expect(name.textContent).toBe('Player');
         expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
+        expect(yellowName.style.color).toBe('rgb(250, 204, 21)');
+        expect(yellowName.style.textShadow).toBe(getPhotoPlayerNameShadow('#facc15', getPhotoResultPalette(pixels(20)).identity));
+        expect(yellowName.style.filter).toBe('');
 
         context.getImageData.mockReturnValue({ data: pixels(240) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toBe('none');
+        expect(yellowName.style.color).toBe(lightInk);
+        expect(yellowName.dataset.scorePhotoColor).toBe('#facc15');
         expect(context.drawImage).toHaveBeenCalledTimes(6);
         expect(context.getImageData).toHaveBeenCalledTimes(6);
     });
 
     it('does not break sharing when pixel access is blocked', async () => {
         const { root, context } = setupPhoto();
+        const name = document.createElement('span');
+        name.dataset.scorePhotoName = 'custom';
+        name.dataset.scorePhotoColor = '#facc15';
+        name.style.color = '#998000';
+        root.append(name);
         root.style.setProperty('--photo-result-background', 'hsl(0, 44%, 22%)');
         root.style.setProperty('--photo-result-card', 'hsl(0, 37%, 30%)');
         root.style.setProperty('--photo-result-identity', 'hsl(0, 37%, 26%)');
@@ -124,14 +146,20 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-result-card')).toBe(PHOTO_RESULT_FALLBACK.card);
         expect(root.style.getPropertyValue('--photo-result-identity')).toBe(PHOTO_RESULT_FALLBACK.identity);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
+        expect(name.style.color).toBe('rgb(250, 204, 21)');
     });
 
     it('uses the photo brightness for result surfaces and score text regardless of the app theme', async () => {
         const { root, context } = setupPhoto();
+        const name = document.createElement('span');
+        name.dataset.scorePhotoName = 'custom';
+        name.style.color = '#facc15';
+        root.append(name);
         const originalTheme = document.documentElement.getAttribute('data-theme');
         try {
             for (const photoPixels of [new Uint8ClampedArray([220, 205, 180, 255]), new Uint8ClampedArray([30, 20, 10, 255])]) {
                 let firstStyles: string | undefined;
+                let firstNameStyles: string | undefined;
                 for (const appTheme of ['dark', 'light', 'sage']) {
                     document.documentElement.setAttribute('data-theme', appTheme);
                     context.getImageData.mockReturnValueOnce({ data: photoPixels });
@@ -141,7 +169,9 @@ describe('photo title contrast', () => {
                         expect(root.style.getPropertyValue(`--photo-result-${key}`)).toBe(value);
                     }
                     if (firstStyles) expect(root.style.cssText).toBe(firstStyles);
+                    if (firstNameStyles) expect(name.style.cssText).toBe(firstNameStyles);
                     firstStyles = root.style.cssText;
+                    firstNameStyles = name.style.cssText;
                     expect(root.style.getPropertyValue('--photo-result-name-shadow')).toBe('');
                     expect(root.style.getPropertyValue('--photo-result-name-outline')).toBe('');
                 }

@@ -1,5 +1,5 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoPlayerNameShadow, getPhotoTextOutline } from './photoTextContrast';
+import { getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
 import { createColorReader } from './color';
 
 interface TitleAppearance {
@@ -111,7 +111,15 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     // Sampling already knows the actual backing: refine each name once, before capture.
     const read = createColorReader();
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
-        name.style.textShadow = name.dataset.scorePhotoName === 'default' ? 'none'
-            : getPhotoPlayerNameShadow(name.style.color, palette.identity, read);
+        if (name.dataset.scorePhotoName === 'default') {
+            name.style.textShadow = 'none';
+            continue;
+        }
+        // Keep the original selected color on this export node, not in saved data.
+        // Repeated captures must not shade an already adapted color or retain it on a dark photo.
+        const color = name.dataset.scorePhotoColor ??= name.style.color;
+        const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, palette.identity, read);
+        Object.assign(name.style, styles);
+        name.style.setProperty('-webkit-text-stroke', String(WebkitTextStroke ?? ''));
     }
 };
