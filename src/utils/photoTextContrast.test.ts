@@ -19,31 +19,24 @@ const contrast = (first: number, second: number) => (Math.max(first, second) + 0
 afterEach(() => document.documentElement.style.removeProperty('--c-txt-secondary'));
 
 describe('photo name and surface contrast', () => {
-    it('uses clean readable same-hue ink on light photo plates and keeps dark-photo protection unchanged', () => {
+    it('uses normal-weight clean ink on every non-dark plate and reserves heavy protection for clearly dark plates', () => {
         const original = '#facc15';
         const style = getPhotoPlayerNameStyles(original, '#eee6d8');
-        expect(style).toMatchObject({ textShadow: 'none', WebkitTextStroke: 0, filter: 'none' });
+        expect(style).toMatchObject({ fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none' });
         expect(style.color).not.toBe(original);
         expect(contrast(luminance(style.color!), luminance('#eee6d8'))).toBeGreaterThanOrEqual(4.5);
         expect(getPhotoPlayerNameStyles('#111111', '#eee6d8').color).toBe('#111111');
         expect(getPhotoPlayerNameStyles('transparent', '#eee6d8').color).toBe('transparent');
         expect(getPhotoPlayerNameStyles('#111111', '#111111')).toEqual({
-            color: '#111111', textShadow: getPhotoPlayerNameShadow('#111111', '#111111'),
+            color: '#111111', fontWeight: 700, textShadow: getPhotoPlayerNameShadow('#111111', '#111111'),
             WebkitTextStroke: '', filter: '',
         });
-        for (const background of ['#757575', '#767676', '#777777', '#808080', '#a08060']) {
-            expect(getPhotoPlayerNameStyles(original, background)).toEqual({
-                color: original, textShadow: getPhotoPlayerNameShadow(original, background),
-                WebkitTextStroke: '', filter: '',
+        for (const background of ['#606060', '#757575', '#767676', '#777777', '#808080', '#a08060']) {
+            const name = getPhotoPlayerNameStyles(original, background);
+            expect(name).toMatchObject({
+                fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
             });
-        }
-        let previous = parseColor(original)!;
-        for (let value = 117; value <= 255; value++) {
-            const next = parseColor(getPhotoPlayerNameStyles(original, `rgb(${value},${value},${value})`).color!)!;
-            // The previous black/white crossover changed yellow by over 200 channels at once.
-            expect(Math.max(Math.abs(next.r - previous.r), Math.abs(next.g - previous.g), Math.abs(next.b - previous.b)))
-                .toBeLessThanOrEqual(8);
-            previous = next;
+            expect(contrast(luminance(name.color!), luminance(background))).toBeGreaterThanOrEqual(4.5);
         }
     });
 

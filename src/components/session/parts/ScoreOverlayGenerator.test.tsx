@@ -287,10 +287,12 @@ describe('photo-first score export layout', () => {
     expect(getByText('Default name').style.textShadow).toBe('none');
     expect(getByText('Default name')).toHaveAttribute('data-score-photo-name', 'default');
     expect(getByText('Default name')).not.toHaveAttribute('data-score-photo-color');
+    expect(getByText('Default name')).not.toHaveClass('font-bold');
     expect(container.querySelector('[data-sticker-icon]')).toHaveAttribute('stroke', 'var(--photo-result-text, #f8fafc)');
     expect(container.querySelector('[data-sticker-outline]')?.getAttribute('stroke')).not.toContain('--photo-result');
     expect(getByText('Chosen color')).toHaveStyle({ color: '#ef4444' });
     expect(getByText('Chosen color')).toHaveAttribute('data-score-photo-color', players[2].color);
+    expect(getByText('Chosen color')).not.toHaveClass('font-bold');
   });
 
   it('does not expand a two-player result to fill the photo width', () => {

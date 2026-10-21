@@ -191,10 +191,12 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                     <span
                                         data-score-photo-name={hasDefaultColor ? 'default' : 'custom'}
                                         data-score-photo-color={hasDefaultColor ? undefined : p.color}
-                                        className="font-bold"
                                         style={{
                                             display: 'block', fontSize: 32, lineHeight: 1.2, overflowWrap: 'anywhere',
-                                            ...(hasDefaultColor ? { color: playerColor, textShadow: 'none' }
+                                            ...(hasDefaultColor ? {
+                                                ...getPhotoPlayerNameStyles(PHOTO_RESULT_FALLBACK.text, PHOTO_RESULT_FALLBACK.identity),
+                                                color: playerColor, textShadow: 'none',
+                                            }
                                                 : getPhotoPlayerNameStyles(playerColor, PHOTO_RESULT_FALLBACK.identity)),
                                         }}
                                     >

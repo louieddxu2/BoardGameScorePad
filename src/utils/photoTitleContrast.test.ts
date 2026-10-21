@@ -100,6 +100,8 @@ describe('photo title contrast', () => {
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toBe('none');
         expect(defaultName.style.textShadow).toBe('none');
+        expect(name.style.fontWeight).toBe('400');
+        expect(defaultName.style.fontWeight).toBe('400');
         const lightInk = yellowName.style.color;
         expect(lightInk).not.toBe('rgb(250, 204, 21)');
         expect(yellowName.style.textShadow).toBe('none');
@@ -108,14 +110,17 @@ describe('photo title contrast', () => {
 
         context.getImageData.mockReturnValue({ data: pixels(160) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(yellowName.style.color).toBe('rgb(250, 204, 21)');
-        expect(yellowName.style.textShadow).toBe(getPhotoPlayerNameShadow('#facc15', getPhotoResultPalette(pixels(160)).identity));
-        expect(yellowName.style.filter).toBe('');
+        expect(yellowName.style.fontWeight).toBe('400');
+        expect(defaultName.style.fontWeight).toBe('400');
+        expect(yellowName.style.textShadow).toBe('none');
+        expect(yellowName.style.filter).toBe('none');
 
         context.getImageData.mockReturnValue({ data: pixels(20) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toContain('1.25px 1.25px 0 #ffffff');
         expect(defaultName.style.textShadow).toBe('none');
+        expect(name.style.fontWeight).toBe('700');
+        expect(defaultName.style.fontWeight).toBe('700');
         expect(name.style.color).toBe('rgb(17, 17, 17)');
         expect(name.textContent).toBe('Player');
         expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
@@ -127,6 +132,8 @@ describe('photo title contrast', () => {
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toBe('none');
         expect(yellowName.style.color).toBe(lightInk);
+        expect(yellowName.style.fontWeight).toBe('400');
+        expect(defaultName.style.fontWeight).toBe('400');
         expect(yellowName.dataset.scorePhotoColor).toBe('#facc15');
         expect(context.drawImage).toHaveBeenCalledTimes(8);
         expect(context.getImageData).toHaveBeenCalledTimes(8);

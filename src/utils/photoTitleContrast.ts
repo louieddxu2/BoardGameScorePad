@@ -112,7 +112,10 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     const read = createColorReader();
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {
+            name.style.fontWeight = String(getPhotoPlayerNameStyles(palette.text, palette.identity, read).fontWeight);
             name.style.textShadow = 'none';
+            name.style.filter = 'none';
+            name.style.setProperty('-webkit-text-stroke', '0');
             continue;
         }
         // Keep the original selected color on this export node, not in saved data.
