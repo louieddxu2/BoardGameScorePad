@@ -109,16 +109,38 @@ describe('Opacity and solid-background contrast', () => {
         expect(computed).not.toHaveBeenCalled();
     });
 
-    it('protects neutral palette ink on known light surfaces and shares the grid color reader', () => {
+    it('uses clean same-hue label ink on light surfaces and shares the grid color reader', () => {
         document.documentElement.style.setProperty('--test-color', '249 115 22');
         const read = createColorReader();
         const computed = vi.spyOn(globalThis, 'getComputedStyle');
-        const options = { background: '#f5f4f0', read };
+        const options = { cleanOnLight: true, background: '#f5f4f0', read };
         const orange = getContrastTextStyles('rgb(var(--test-color))', 'light', options);
-        expect(orange.textShadow).toContain('0.5px 0 0 rgba(62,29,6,0.65)');
+        expect(orange).toMatchObject({ textShadow: 'none', WebkitTextStroke: 0, filter: 'none' });
+        const ink = parseColor(orange.color!)!;
+        expect(contrastOnBackground(ink, parseColor(options.background)!)).toBeGreaterThanOrEqual(4.5);
+        expect(ink.g / ink.r).toBeCloseTo(115 / 249, 2);
+        expect(ink.b / ink.r).toBeCloseTo(22 / 249, 2);
         expect(getContrastTextStyles('#f97316', 'sage', options)).toEqual(orange);
-        expect(getContrastTextStyles('#222', 'light', options).textShadow).toBe('none');
+        expect(getContrastTextStyles('#222', 'light', options)).not.toHaveProperty('color');
+        expect(getContrastTextStyles('transparent', 'light', options)).not.toHaveProperty('color');
         expect(computed).toHaveBeenCalledTimes(1);
+    });
+
+    it('adapts translucent labels against the actual backing without affecting dark, textured or numeric ink', () => {
+        const options = { cleanOnLight: true, background: 'rgba(255,0,0,.04)', backdrop: '#fff' };
+        const background = compositeColors(parseColor(options.background)!, parseColor(options.backdrop)!);
+        for (const color of ['#fff', '#eab308', 'rgba(0,255,0,.15)']) {
+            const style = getContrastTextStyles(color, 'light', options);
+            expect(style.textShadow).toBe('none');
+            expect(contrastOnBackground(parseColor(style.color!)!, background)).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(getContrastTextStyles('#fff', 'light', { ...options, background: 'inherit' })).not.toHaveProperty('color');
+        expect(getContrastTextStyles('#fff', 'light', { cleanOnLight: true, background: 'transparent' })).not.toHaveProperty('color');
+        expect(getContrastTextStyles('#222', 'light', { cleanOnLight: true, background: '#111' }).color).toBeDefined();
+        expect(getContrastTextStyles('#fff', 'dark', options)).toEqual(getContrastTextStyles('#fff', 'dark'));
+        expect(getContrastTextStyles('#fff', 'light', { ...options, isTextureMode: true }))
+            .toEqual(getContrastTextStyles('#fff', 'light', { isTextureMode: true }));
+        expect(getContrastTextStyles('#fff', 'light').textShadow).toContain('rgba(0,0,0,0.6)');
     });
 
     it('composites header tints while leaving unknown backgrounds and textured or dark ink unchanged', () => {

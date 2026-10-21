@@ -103,6 +103,7 @@ export function buildScoreGridRows({
               <ContrastText
                 className="text-sm font-bold text-txt-secondary w-full text-center break-words whitespace-pre-wrap leading-tight hyphenate"
                 color={col.color || 'inherit'}
+                cleanOnLight
                 background={headerBg}
                 readColor={readColor}
               >

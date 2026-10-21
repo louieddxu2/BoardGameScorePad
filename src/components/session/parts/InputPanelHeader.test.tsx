@@ -5,6 +5,7 @@ import type { Player } from '../../../types';
 import InputPanelHeader from './InputPanelHeader';
 import appCss from '../../../index.css?raw';
 import { createColorReader } from '../../../utils/color';
+import { compositeColors, contrastOnBackground } from '../../../utils/colorContrast';
 
 it('renders valid live player-color tints without rewriting the saved player color', () => {
     const player: Player = { id: 'player', name: 'Ada', color: 'rgb(var(--c-p-emerald))', scores: {}, totalScore: 0 };
@@ -26,21 +27,31 @@ it('keeps player names colored but makes small context labels neutral and opaque
     const previous = document.documentElement.getAttribute('data-theme');
     const player: Player = { id: 'white', name: 'Ada', color: 'rgb(var(--c-p-white))', scores: {}, totalScore: 0 };
     try {
-        const { container } = render(<LanguageProvider><InputPanelHeader player={player} isEditingPlayer={false}
+        const renderHeader = () => <LanguageProvider><InputPanelHeader player={player} isEditingPlayer={false}
             col={{ id: 'harvest', name: 'Harvest', inputType: 'keypad', formula: 'a1', isScoring: true }}
             onClear={vi.fn()} onDirectionToggle={vi.fn()} direction="horizontal" showSwipeHint />
-        </LanguageProvider>);
-        const label = screen.getByText(text => text.replace(/\u00ad/g, '') === 'Harvest');
+        </LanguageProvider>;
+        const { container, rerender } = render(renderHeader());
         for (const theme of ['dark', 'light', 'sage']) {
             document.documentElement.setAttribute('data-theme', theme);
+            // Theme selection precedes the next session render in the application.
+            rerender(renderHeader());
             const read = createColorReader();
+            const label = screen.getByText(text => text.replace(/\u00ad/g, '') === 'Harvest');
             const ink = theme === 'dark' ? player.color : 'rgb(var(--c-txt-secondary))';
             expect(read(label.style.color)).toEqual(read(ink));
             const opacity = Number(getComputedStyle(document.documentElement).getPropertyValue('--input-context-opacity'));
             expect(opacity).toBe(theme === 'dark' ? 0.7 : 1);
-            expect(screen.getByText('Ada')).toHaveStyle({ color: player.color });
+            const name = screen.getByText('Ada');
+            if (theme === 'dark') expect(name).toHaveStyle({ color: player.color });
+            else {
+                expect(name.style.textShadow).toBe('none');
+                const background = compositeColors(read((container.firstElementChild as HTMLElement).style.backgroundColor)!, read('rgb(var(--c-modal-bg))')!);
+                expect(contrastOnBackground(read(name.style.color)!, background)).toBeGreaterThanOrEqual(4.5);
+            }
         }
         expect(container.querySelector('.animate-swipe-hint-enter > span')).toHaveClass('text-[rgb(var(--c-input-hint-ink))]');
+        expect(player.color).toBe('rgb(var(--c-p-white))');
     } finally {
         style.remove();
         if (previous === null) document.documentElement.removeAttribute('data-theme');

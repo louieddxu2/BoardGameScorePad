@@ -1,6 +1,6 @@
 import { COLOR_TONES } from '../colors';
 import { createColorReader, readColor, type ColorReader } from './color';
-import { compositeColors, contrastOnBackground, getSolidTextChoice, relativeLuminance } from './colorContrast';
+import { compositeColors, contrastOnBackground, getReadableLabelInk, getSolidTextChoice, relativeLuminance } from './colorContrast';
 import { getThemeAppearance, resolveAppTheme, type AppTheme } from '../theme';
 
 /**
@@ -93,12 +93,13 @@ export const getCurrentTheme = (): AppTheme => {
 
 /**
  * Returns a complete style object for high-contrast text rendering.
- * Implementation: Solution K (Precision Outline) using refined layered shadows.
+ * Labels can opt into clean ink on light surfaces; numeric and textured text
+ * retain their existing outline policy.
  */
 export const getContrastTextStyles = (
     textColorHex: string,
     theme?: AppTheme,
-    options: { isTextureMode?: boolean; background?: string; backdrop?: string; read?: ColorReader } = {}
+    options: { isTextureMode?: boolean; cleanOnLight?: boolean; background?: string; backdrop?: string; read?: ColorReader } = {}
 ): React.CSSProperties => {
     if (!textColorHex) return {};
     const resolvedTheme = getThemeAppearance(theme ?? getCurrentTheme());
@@ -138,6 +139,18 @@ export const getContrastTextStyles = (
 
     // --- Light UI Environment (Clean Mode) ---
     if (resolvedTheme === 'light') {
+        if (options.cleanOnLight) {
+            const cleanStyles = { ...styles, textShadow: 'none', WebkitTextStroke: 0, filter: 'none' };
+            const read = options.read ?? createColorReader();
+            const ink = read(textColorHex);
+            let background = options.background ? read(options.background) : null;
+            if (background && background.a < 1) {
+                const backing = options.backdrop ? read(options.backdrop) : null;
+                background = backing?.a === 1 ? compositeColors(background, backing) : null;
+            }
+            const color = ink && background ? getReadableLabelInk(ink, background) : undefined;
+            return color ? { ...cleanStyles, color } : cleanStyles;
+        }
         // Known UI surfaces use actual contrast, not the palette's coarse tone labels.
         // A reader can be shared by a whole grid render; no element measurements.
         if (options.background) {

@@ -113,6 +113,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
         color={bgUrl ? 'rgb(var(--c-slate-50))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor)}
         style={bgUrl ? inkStyle : {}}
         isTextureMode={!!bgUrl}
+        cleanOnLight
         background={bgUrl ? undefined : containerStyle.backgroundColor}
         backdrop="rgb(var(--c-grid-cell-bg))"
       >

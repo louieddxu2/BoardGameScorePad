@@ -9,6 +9,7 @@ interface ContrastTextProps {
     className?: string;
     style?: React.CSSProperties;
     isTextureMode?: boolean;
+    cleanOnLight?: boolean;
     theme?: AppTheme;
     background?: string;
     backdrop?: string;
@@ -17,7 +18,7 @@ interface ContrastTextProps {
 
 /**
  * A specialized component that ensures text remains readable on complex or high-contrast backgrounds.
- * Automatically applies appropriate shadows or outlines based on the theme and color luminance.
+ * Light UI labels can use clean, readable ink without changing the stored color.
  */
 export const ContrastText: React.FC<ContrastTextProps> = ({
     children,
@@ -25,20 +26,21 @@ export const ContrastText: React.FC<ContrastTextProps> = ({
     className = '',
     style = {},
     isTextureMode = false,
+    cleanOnLight = false,
     theme,
     background,
     backdrop,
     readColor,
 }) => {
-    const contrastStyles = getContrastTextStyles(color, theme, { isTextureMode, background, backdrop, read: readColor });
+    const contrastStyles = getContrastTextStyles(color, theme, { isTextureMode, cleanOnLight, background, backdrop, read: readColor });
 
     return (
         <span 
             className={className} 
             style={{ 
                 ...style, 
+                color,
                 ...contrastStyles,
-                color // Ensure the color is applied via style to override Tailwind classes if necessary
             }}
         >
             {children}
