@@ -38,7 +38,8 @@ export const getPhotoPlayerNameShadow = (color: string, background?: string, rea
 const DARK_SURFACE_MAX_LUMINANCE = 0.10;
 
 /** Normal-weight, shadow-free names are the default for photo exports.
- * Only clearly dark backing retains the original bold/outline treatment. */
+ * Only clearly dark backing retains the original bold/outline treatment.
+ * Selected player colors may deepen, but never become pale through white mixing. */
 export const getPhotoPlayerNameStyles = (
     color: string, background: string, read: ColorReader = readColor,
 ): CSSProperties => {
@@ -51,7 +52,7 @@ export const getPhotoPlayerNameStyles = (
         };
     }
     return {
-        color: foreground && backing ? getReadableLabelInk(foreground, backing) ?? color : color,
+        color: foreground && backing ? getReadableLabelInk(foreground, backing, 'darken') ?? color : color,
         fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
     };
 };

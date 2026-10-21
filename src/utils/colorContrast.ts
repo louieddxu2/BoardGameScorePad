@@ -38,14 +38,20 @@ export function contrastAfterRounding(foreground: RgbaColor, background: RgbaCol
 
 /** Display-only ink: retain readable colors, otherwise shade the same hue toward
  * an opaque endpoint. Check CSS paint and rounded export colors, including backing.
+ * Darken-only callers retain their original ink if dark text cannot meet contrast.
  * Transparent ink and unresolved surfaces keep their original CSS behavior. */
-export function getReadableLabelInk(ink: RgbaColor, background: RgbaColor): string | undefined {
+export function getReadableLabelInk(
+    ink: RgbaColor, background: RgbaColor, direction: 'auto' | 'darken' = 'auto',
+): string | undefined {
     const ratio = contrastAfterRounding(ink, background);
     if (ink.a === 0 || ratio === null || ratio >= 4.5) return undefined;
     const black = { r: 0, g: 0, b: 0, a: 1 };
     const white = { r: 255, g: 255, b: 255, a: 1 };
-    const endpoint = contrastOnBackground(black, background)! >= contrastOnBackground(white, background)!
+    const endpoint = direction === 'darken'
+        || contrastOnBackground(black, background)! >= contrastOnBackground(white, background)!
         ? black : white;
+    // Do not run a search with an unreachable endpoint or switch to pastel ink.
+    if (contrastAfterRounding(endpoint, background)! < 4.51) return undefined;
     const shade = (amount: number): RgbaColor => ({
         r: Math.round(ink.r + (endpoint.r - ink.r) * amount),
         g: Math.round(ink.g + (endpoint.g - ink.g) * amount),

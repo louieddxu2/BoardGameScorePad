@@ -36,11 +36,20 @@ describe('photo name and surface contrast', () => {
             expect(name).toMatchObject({
                 fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
             });
-            expect(contrast(luminance(name.color!), luminance(background))).toBeGreaterThanOrEqual(4.5);
+            expect(luminance(name.color!)).toBeLessThanOrEqual(luminance(original));
+            if (contrast(0, luminance(background)) >= 4.51) {
+                expect(contrast(luminance(name.color!), luminance(background))).toBeGreaterThanOrEqual(4.5);
+            } else expect(name.color).toBe(original);
+        }
+        for (const original of ['#ef4444', '#3b82f6', '#10b981']) {
+            // Formerly red -> rgb(252,220,220), blue -> rgb(213,228,253).
+            expect(getPhotoPlayerNameStyles(original, '#656565')).toMatchObject({
+                color: original, fontWeight: 400, textShadow: 'none',
+            });
         }
     });
 
-    it('keeps every unoutlined name readable after photo palette and alpha are quantized for export', () => {
+    it('keeps adjusted names readable after export rounding without lightening original player ink', () => {
         const round = (color: RgbaColor): RgbaColor => ({
             r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b), a: color.a,
         });
@@ -51,6 +60,13 @@ describe('photo name and surface contrast', () => {
                 const style = getPhotoPlayerNameStyles(color, palette.identity);
                 if (style.textShadow !== 'none') continue;
                 const ink = parseColor(style.color!)!;
+                expect(luminance(style.color!)).toBeLessThanOrEqual(luminance(color));
+                if (style.color === color && contrastOnBackground(ink, background)! < 4.5) {
+                    // This backing only permits light text at the target contrast.
+                    // Preserve the selected color rather than whitening or changing the plate.
+                    expect(contrastOnBackground(parseColor('#000')!, background)!).toBeLessThan(4.51);
+                    continue;
+                }
                 expect(contrastOnBackground(ink, background), `${value}: ${color} CSS`).toBeGreaterThanOrEqual(4.5);
                 const paint = round(compositeColors(ink, background));
                 expect(contrastOnBackground(paint, round(background)), `${value}: ${color} bitmap`).toBeGreaterThanOrEqual(4.5);

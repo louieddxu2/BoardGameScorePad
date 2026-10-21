@@ -95,7 +95,11 @@ describe('photo title contrast', () => {
         yellowName.dataset.scorePhotoName = 'custom';
         yellowName.dataset.scorePhotoColor = '#facc15';
         yellowName.style.color = '#facc15';
-        root.append(name, defaultName, yellowName);
+        const redName = document.createElement('span');
+        redName.dataset.scorePhotoName = 'custom';
+        redName.dataset.scorePhotoColor = '#ef4444';
+        redName.style.color = '#ef4444';
+        root.append(name, defaultName, yellowName, redName);
         context.getImageData.mockReturnValue({ data: pixels(240) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toBe('none');
@@ -114,6 +118,13 @@ describe('photo title contrast', () => {
         expect(defaultName.style.fontWeight).toBe('400');
         expect(yellowName.style.textShadow).toBe('none');
         expect(yellowName.style.filter).toBe('none');
+
+        context.getImageData.mockReturnValue({ data: pixels(120) });
+        await prepareScorePhotoTitle(root, new AbortController().signal);
+        expect(redName.style.color).toBe('rgb(239, 68, 68)');
+        expect(redName.style.fontWeight).toBe('400');
+        expect(redName.style.textShadow).toBe('none');
+        expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
 
         context.getImageData.mockReturnValue({ data: pixels(20) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
@@ -135,8 +146,8 @@ describe('photo title contrast', () => {
         expect(yellowName.style.fontWeight).toBe('400');
         expect(defaultName.style.fontWeight).toBe('400');
         expect(yellowName.dataset.scorePhotoColor).toBe('#facc15');
-        expect(context.drawImage).toHaveBeenCalledTimes(8);
-        expect(context.getImageData).toHaveBeenCalledTimes(8);
+        expect(context.drawImage).toHaveBeenCalledTimes(10);
+        expect(context.getImageData).toHaveBeenCalledTimes(10);
     });
 
     it('does not break sharing when pixel access is blocked', async () => {
