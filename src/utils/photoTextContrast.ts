@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
-import { readColor, type ColorReader } from './color';
-import { compositeColors, contrastOnBackground, getReadableLabelInk, getSolidTextChoice, relativeLuminance } from './colorContrast';
+import { formatColor, parseColor, readColor, type ColorReader } from './color';
+import { compositeColors, contrastAfterRounding, getReadableLabelInk, relativeLuminance } from './colorContrast';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
 export const getPhotoTextOutline = (color: string, softShadow: string, width = 2): string => [
@@ -21,7 +21,7 @@ export const getPhotoPlayerNameShadow = (color: string, background?: string, rea
     const foreground = read(color);
     const backing = background ? read(background) : null;
     if (foreground && backing?.a === 1) {
-        const contrast = contrastOnBackground(foreground, backing)!;
+        const contrast = contrastAfterRounding(foreground, backing)!;
         if (contrast >= 4.5) return 'none';
         const paint = compositeColors(foreground, backing);
         const outline = getPhotoPlayerOutlineColor(relativeLuminance(paint));
@@ -33,22 +33,45 @@ export const getPhotoPlayerNameShadow = (color: string, background?: string, rea
     return getPhotoTextOutline(outline, '0 2px 3px rgba(0,0,0,0.25)', 1.25);
 };
 
-/** Photo surfaces, unlike app themes, can change from light to dark per image.
- * Share the UI label ink adjustment only on light backing; retain dark-photo
- * outlines and explicitly clear any clean-mode styles from the previous photo. */
+// Relative luminance, not the black/white foreground crossover (~0.18).
+// Below 0.35, retain the original ink; 0.35–0.60 is the middle-to-light transition.
+const INK_BLEND_START = 0.35;
+const LIGHT_SURFACE_START = 0.60;
+
+/** Dark and middle photo plates retain identity colors and contrast protection.
+ * Blend toward readable UI ink only as the plate becomes genuinely light, so
+ * neighboring photo tones cannot abruptly turn a bright player color almost black. */
 export const getPhotoPlayerNameStyles = (
     color: string, background: string, read: ColorReader = readColor,
 ): CSSProperties => {
     const foreground = read(color);
     const backing = read(background);
-    if (foreground && backing?.a === 1 && getSolidTextChoice(background, { read }) === 'dark') {
-        return {
-            color: getReadableLabelInk(foreground, backing) ?? color,
-            textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
-        };
+    let displayColor = color;
+    if (foreground && backing?.a === 1) {
+        const brightness = relativeLuminance(backing);
+        if (brightness > INK_BLEND_START) {
+            const adapted = getReadableLabelInk(foreground, backing);
+            if (adapted) {
+                const ink = parseColor(adapted)!;
+                const progress = Math.min(1, (brightness - INK_BLEND_START) / (LIGHT_SURFACE_START - INK_BLEND_START));
+                const amount = progress * progress * (3 - 2 * progress);
+                displayColor = formatColor({
+                    r: Math.round(foreground.r + (ink.r - foreground.r) * amount),
+                    g: Math.round(foreground.g + (ink.g - foreground.g) * amount),
+                    b: Math.round(foreground.b + (ink.b - foreground.b) * amount),
+                    a: foreground.a + (ink.a - foreground.a) * amount,
+                });
+            }
+            if (brightness >= LIGHT_SURFACE_START) {
+                return {
+                    color: displayColor,
+                    textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
+                };
+            }
+        }
     }
     return {
-        color, textShadow: getPhotoPlayerNameShadow(color, background, read),
+        color: displayColor, textShadow: getPhotoPlayerNameShadow(displayColor, background, read),
         WebkitTextStroke: '', filter: '',
     };
 };

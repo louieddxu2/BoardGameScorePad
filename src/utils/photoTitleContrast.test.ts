@@ -106,6 +106,12 @@ describe('photo title contrast', () => {
         expect(contrastOnBackground(parseColor(lightInk)!, parseColor(getPhotoResultPalette(pixels(240)).identity)!))
             .toBeGreaterThanOrEqual(4.5);
 
+        context.getImageData.mockReturnValue({ data: pixels(160) });
+        await prepareScorePhotoTitle(root, new AbortController().signal);
+        expect(yellowName.style.color).toBe('rgb(250, 204, 21)');
+        expect(yellowName.style.textShadow).toBe(getPhotoPlayerNameShadow('#facc15', getPhotoResultPalette(pixels(160)).identity));
+        expect(yellowName.style.filter).toBe('');
+
         context.getImageData.mockReturnValue({ data: pixels(20) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(name.style.textShadow).toContain('1.25px 1.25px 0 #ffffff');
@@ -122,8 +128,8 @@ describe('photo title contrast', () => {
         expect(name.style.textShadow).toBe('none');
         expect(yellowName.style.color).toBe(lightInk);
         expect(yellowName.dataset.scorePhotoColor).toBe('#facc15');
-        expect(context.drawImage).toHaveBeenCalledTimes(6);
-        expect(context.getImageData).toHaveBeenCalledTimes(6);
+        expect(context.drawImage).toHaveBeenCalledTimes(8);
+        expect(context.getImageData).toHaveBeenCalledTimes(8);
     });
 
     it('does not break sharing when pixel access is blocked', async () => {

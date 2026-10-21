@@ -26,11 +26,21 @@ export function contrastOnBackground(foreground: RgbaColor, background: RgbaColo
     return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
+/** Check both CSS paint and its composited, integer-channel bitmap result. */
+export function contrastAfterRounding(foreground: RgbaColor, background: RgbaColor): number | null {
+    const ratio = contrastOnBackground(foreground, background);
+    if (ratio === null) return null;
+    const round = (color: RgbaColor): RgbaColor => ({
+        r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b), a: color.a,
+    });
+    return Math.min(ratio, contrastOnBackground(round(compositeColors(foreground, background)), round(background))!);
+}
+
 /** Display-only ink: retain readable colors, otherwise shade the same hue toward
- * an opaque endpoint. Round channels before checking so browser rounding is safe.
+ * an opaque endpoint. Check CSS paint and rounded export colors, including backing.
  * Transparent ink and unresolved surfaces keep their original CSS behavior. */
 export function getReadableLabelInk(ink: RgbaColor, background: RgbaColor): string | undefined {
-    const ratio = contrastOnBackground(ink, background);
+    const ratio = contrastAfterRounding(ink, background);
     if (ink.a === 0 || ratio === null || ratio >= 4.5) return undefined;
     const black = { r: 0, g: 0, b: 0, a: 1 };
     const white = { r: 255, g: 255, b: 255, a: 1 };
@@ -47,7 +57,7 @@ export function getReadableLabelInk(ink: RgbaColor, background: RgbaColor): stri
     // Bounded, pure color math; no measurements or additional render lifecycle.
     for (let step = 0; step < 12; step++) {
         const middle = (low + high) / 2;
-        if (contrastOnBackground(shade(middle), background)! >= 4.51) high = middle;
+        if (contrastAfterRounding(shade(middle), background)! >= 4.51) high = middle;
         else low = middle;
     }
     return formatColor(shade(high));

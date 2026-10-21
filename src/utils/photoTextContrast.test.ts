@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { getPhotoPlayerNameShadow, getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getPhotoResultPalette } from './photoResultPalette';
+import { compositeColors, contrastOnBackground } from './colorContrast';
+import { parseColor, type RgbaColor } from './color';
 
 // Independently check the resulting sRGB colors, not just that a shadow property exists.
 const luminance = (color: string) => {
@@ -29,6 +31,38 @@ describe('photo name and surface contrast', () => {
             color: '#111111', textShadow: getPhotoPlayerNameShadow('#111111', '#111111'),
             WebkitTextStroke: '', filter: '',
         });
+        for (const background of ['#757575', '#767676', '#777777', '#808080', '#a08060']) {
+            expect(getPhotoPlayerNameStyles(original, background)).toEqual({
+                color: original, textShadow: getPhotoPlayerNameShadow(original, background),
+                WebkitTextStroke: '', filter: '',
+            });
+        }
+        let previous = parseColor(original)!;
+        for (let value = 117; value <= 255; value++) {
+            const next = parseColor(getPhotoPlayerNameStyles(original, `rgb(${value},${value},${value})`).color!)!;
+            // The previous black/white crossover changed yellow by over 200 channels at once.
+            expect(Math.max(Math.abs(next.r - previous.r), Math.abs(next.g - previous.g), Math.abs(next.b - previous.b)))
+                .toBeLessThanOrEqual(8);
+            previous = next;
+        }
+    });
+
+    it('keeps every unoutlined name readable after photo palette and alpha are quantized for export', () => {
+        const round = (color: RgbaColor): RgbaColor => ({
+            r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b), a: color.a,
+        });
+        for (let value = 0; value <= 255; value++) {
+            const palette = getPhotoResultPalette(new Uint8ClampedArray([value, value, value, 255]));
+            const background = parseColor(palette.identity)!;
+            for (const color of ['#1f2937', '#facc15', '#ef4444', '#ffffff', 'rgba(0,0,0,.4)']) {
+                const style = getPhotoPlayerNameStyles(color, palette.identity);
+                if (style.textShadow !== 'none') continue;
+                const ink = parseColor(style.color!)!;
+                expect(contrastOnBackground(ink, background), `${value}: ${color} CSS`).toBeGreaterThanOrEqual(4.5);
+                const paint = round(compositeColors(ink, background));
+                expect(contrastOnBackground(paint, round(background)), `${value}: ${color} bitmap`).toBeGreaterThanOrEqual(4.5);
+            }
+        }
     });
 
     it('keeps neutral scores legible and gives colored names a strong edge even when they match the card', () => {
