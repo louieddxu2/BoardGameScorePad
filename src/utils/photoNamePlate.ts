@@ -1,7 +1,7 @@
 import { formatColor, parseColor, readColor, type ColorReader, type RgbaColor } from './color';
 import { compositeColors } from './colorContrast';
 import { PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getOklabLightness } from './textColorTone';
+import { getOklabLightness, getTextColorTone } from './textColorTone';
 
 const BLACK: RgbaColor = { r: 0, g: 0, b: 0, a: 1 };
 const WHITE: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
@@ -18,7 +18,9 @@ export const getPhotoNameRequiredGap = (backgroundLightness: number): number => 
     return 0.3343 + (0.1614 - 0.3343) * position;
 };
 
-/** Adjust only the opaque name plate. Every preset player color has a passing
+/** Seed the name header from the player's hue, with a small photo tint. Only
+ * light ink prefers a deeper header; other player colors prefer a soft light one.
+ * Every preset player color has a passing
  * black or white endpoint. Search is bounded, checks final 8-bit paint, and
  * never samples an image or changes the selected foreground RGB/alpha. */
 export const getPhotoNamePlateBackground = (
@@ -27,7 +29,16 @@ export const getPhotoNamePlateBackground = (
     const ink = read(color);
     if (!ink || ink.a === 0) return background;
     const source = read(background);
-    const backing = source?.a === 1 ? source : FALLBACK;
+    const photo = source?.a === 1 ? source : FALLBACK;
+    const darkHeader = getTextColorTone(ink) === 'light';
+    const playerWeight = darkHeader ? 0.44 : 0.18;
+    const photoWeight = 0.06;
+    const neutral = darkHeader ? 0 : 255;
+    const backing: RgbaColor = {
+        r: ink.r * playerWeight + photo.r * photoWeight + neutral * (1 - playerWeight - photoWeight),
+        g: ink.g * playerWeight + photo.g * photoWeight + neutral * (1 - playerWeight - photoWeight),
+        b: ink.b * playerWeight + photo.b * photoWeight + neutral * (1 - playerWeight - photoWeight), a: 1,
+    };
     const base = round(backing);
     const inkLightness = ink.a === 1 ? getOklabLightness(ink) : null;
     const roundedInkLightness = ink.a === 1 ? getOklabLightness(round(ink)) : null;
@@ -40,7 +51,7 @@ export const getPhotoNamePlateBackground = (
         );
         return difference - getPhotoNameRequiredGap(lightness);
     };
-    if (source?.a === 1 && margin(backing) >= 0 && margin(base) >= 0) return background;
+    if (margin(base) >= 0) return formatColor(base);
 
     const baseLightness = getOklabLightness(base);
     const find = (endpoint: RgbaColor): RgbaColor | null => {

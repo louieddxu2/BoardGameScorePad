@@ -162,9 +162,10 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         <div
                             key={p.id}
                             data-score-photo-player={p.id}
-                            className={`flex flex-col items-center justify-between${shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border'}`}
+                            className={`flex flex-col items-center justify-between${shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border overflow-hidden'}`}
                             style={{
-                                width: playerWidth, minWidth: 0, borderRadius: 12, padding: '8px 12px 12px', gap: 6,
+                                width: playerWidth, minWidth: 0, borderRadius: 12,
+                                padding: shareTeamResult ? '8px 12px 12px' : 0, gap: shareTeamResult ? 6 : 0,
                                 ...(!shareTeamResult ? {
                                     backgroundColor: `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`,
                                     borderColor: `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
@@ -176,9 +177,11 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 className="relative"
                                 // Reserve space within the name box for its superscript crown.
                                 style={{
-                                    maxWidth: '100%', minHeight: 50, padding: isCoop ? '10px 8px 6px' : '10px 28px 6px', textAlign: 'center',
-                                    // Export preparation refreshes this local plate from the sampled photo.
-                                    backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`, borderRadius: 8,
+                                    width: '100%', maxWidth: '100%', minHeight: 50,
+                                    padding: isCoop ? '10px 8px 6px' : '10px 28px 6px', textAlign: 'center',
+                                    // A full-width player-hued header; score paint stays photo-derived below it.
+                                    backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`,
+                                    borderRadius: shareTeamResult ? 8 : 0,
                                 }}
                             >
                                 {isWinner && !isCoop && (
@@ -216,7 +219,10 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             {!shareTeamResult && <span
                                 data-score-photo-score="true"
                                 className="font-black font-mono text-txt-title"
-                                style={{ fontSize: scoreFontSize, lineHeight: 1.05, whiteSpace: 'nowrap', color: RESULT_TEXT }}
+                                style={{
+                                    fontSize: scoreFontSize, lineHeight: 1.05, whiteSpace: 'nowrap', color: RESULT_TEXT,
+                                    width: '100%', textAlign: 'center', padding: '10px 12px 12px',
+                                }}
                             >
                                 {displayScore}
                             </span>}

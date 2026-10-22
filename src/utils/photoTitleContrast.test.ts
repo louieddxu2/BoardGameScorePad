@@ -106,11 +106,18 @@ describe('photo title contrast', () => {
         blueName.style.color = '#3b82f6';
         const names = [name, defaultName, yellowName, redName, blueName];
         for (const item of names) {
+            const card = document.createElement('div');
+            card.style.backgroundColor = 'var(--photo-result-card, #334155)';
             const plate = document.createElement('div');
             plate.dataset.scorePhotoIdentity = 'true';
             plate.style.backgroundColor = 'var(--photo-result-identity, #293649)';
             plate.append(item);
-            root.append(plate);
+            const score = document.createElement('span');
+            score.dataset.scorePhotoScore = 'true';
+            score.style.color = 'var(--photo-result-text, #f8fafc)';
+            score.textContent = '128';
+            card.append(plate, score);
+            root.append(card);
         }
         let firstBackgrounds: string[] | undefined;
         for (const brightness of [240, 160, 120, 20, 240]) {
@@ -128,6 +135,12 @@ describe('photo title contrast', () => {
                 expect(item.style.textShadow).toBe('none');
                 expect(item.style.filter).toBe('none');
                 expect(item.style.fontWeight).toBe(String(getPhotoPlayerNameStyles(item.style.color, background).fontWeight));
+                const card = item.parentElement!.parentElement!;
+                const score = card.querySelector<HTMLElement>('[data-score-photo-score]')!;
+                expect(card.style.backgroundColor).toBe('var(--photo-result-card, #334155)');
+                expect(score.style.color).toBe('var(--photo-result-text, #f8fafc)');
+                expect(score.style.backgroundColor).toBe('');
+                expect(score.textContent).toBe('128');
             }
             expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
             expect(defaultName.style.textShadow).toBe('none');

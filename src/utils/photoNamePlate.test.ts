@@ -54,11 +54,18 @@ it('gives every preset color a passing opaque 8-bit plate across dark, light and
             }
         }
     }
-    expect(getPhotoNamePlateBackground('#111111', '#eee6d8')).toBe('#eee6d8');
-    expect(getPhotoNamePlateBackground('#ffffff', '#111111')).toBe('#111111');
+    for (const color of ['#ef4444', '#3b82f6', '#10b981', '#1f2937', '#6366f1', '#ec4899']) {
+        expect(getOklabLightness(parseColor(getPhotoNamePlateBackground(color, '#293649'))!))
+            .toBeGreaterThan(0.8);
+    }
+    for (const color of ['#facc15', '#ffffff']) {
+        expect(getOklabLightness(parseColor(getPhotoNamePlateBackground(color, '#eee6d8'))!))
+            .toBeLessThan(0.65);
+    }
     // A close match should receive a tinted adjustment, not an immediate black/white fallback.
     const adjusted = parseColor(getPhotoNamePlateBackground('#3b82f6', '#3b82f6'))!;
     expect(adjusted.r === adjusted.g && adjusted.g === adjusted.b).toBe(false);
+    expect(adjusted.b).toBeGreaterThan(adjusted.r);
 });
 
 it('shares CSS reads, retains unusual/transparent ink, and always terminates for imported colors', () => {

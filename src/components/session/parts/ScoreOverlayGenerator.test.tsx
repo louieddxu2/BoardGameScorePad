@@ -236,14 +236,18 @@ describe('photo-first score export layout', () => {
     expect(container.querySelector('[data-score-photo-results]')).toHaveStyle({ width: '780px', alignSelf: 'center' });
     entries.forEach((entry, index) => {
       expect(entry).toHaveClass('bg-surface-bg', 'border-2', 'border-surface-border', 'justify-between');
-      expect(entry).toHaveStyle({ borderRadius: '12px' });
+      expect(entry).toHaveStyle({ borderRadius: '12px', padding: '0px', gap: '0' });
+      expect(entry).toHaveClass('overflow-hidden');
       expect(entry.style.borderColor).toBe('var(--photo-result-border, #64748b)');
       expect(entry.style.backgroundColor).toBe('var(--photo-result-card, #334155)');
-      expect((entry.lastElementChild as HTMLElement).style.color).toBe('var(--photo-result-text, #f8fafc)');
+      const score = entry.querySelector<HTMLElement>('[data-score-photo-score]')!;
+      expect(score.style.color).toBe('var(--photo-result-text, #f8fafc)');
+      expect(score.style.backgroundColor).toBe('');
+      expect(score).toHaveStyle({ padding: '10px 12px 12px', width: '100%' });
       const identity = entry.querySelector('[data-score-photo-identity]')!;
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');
-      expect(identity).toHaveStyle({ borderRadius: '8px' });
+      expect(identity).toHaveStyle({ borderRadius: '0', width: '100%' });
       if (players[index].isAnonymous) {
         expect((identity as HTMLElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
       } else {
