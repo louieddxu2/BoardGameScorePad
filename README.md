@@ -18,7 +18,10 @@
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the third-party package acknowledgements, versions, licenses, and upstream sources used by this project.
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 24 LTS, at least **24.22.1** (the [October 2026 security release](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)), or a newer 24.x release.
+- The existing V3test CI uses the latest available 24.x release rather than preferring an older runner-cached version. This does not add another scheduled check or upgrade to a new major version.
+- Vercel is configured for `24.x`; its minor and security-patch rollout is managed by Vercel. A `24.x` setting alone does not establish the exact patch installed. Check the build-time `node --version` or function `process.version` when verifying a deployment.
+- On this Windows machine, Node.js is installed system-wide. Updating it also changes the version used by other projects sharing that installation; restart long-running Node.js processes to use the patched runtime.
 
 ### Setup
 1. Install dependencies
