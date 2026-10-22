@@ -119,7 +119,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
             continue;
         }
         // Keep the original selected color on this export node, not in saved data.
-        // Repeated captures must not shade an already adapted color or retain it on a dark photo.
+        // Repeated captures must not inherit a stale adapted color from an earlier capture.
         const color = name.dataset.scorePhotoColor ??= name.style.color;
         const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, palette.identity, read);
         Object.assign(name.style, styles);

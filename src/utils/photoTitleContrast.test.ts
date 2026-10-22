@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle } from './photoTitleContrast';
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { parseColor } from './color';
-import { contrastOnBackground } from './colorContrast';
 import { getPhotoPlayerNameShadow } from './photoTextContrast';
 
 const pixels = (...brightness: number[]) => new Uint8ClampedArray(
@@ -111,25 +110,22 @@ describe('photo title contrast', () => {
         expect(name.style.fontWeight).toBe('400');
         expect(defaultName.style.fontWeight).toBe('400');
         const lightInk = yellowName.style.color;
-        expect(lightInk).not.toBe('rgb(250, 204, 21)');
-        expect(yellowName.style.textShadow).toBe('none');
-        expect(contrastOnBackground(parseColor(lightInk)!, parseColor(getPhotoResultPalette(pixels(240)).identity)!))
-            .toBeGreaterThanOrEqual(4.5);
+        expect(lightInk).toBe('rgb(250, 204, 21)');
+        expect(yellowName.style.textShadow).not.toBe('none');
 
         context.getImageData.mockReturnValue({ data: pixels(160) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         expect(yellowName.style.fontWeight).toBe('400');
         expect(defaultName.style.fontWeight).toBe('400');
-        expect(yellowName.style.textShadow).toBe('none');
+        expect(yellowName.style.color).toBe(lightInk);
         expect(yellowName.style.filter).toBe('none');
 
         context.getImageData.mockReturnValue({ data: pixels(120) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
         for (const coloredName of [redName, blueName]) {
             expect(coloredName.style.fontWeight).toBe('400');
-            expect(coloredName.style.textShadow).toBe('none');
-            expect(contrastOnBackground(parseColor(coloredName.style.color)!, parseColor(getPhotoResultPalette(pixels(120)).identity)!))
-                .toBeGreaterThanOrEqual(4.5);
+            expect(coloredName.style.textShadow).not.toBe('none');
+            expect(parseColor(coloredName.style.color)).toEqual(parseColor(coloredName.dataset.scorePhotoColor!));
         }
         expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
 

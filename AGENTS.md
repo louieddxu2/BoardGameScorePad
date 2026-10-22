@@ -52,6 +52,11 @@ For `C:\board-game-score-pad`:
 - Preserve runtime ownership, Hook/effect ordering, DOM nesting, reconciliation keys, gesture handlers, and cleanup. A file split must not introduce extra database/network reads, repeated calculations, observers, timers, or animation loops.
 - Recheck source-file lengths, relevant tests, type-check, and production build after refactoring.
 
+# User-Selected Color Contract
+
+- Preserve user-selected foreground RGB and alpha in every UI and image export. Resolve contrast with outlines, shadows, or backing treatments, not by lightening/darkening the selected ink, replacing it with a fixed color, or blending it into the background.
+- Automatic black/white text on a user-selected button background is a separate policy when no foreground color was selected.
+
 # Sub-Agent Delegation Rules
 
 - When invoking sub-agents via `invoke_subagent` or defining sub-agents via `define_subagent`, always explicitly set `Model` to `"flash"` (or `"flash_lite"`) for routine or background tasks (e.g., searching, reading files, generating boilerplate, running unit tests) unless deep complex reasoning is strictly required.

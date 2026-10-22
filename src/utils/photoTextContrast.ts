@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
 import { readColor, type ColorReader } from './color';
 import { compositeColors, contrastAfterRounding, relativeLuminance } from './colorContrast';
-import { getContrastTextStyles } from './ui';
 import { PHOTO_DARK_SURFACE_MAX_LUMINANCE } from './photoResultPalette';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
@@ -35,9 +34,8 @@ export const getPhotoPlayerNameShadow = (color: string, background?: string, rea
     return getPhotoTextOutline(outline, '0 2px 3px rgba(0,0,0,0.25)', 1.25);
 };
 
-/** Normal-weight, shadow-free names are the default for photo exports.
- * Only clearly dark backing retains the original bold/outline treatment.
- * Selected player colors may deepen, but never become pale through white mixing. */
+/** Keep selected ink unchanged on every photo. Export-safe edges protect contrast;
+ * only clearly dark plates retain heavier font weight. */
 export const getPhotoPlayerNameStyles = (
     color: string, background: string, read: ColorReader = readColor,
 ): CSSProperties => {
@@ -48,11 +46,10 @@ export const getPhotoPlayerNameStyles = (
             WebkitTextStroke: '', filter: '',
         };
     }
-    // Use the scoreboard's light-label policy directly. Export only needs its ink;
-    // do not copy UI color transitions into a bitmap captured immediately afterward.
-    const lightStyles = getContrastTextStyles(color, 'light', { cleanOnLight: true, background, read });
+    // Use the existing export-safe edge, not UI transitions or replacement ink.
+    // Its opaque rim stays legible when the exported photo is scaled down.
     return {
-        color: lightStyles.color ?? color,
-        fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
+        color,
+        fontWeight: 400, textShadow: getPhotoPlayerNameShadow(color, background, read), WebkitTextStroke: 0, filter: 'none',
     };
 };

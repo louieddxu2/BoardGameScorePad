@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { getPhotoPlayerNameShadow, getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getPhotoResultPalette } from './photoResultPalette';
-import { compositeColors, contrastOnBackground } from './colorContrast';
-import { parseColor, type RgbaColor } from './color';
-import { getContrastTextStyles } from './ui';
+import { contrastAfterRounding } from './colorContrast';
+import { parseColor } from './color';
 
 // Independently check the resulting sRGB colors, not just that a shadow property exists.
 const luminance = (color: string) => {
@@ -20,12 +19,11 @@ const contrast = (first: number, second: number) => (Math.max(first, second) + 0
 afterEach(() => document.documentElement.style.removeProperty('--c-txt-secondary'));
 
 describe('photo name and surface contrast', () => {
-    it('uses normal-weight clean ink on every non-dark plate and reserves heavy protection for clearly dark plates', () => {
+    it('preserves selected ink and uses normal-weight edge protection on non-dark plates', () => {
         const original = '#facc15';
         const style = getPhotoPlayerNameStyles(original, '#eee6d8');
-        expect(style).toMatchObject({ fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none' });
-        expect(style.color).not.toBe(original);
-        expect(contrast(luminance(style.color!), luminance('#eee6d8'))).toBeGreaterThanOrEqual(4.5);
+        expect(style).toMatchObject({ color: original, fontWeight: 400, WebkitTextStroke: 0, filter: 'none' });
+        expect(style.textShadow).not.toBe('none');
         expect(getPhotoPlayerNameStyles('#111111', '#eee6d8').color).toBe('#111111');
         expect(getPhotoPlayerNameStyles('transparent', '#eee6d8').color).toBe('transparent');
         expect(getPhotoPlayerNameStyles('#111111', '#111111')).toEqual({
@@ -35,25 +33,19 @@ describe('photo name and surface contrast', () => {
         for (const background of ['#606060', '#757575', '#767676', '#777777', '#808080', '#a08060']) {
             const name = getPhotoPlayerNameStyles(original, background);
             expect(name).toMatchObject({
-                fontWeight: 400, textShadow: 'none', WebkitTextStroke: 0, filter: 'none',
+                color: original, fontWeight: 400, WebkitTextStroke: 0, filter: 'none',
             });
-            expect(luminance(name.color!)).toBeLessThanOrEqual(luminance(original));
-            if (contrast(0, luminance(background)) >= 4.51) {
-                expect(contrast(luminance(name.color!), luminance(background))).toBeGreaterThanOrEqual(4.5);
-            } else expect(name.color).toBe(original);
+            expect(name.textShadow).toBe(getPhotoPlayerNameShadow(original, background));
         }
         for (const original of ['#ef4444', '#3b82f6', '#10b981']) {
             // Formerly red -> rgb(252,220,220), blue -> rgb(213,228,253).
             expect(getPhotoPlayerNameStyles(original, '#656565')).toMatchObject({
-                color: original, fontWeight: 400, textShadow: 'none',
+                color: original, fontWeight: 400,
             });
         }
     });
 
-    it('keeps adjusted names readable after export rounding without lightening original player ink', () => {
-        const round = (color: RgbaColor): RgbaColor => ({
-            r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b), a: color.a,
-        });
+    it('never adjusts player RGB or alpha across photo hues and protects low-contrast names', () => {
         const samples = Array.from({ length: 256 }, (_, value) => [
             [value, value, value], [value, value * 0.65, value * 0.4], [value * 0.4, value * 0.65, value],
         ]).flat();
@@ -62,19 +54,12 @@ describe('photo name and surface contrast', () => {
             const background = parseColor(palette.identity)!;
             for (const color of ['#1f2937', '#facc15', '#ef4444', '#3b82f6', '#ffffff', 'rgba(0,0,0,.4)']) {
                 const style = getPhotoPlayerNameStyles(color, palette.identity);
-                if (style.textShadow !== 'none') continue;
-                const ink = parseColor(style.color!)!;
-                if (style.fontWeight === 400) {
-                    const scoreboard = getContrastTextStyles(color, 'light', {
-                        cleanOnLight: true, background: palette.identity,
-                    });
-                    expect(style.color).toBe(scoreboard.color ?? color);
-                    expect(style).not.toHaveProperty('transition');
+                expect(style.color, `${sample}: ${color}`).toBe(color);
+                expect(style).not.toHaveProperty('transition');
+                expect(style.textShadow).toBe(getPhotoPlayerNameShadow(color, palette.identity));
+                if (contrastAfterRounding(parseColor(color)!, background)! < 4.5) {
+                    expect(style.textShadow, `${sample}: ${color} needs edge protection`).not.toBe('none');
                 }
-                expect(luminance(style.color!)).toBeLessThanOrEqual(luminance(color));
-                expect(contrastOnBackground(ink, background), `${sample}: ${color} CSS`).toBeGreaterThanOrEqual(4.5);
-                const paint = round(compositeColors(ink, background));
-                expect(contrastOnBackground(paint, round(background)), `${sample}: ${color} bitmap`).toBeGreaterThanOrEqual(4.5);
             }
         }
     });

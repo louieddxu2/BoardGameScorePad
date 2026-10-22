@@ -1,4 +1,4 @@
-import { createColorReader, formatColor, type ColorReader, type RgbaColor } from './color';
+import { createColorReader, type ColorReader, type RgbaColor } from './color';
 
 /** Source-over composition in sRGB, retaining alpha until an opaque backing is known. */
 export function compositeColors(foreground: RgbaColor, background: RgbaColor): RgbaColor {
@@ -34,33 +34,6 @@ export function contrastAfterRounding(foreground: RgbaColor, background: RgbaCol
         r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b), a: color.a,
     });
     return Math.min(ratio, contrastOnBackground(round(compositeColors(foreground, background)), round(background))!);
-}
-
-/** Shared light-label ink: retain readable colors, otherwise deepen the same hue.
- * Check CSS paint and rounded export colors, including backing. If dark ink cannot
- * meet contrast, retain the selected color rather than mixing it toward white.
- * Transparent ink and unresolved surfaces keep their original CSS behavior. */
-export function getReadableLabelInk(ink: RgbaColor, background: RgbaColor): string | undefined {
-    const ratio = contrastAfterRounding(ink, background);
-    if (ink.a === 0 || ratio === null || ratio >= 4.5) return undefined;
-    const endpoint = { r: 0, g: 0, b: 0, a: 1 };
-    // Do not run a search with an unreachable endpoint or switch to pastel ink.
-    if (contrastAfterRounding(endpoint, background)! < 4.51) return undefined;
-    const shade = (amount: number): RgbaColor => ({
-        r: Math.round(ink.r + (endpoint.r - ink.r) * amount),
-        g: Math.round(ink.g + (endpoint.g - ink.g) * amount),
-        b: Math.round(ink.b + (endpoint.b - ink.b) * amount),
-        a: ink.a + (1 - ink.a) * amount,
-    });
-    let low = 0;
-    let high = 1;
-    // Bounded, pure color math; no measurements or additional render lifecycle.
-    for (let step = 0; step < 12; step++) {
-        const middle = (low + high) / 2;
-        if (contrastAfterRounding(shade(middle), background)! >= 4.51) high = middle;
-        else low = middle;
-    }
-    return formatColor(shade(high));
 }
 
 export type SolidTextChoice = 'dark' | 'light';

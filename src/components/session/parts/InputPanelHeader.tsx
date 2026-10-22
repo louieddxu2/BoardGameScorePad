@@ -25,7 +25,7 @@ const InputPanelHeader: React.FC<{
     const displayColor = isTransparent ? 'rgb(var(--c-txt-muted))' : player.color; // Theme-aware fallback
     const bgColor = isTransparent ? 'rgb(var(--c-player-header-neutral-bg))' : withColorOpacity(player.color, 'var(--player-surface-tint-opacity)');
     const borderColor = isTransparent ? 'rgb(var(--c-input-border))' : withColorOpacity(player.color, 'var(--player-surface-border-opacity)');
-    // Player identity stays colored; supporting labels use neutral ink on light surfaces.
+    // Unspecified supporting labels use neutral ink on light surfaces; chosen colors stay intact.
     // The fallback preserves the original player ink in the dark palette.
     const contextStyle: React.CSSProperties = {
         color: `var(--input-context-ink, ${displayColor})`,
@@ -66,7 +66,6 @@ const InputPanelHeader: React.FC<{
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow"
                             color={displayColor}
-                            cleanOnLight
                             background={bgColor}
                             backdrop="rgb(var(--c-modal-bg))"
                         >
@@ -79,16 +78,19 @@ const InputPanelHeader: React.FC<{
                             key={player.id}
                             className="text-sm font-bold truncate animate-slide-in-right-shallow max-w-[40%]"
                             color={displayColor}
-                            cleanOnLight
                             background={bgColor}
                             backdrop="rgb(var(--c-modal-bg))"
                         >
                             {player.name}
                         </ContrastText>
                         <div className="w-px h-3 bg-surface-border shrink-0" />
-                        <span className="text-xs font-bold truncate" style={contextStyle}>
+                        <ContrastText className="text-xs font-bold truncate"
+                            color={!isTotalMode && col?.color ? col.color : contextStyle.color!}
+                            style={!isTotalMode && col?.color ? undefined : contextStyle}
+                            background={bgColor} backdrop="rgb(var(--c-modal-bg))"
+                        >
                             {isTotalMode ? t('input_total_adjust') : injectSoftHyphens(col?.name || '')}
-                        </span>
+                        </ContrastText>
                     </>
                 )}
             </div>

@@ -5,7 +5,6 @@ import type { Player } from '../../../types';
 import InputPanelHeader from './InputPanelHeader';
 import appCss from '../../../index.css?raw';
 import { createColorReader } from '../../../utils/color';
-import { compositeColors, contrastOnBackground } from '../../../utils/colorContrast';
 
 it('renders valid live player-color tints without rewriting the saved player color', () => {
     const player: Player = { id: 'player', name: 'Ada', color: 'rgb(var(--c-p-emerald))', scores: {}, totalScore: 0 };
@@ -19,7 +18,7 @@ it('renders valid live player-color tints without rewriting the saved player col
     expect(player.color).toBe('rgb(var(--c-p-emerald))');
 });
 
-it('keeps player names colored but makes small context labels neutral and opaque on light surfaces', () => {
+it('preserves selected name/context colors while keeping unspecified context labels neutral on light surfaces', () => {
     const style = document.createElement('style');
     style.textContent = [...appCss.matchAll(/(?::root|html\[data-theme='(?:light|sage)'\])\s*\{[^}]*\}/g)]
         .map(match => match[0]).join('\n');
@@ -27,8 +26,8 @@ it('keeps player names colored but makes small context labels neutral and opaque
     const previous = document.documentElement.getAttribute('data-theme');
     const player: Player = { id: 'white', name: 'Ada', color: 'rgb(var(--c-p-white))', scores: {}, totalScore: 0 };
     try {
-        const renderHeader = () => <LanguageProvider><InputPanelHeader player={player} isEditingPlayer={false}
-            col={{ id: 'harvest', name: 'Harvest', inputType: 'keypad', formula: 'a1', isScoring: true }}
+        const renderHeader = (color?: string) => <LanguageProvider><InputPanelHeader player={player} isEditingPlayer={false}
+            col={{ id: 'harvest', name: 'Harvest', inputType: 'keypad', formula: 'a1', isScoring: true, color }}
             onClear={vi.fn()} onDirectionToggle={vi.fn()} direction="horizontal" showSwipeHint />
         </LanguageProvider>;
         const { container, rerender } = render(renderHeader());
@@ -43,12 +42,10 @@ it('keeps player names colored but makes small context labels neutral and opaque
             const opacity = Number(getComputedStyle(document.documentElement).getPropertyValue('--input-context-opacity'));
             expect(opacity).toBe(theme === 'dark' ? 0.7 : 1);
             const name = screen.getByText('Ada');
-            if (theme === 'dark') expect(name).toHaveStyle({ color: player.color });
-            else {
-                expect(name.style.textShadow).toBe('none');
-                const background = compositeColors(read((container.firstElementChild as HTMLElement).style.backgroundColor)!, read('rgb(var(--c-modal-bg))')!);
-                expect(contrastOnBackground(read(name.style.color)!, background)).toBeGreaterThanOrEqual(4.5);
-            }
+            expect(name).toHaveStyle({ color: player.color });
+            expect(name.style.textShadow).not.toBe('none');
+            rerender(renderHeader('#3b82f6'));
+            expect(screen.getByText(text => text.replace(/\u00ad/g, '') === 'Harvest')).toHaveStyle({ color: '#3b82f6' });
         }
         expect(container.querySelector('.animate-swipe-hint-enter > span')).toHaveClass('text-[rgb(var(--c-input-hint-ink))]');
         expect(player.color).toBe('rgb(var(--c-p-white))');
