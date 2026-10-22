@@ -77,11 +77,11 @@ describe('photo name and surface contrast', () => {
         }
     });
 
-    it('uses the supplied reader to apply the original brightness limits to unregistered CSS colors', () => {
+    it('uses the supplied reader to apply calibrated lightness limits to unregistered CSS colors', () => {
         const color = 'rgb(var(--test-photo-ink))';
-        document.documentElement.style.setProperty('--test-photo-ink', '171 171 171');
+        document.documentElement.style.setProperty('--test-photo-ink', '195 195 195');
         expect(getPhotoPlayerNameStyles(color, '#eee', createColorReader()).textShadow).toContain('0.5px 0 0 rgba(0,0,0,0.6)');
-        document.documentElement.style.setProperty('--test-photo-ink', '59 59 59');
+        document.documentElement.style.setProperty('--test-photo-ink', '126 126 126');
         expect(getPhotoPlayerNameStyles(color, '#111', createColorReader()).textShadow).toContain('rgba(255,255,255,0.7)');
     });
 

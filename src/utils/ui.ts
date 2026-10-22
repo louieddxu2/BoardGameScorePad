@@ -2,6 +2,7 @@ import { COLOR_TONES } from '../colors';
 import { readColor, type ColorReader, type RgbaColor } from './color';
 import { getSolidTextChoice, relativeLuminance } from './colorContrast';
 import { getThemeAppearance, resolveAppTheme, type AppTheme } from '../theme';
+import { getTextColorTone } from './textColorTone';
 
 /**
  * Calculates the Euclidean distance between two touch points.
@@ -114,11 +115,16 @@ export const getContrastTextStyles = (
     // --- Contrast Decision Logic ---
     const varName = extractVarName(textColorHex);
     const tone = varName ? COLOR_TONES[varName] : null;
+    const isSystemInk = /var\(\s*--(?:c-(?!p-)|input-context-ink\b)/.test(textColorHex)
+        || /^(?:inherit|initial|unset|currentcolor|transparent)$/i.test(textColorHex);
 
     // --- Dark UI Environment (Dark Theme or Texture Mode) ---
     if (resolvedTheme === 'dark' || isTextureMode) {
         // High-Precision Outline for registered dark colors or calculated deep tones
-        const shouldProtectDark = tone === 'dark' || (!tone && getPerceivedLuminance(textColorHex, options.read) < 60);
+        // Keep semantic/texture ink on its existing policy; calibrate only custom ink.
+        const shouldProtectDark = tone === 'dark' || (!tone && (isTextureMode || isSystemInk
+            ? getPerceivedLuminance(textColorHex, options.read) < 60
+            : getTextColorTone((options.read ?? readColor)(textColorHex)) === 'dark'));
 
         if (shouldProtectDark) {
             return {
@@ -143,16 +149,16 @@ export const getContrastTextStyles = (
     if (resolvedTheme === 'light') {
         // Custom ink stays normal-weight even when its container uses font-bold.
         // Semantic UI ink and texture rendering retain their existing typography.
-        const isSystemInk = /var\(\s*--(?:c-(?!p-)|input-context-ink\b)/.test(textColorHex)
-            || /^(?:inherit|initial|unset|currentcolor|transparent)$/i.test(textColorHex);
         if (!isSystemInk) styles.fontWeight = 400;
 
         // Honor the existing ink categories regardless of the supplied background.
-        // Only unregistered colors use the original >170 brightness fallback.
+        // Unregistered custom ink uses perceptual lightness calibrated to that palette.
         const ink = !tone ? (options.read ?? readColor)(textColorHex) : null;
         if (ink?.a === 0) return { ...styles, textShadow: 'none' };
         const isSystemText = varName?.includes('txt-primary') || varName?.includes('txt-secondary');
-        const shouldProtectLight = !isSystemText && (tone === 'light' || (!!ink && perceivedLuminance(ink) > 170));
+        const shouldProtectLight = !isSystemText && (tone === 'light' || (!!ink && (isSystemInk
+            ? perceivedLuminance(ink) > 170
+            : getTextColorTone(ink) === 'light')));
 
         if (shouldProtectLight) {
             // Thin black edge without increasing the selected text's font weight.

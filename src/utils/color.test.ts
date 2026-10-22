@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createColorReader, parseColor, withColorOpacity } from './color';
 import { compositeColors, contrastOnBackground, getSolidTextChoice } from './colorContrast';
 import { getContrastTextStyles, getPerceivedLuminance, isColorDark } from './ui';
+import { COLOR_TONES } from '../colors';
+import appCss from '../index.css?raw';
+import { getTextColorTone } from './textColorTone';
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -149,7 +152,7 @@ describe('Opacity and solid-background contrast', () => {
         expect(getContrastTextStyles('#fff', 'light').textShadow).toContain('rgba(0,0,0,0.6)');
     });
 
-    it('honors the existing tone categories and brightness boundaries, independently of the background', () => {
+    it('honors tone categories and calibrated Oklab boundaries, independently of the background', () => {
         const thinBlackEdge = '0.5px 0 0 rgba(0,0,0,0.6), -0.5px 0 0 rgba(0,0,0,0.6), 0 0.5px 0 rgba(0,0,0,0.6), 0 -0.5px 0 rgba(0,0,0,0.6)';
         for (const color of ['white', 'yellow', 'skin']) {
             expect(getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light').textShadow).toBe(thinBlackEdge);
@@ -158,10 +161,10 @@ describe('Opacity and solid-background contrast', () => {
             expect(getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light').textShadow)
                 .toBe('0 0.5px 1px rgba(0,0,0,0.05)');
         }
-        expect(getContrastTextStyles('#aaaaaa', 'light').textShadow).not.toBe(thinBlackEdge);
-        expect(getContrastTextStyles('#ababab', 'light').textShadow).toBe(thinBlackEdge);
-        expect(getContrastTextStyles('#3b3b3b', 'dark').textShadow).toContain('rgba(255,255,255,0.7)');
-        expect(getContrastTextStyles('#3c3c3c', 'dark').textShadow).toBe('0 1px 2px rgba(0,0,0,0.8)');
+        expect(getContrastTextStyles('#c2c2c2', 'light').textShadow).not.toBe(thinBlackEdge);
+        expect(getContrastTextStyles('#c3c3c3', 'light').textShadow).toBe(thinBlackEdge);
+        expect(getContrastTextStyles('#7e7e7e', 'dark').textShadow).toContain('rgba(255,255,255,0.7)');
+        expect(getContrastTextStyles('#7f7f7f', 'dark').textShadow).toBe('0 1px 2px rgba(0,0,0,0.8)');
         for (const theme of ['dark', 'light', 'sage'] as const) {
             for (const color of ['#222', '#ef4444', '#3b82f6', '#fff', 'rgba(255,255,255,.1)', 'transparent']) {
                 for (const background of ['#fff', '#111', 'rgba(0,0,0,.9)', 'inherit', 'transparent']) {
@@ -175,5 +178,29 @@ describe('Opacity and solid-background contrast', () => {
         const read = vi.fn();
         getContrastTextStyles('rgb(var(--c-p-yellow))', 'light', { background: 'rgb(var(--unused))', read });
         expect(read).not.toHaveBeenCalled();
+    });
+
+    it('reproduces every existing palette label for raw RGB/HEX without changing texture or semantic ink', () => {
+        const computed = vi.spyOn(globalThis, 'getComputedStyle');
+        for (const [name, tone] of Object.entries(COLOR_TONES)) {
+            const channels = appCss.match(new RegExp(`${name}:\\s*(\\d+) (\\d+) (\\d+);`))!.slice(1).map(Number);
+            const rgb = `rgb(${channels.join(',')})`;
+            const hex = `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
+            expect(getTextColorTone(parseColor(rgb)), name).toBe(tone);
+            for (const theme of ['dark', 'light', 'sage'] as const) {
+                expect(getContrastTextStyles(rgb, theme), `${name}: ${theme}`)
+                    .toEqual(getContrastTextStyles(`rgb(var(${name}))`, theme));
+                expect(getContrastTextStyles(hex, theme)).toEqual(getContrastTextStyles(rgb, theme));
+            }
+        }
+        expect(computed).not.toHaveBeenCalled();
+        expect(getTextColorTone(null)).toBeNull();
+        expect(getTextColorTone(parseColor('rgba(99,102,241,.2)'))).toBe('dark');
+        // Indigo's raw RGB now follows its label, but image textures keep the old <60 rule.
+        expect(getContrastTextStyles('#6366f1', 'dark', { isTextureMode: true }).textShadow)
+            .toBe('0 1px 2px rgba(0,0,0,0.8)');
+        const read = () => parseColor('#6366f1');
+        expect(getContrastTextStyles('rgb(var(--c-status-danger))', 'dark', { read }).textShadow)
+            .toBe('0 1px 2px rgba(0,0,0,0.8)');
     });
 });
