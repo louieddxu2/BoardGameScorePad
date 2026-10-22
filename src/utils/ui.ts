@@ -1,6 +1,6 @@
 import { COLOR_TONES } from '../colors';
-import { createColorReader, readColor, type ColorReader } from './color';
-import { compositeColors, contrastAfterRounding, getSolidTextChoice, relativeLuminance } from './colorContrast';
+import { readColor, type ColorReader, type RgbaColor } from './color';
+import { getSolidTextChoice, relativeLuminance } from './colorContrast';
 import { getThemeAppearance, resolveAppTheme, type AppTheme } from '../theme';
 
 /**
@@ -31,11 +31,13 @@ const extractVarName = (colorStr: string): string | null => {
  * Calculates perceived luminance (0-255) using the standard luminosity formula.
  * Higher values = brighter color.
  */
-export const getPerceivedLuminance = (hex: string): number => {
-    const rgb = readColor(hex);
+const perceivedLuminance = (rgb: RgbaColor): number => rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114;
+
+export const getPerceivedLuminance = (hex: string, read: ColorReader = readColor): number => {
+    const rgb = read(hex);
     if (!rgb) return 128; // Default to neutral (middle) if unparseable to avoid false positives
     // Standard relative luminance formula
-    return (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114);
+    return perceivedLuminance(rgb);
 };
 
 /** Linear-sRGB luminance for choosing the higher-contrast black/white outline. */
@@ -116,7 +118,7 @@ export const getContrastTextStyles = (
     // --- Dark UI Environment (Dark Theme or Texture Mode) ---
     if (resolvedTheme === 'dark' || isTextureMode) {
         // High-Precision Outline for registered dark colors or calculated deep tones
-        const shouldProtectDark = tone === 'dark' || (!tone && getPerceivedLuminance(textColorHex) < 60);
+        const shouldProtectDark = tone === 'dark' || (!tone && getPerceivedLuminance(textColorHex, options.read) < 60);
 
         if (shouldProtectDark) {
             return {
@@ -145,48 +147,18 @@ export const getContrastTextStyles = (
             || /^(?:inherit|initial|unset|currentcolor|transparent)$/i.test(textColorHex);
         if (!isSystemInk) styles.fontWeight = 400;
 
-        // Known UI surfaces use actual contrast, not the palette's coarse tone labels.
-        // A reader can be shared by a whole grid render; no element measurements.
-        if (options.background) {
-            const read = options.read ?? createColorReader();
-            const ink = read(textColorHex);
-            if (ink?.a === 0) return { ...styles, textShadow: 'none' };
-            let background = read(options.background);
-            if (background && background.a < 1 && options.backdrop) {
-                const backing = read(options.backdrop);
-                background = backing?.a === 1 ? compositeColors(background, backing) : null;
-            }
-            const ratio = ink && background ? contrastAfterRounding(ink, background) : null;
-            if (ink && ratio !== null) {
-                if (ratio >= 4.5) return { ...styles, textShadow: 'none' };
-                const width = ratio >= 3 ? 0.35 : ratio >= 2 ? 0.5 : 0.7;
-                const alpha = ratio >= 3 ? 0.5 : ratio >= 2 ? 0.65 : 0.8;
-                const edge = getSolidTextChoice(options.background, {
-                    backdrop: options.backdrop, read,
-                }) === 'light' ? 255 : 0;
-                // Retain a trace of the selected hue instead of a harsh black/white rim.
-                const channels = [ink.r, ink.g, ink.b].map(channel => Math.round(channel * 0.25 + edge * 0.75));
-                const shadow = `rgba(${channels.join(',')},${alpha})`;
-                return {
-                    ...styles,
-                    textShadow: `${width}px 0 0 ${shadow}, -${width}px 0 0 ${shadow}, 0 ${width}px 0 ${shadow}, 0 -${width}px 0 ${shadow}`,
-                };
-            }
-        }
-        // [Symmetric Protection] For light-toned text (e.g., White/Yellow) on White Background
+        // Honor the existing ink categories regardless of the supplied background.
+        // Only unregistered colors use the original >170 brightness fallback.
+        const ink = !tone ? (options.read ?? readColor)(textColorHex) : null;
+        if (ink?.a === 0) return { ...styles, textShadow: 'none' };
         const isSystemText = varName?.includes('txt-primary') || varName?.includes('txt-secondary');
-        const shouldProtectLight = !isSystemText && (tone === 'light' || (!tone && getPerceivedLuminance(textColorHex) > 170));
+        const shouldProtectLight = !isSystemText && (tone === 'light' || (!!ink && perceivedLuminance(ink) > 170));
 
         if (shouldProtectLight) {
-            // Apply Black Outline (The symmetric opposite of the dark mode white frame)
+            // Thin black edge without increasing the selected text's font weight.
             return {
                 ...styles,
-                textShadow: `
-                    1px 1px 0 rgba(0,0,0,0.6),
-                    -1px 1px 0 rgba(0,0,0,0.6),
-                    1px -1px 0 rgba(0,0,0,0.6),
-                    -1px -1px 0 rgba(0,0,0,0.6)
-                `
+                textShadow: '0.5px 0 0 rgba(0,0,0,0.6), -0.5px 0 0 rgba(0,0,0,0.6), 0 0.5px 0 rgba(0,0,0,0.6), 0 -0.5px 0 rgba(0,0,0,0.6)',
             };
         }
 

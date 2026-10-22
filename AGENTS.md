@@ -56,6 +56,7 @@ For `C:\board-game-score-pad`:
 
 - Preserve user-selected foreground RGB and alpha in standard UI and photo-sharing exports. Resolve contrast with outlines, shadows, or backing treatments, not by lightening/darkening the selected ink, replacing it with a fixed color, or blending it into the background.
 - Use normal font weight for user-selected ink on light UI surfaces, and thin contrast protection on non-dark photo name plates. Do not reset typography globally or change dark/texture rendering as part of this rule.
+- For user-selected text outlines in standard UI and photo exports, honor `COLOR_TONES` first; only unregistered colors use the existing brightness thresholds (light: >170, dark: <60). Do not replace this with foreground/background contrast thresholds without explicit approval.
 - Automatic black/white text on a user-selected button background is a separate policy when no foreground color was selected.
 - Image-based scoreboards are a separate feature. Preserve their existing texture-specific ink and blending behavior; do not change it as part of standard UI or photo-sharing color work unless explicitly requested.
 

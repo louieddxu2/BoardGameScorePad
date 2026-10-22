@@ -115,7 +115,7 @@ describe('Opacity and solid-background contrast', () => {
         }
     });
 
-    it('preserves selected label ink and shares the grid color reader for light-surface outlines', () => {
+    it('preserves selected label ink and shares the color reader for unregistered colors', () => {
         document.documentElement.style.setProperty('--test-color', '249 115 22');
         const read = createColorReader();
         const computed = vi.spyOn(globalThis, 'getComputedStyle');
@@ -130,7 +130,7 @@ describe('Opacity and solid-background contrast', () => {
         expect(computed).toHaveBeenCalledTimes(1);
     });
 
-    it('never replaces custom RGB or alpha in any theme and protects low-contrast translucent ink', () => {
+    it('never replaces custom RGB or alpha in any theme', () => {
         const options = { background: 'rgba(255,0,0,.04)', backdrop: '#fff' };
         for (const color of ['#fff', '#eab308', '#ef4444', '#3b82f6', 'rgba(0,255,0,.15)', 'transparent']) {
             for (const theme of ['dark', 'light', 'sage'] as const) {
@@ -149,20 +149,31 @@ describe('Opacity and solid-background contrast', () => {
         expect(getContrastTextStyles('#fff', 'light').textShadow).toContain('rgba(0,0,0,0.6)');
     });
 
-    it('composites header tints while leaving unknown backgrounds and textured or dark ink unchanged', () => {
-        const options = { background: 'rgba(0,0,0,.9)', backdrop: '#fff' };
-        expect(getContrastTextStyles('#222', 'light', options).textShadow).toContain('rgba(200,200,200,0.8)');
-        expect(getContrastTextStyles('transparent', 'light', options).textShadow).toBe('none');
-        for (const theme of ['dark', 'light'] as const) {
+    it('honors the existing tone categories and brightness boundaries, independently of the background', () => {
+        const thinBlackEdge = '0.5px 0 0 rgba(0,0,0,0.6), -0.5px 0 0 rgba(0,0,0,0.6), 0 0.5px 0 rgba(0,0,0,0.6), 0 -0.5px 0 rgba(0,0,0,0.6)';
+        for (const color of ['white', 'yellow', 'skin']) {
+            expect(getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light').textShadow).toBe(thinBlackEdge);
+        }
+        for (const color of ['red', 'blue', 'emerald', 'lime', 'cyan']) {
+            expect(getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light').textShadow)
+                .toBe('0 0.5px 1px rgba(0,0,0,0.05)');
+        }
+        expect(getContrastTextStyles('#aaaaaa', 'light').textShadow).not.toBe(thinBlackEdge);
+        expect(getContrastTextStyles('#ababab', 'light').textShadow).toBe(thinBlackEdge);
+        expect(getContrastTextStyles('#3b3b3b', 'dark').textShadow).toContain('rgba(255,255,255,0.7)');
+        expect(getContrastTextStyles('#3c3c3c', 'dark').textShadow).toBe('0 1px 2px rgba(0,0,0,0.8)');
+        for (const theme of ['dark', 'light', 'sage'] as const) {
+            for (const color of ['#222', '#ef4444', '#3b82f6', '#fff', 'rgba(255,255,255,.1)', 'transparent']) {
+                for (const background of ['#fff', '#111', 'rgba(0,0,0,.9)', 'inherit', 'transparent']) {
+                    expect(getContrastTextStyles(color, theme, { background, backdrop: '#fff' }))
+                        .toEqual(getContrastTextStyles(color, theme));
+                }
+            }
             const texture = { isTextureMode: true };
             expect(getContrastTextStyles('#222', theme, texture)).not.toHaveProperty('fontWeight');
-            expect(getContrastTextStyles('#222', theme, { ...options, ...texture }))
-                .toEqual(getContrastTextStyles('#222', theme, texture));
         }
-        expect(getContrastTextStyles('#222', 'dark', options)).toEqual(getContrastTextStyles('#222', 'dark'));
-        expect(getContrastTextStyles('#fff', 'light', { background: 'inherit' }))
-            .toEqual(getContrastTextStyles('#fff', 'light'));
-        expect(getContrastTextStyles('#fff', 'light', { background: 'transparent' }))
-            .toEqual(getContrastTextStyles('#fff', 'light'));
+        const read = vi.fn();
+        getContrastTextStyles('rgb(var(--c-p-yellow))', 'light', { background: 'rgb(var(--unused))', read });
+        expect(read).not.toHaveBeenCalled();
     });
 });

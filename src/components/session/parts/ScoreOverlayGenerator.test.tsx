@@ -251,7 +251,7 @@ describe('photo-first score export layout', () => {
         expect(identity).toHaveTextContent(players[index].name);
         expect(identity.querySelector('span')).toHaveStyle({ fontSize: '36px', overflowWrap: 'anywhere' });
         expect(identity.querySelector('span')).toHaveStyle({ color: players[index].color });
-        expect(identity.querySelector('span')?.style.textShadow).toContain('0.5px 0.5px 0 #000000');
+        expect(identity.querySelector('span')?.style.textShadow).toBe('0 1px 2px rgba(0,0,0,0.8)');
       }
     });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');

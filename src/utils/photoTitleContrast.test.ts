@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle } from './photoTitleContrast';
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { parseColor } from './color';
-import { getPhotoPlayerNameShadow } from './photoTextContrast';
+import { getContrastTextStyles } from './ui';
 
 const pixels = (...brightness: number[]) => new Uint8ClampedArray(
     brightness.flatMap(value => [value, value, value, 255]),
@@ -105,7 +105,7 @@ describe('photo title contrast', () => {
         root.append(name, defaultName, yellowName, redName, blueName);
         context.getImageData.mockReturnValue({ data: pixels(240) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(name.style.textShadow).toBe('none');
+        expect(name.style.textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
         expect(defaultName.style.textShadow).toBe('none');
         expect(name.style.fontWeight).toBe('400');
         expect(defaultName.style.fontWeight).toBe('400');
@@ -124,14 +124,14 @@ describe('photo title contrast', () => {
         await prepareScorePhotoTitle(root, new AbortController().signal);
         for (const coloredName of [redName, blueName]) {
             expect(coloredName.style.fontWeight).toBe('400');
-            expect(coloredName.style.textShadow).not.toBe('none');
+            expect(coloredName.style.textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
             expect(parseColor(coloredName.style.color)).toEqual(parseColor(coloredName.dataset.scorePhotoColor!));
         }
         expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
 
         context.getImageData.mockReturnValue({ data: pixels(20) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(name.style.textShadow).toContain('1.25px 1.25px 0 #ffffff');
+        expect(name.style.textShadow).toContain('1px 1px 0 rgba(255,255,255,0.7)');
         expect(defaultName.style.textShadow).toBe('none');
         expect(name.style.fontWeight).toBe('700');
         expect(defaultName.style.fontWeight).toBe('700');
@@ -139,14 +139,14 @@ describe('photo title contrast', () => {
         expect(name.textContent).toBe('Player');
         expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
         expect(yellowName.style.color).toBe('rgb(250, 204, 21)');
-        expect(yellowName.style.textShadow).toBe(getPhotoPlayerNameShadow('#facc15', getPhotoResultPalette(pixels(20)).identity));
+        expect(yellowName.style.textShadow).toBe(getContrastTextStyles('#facc15', 'dark').textShadow);
         expect(yellowName.style.filter).toBe('');
         expect(redName.style.color).toBe('rgb(239, 68, 68)');
         expect(blueName.style.color).toBe('rgb(59, 130, 246)');
 
         context.getImageData.mockReturnValue({ data: pixels(240) });
         await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(name.style.textShadow).toBe('none');
+        expect(name.style.textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
         expect(yellowName.style.color).toBe(lightInk);
         expect(yellowName.style.fontWeight).toBe('400');
         expect(defaultName.style.fontWeight).toBe('400');
