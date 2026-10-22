@@ -43,9 +43,13 @@ it('preserves selected name/context colors while keeping unspecified context lab
             expect(opacity).toBe(theme === 'dark' ? 0.7 : 1);
             const name = screen.getByText('Ada');
             expect(name).toHaveStyle({ color: player.color });
+            expect(name.style.fontWeight).toBe(theme === 'dark' ? '' : '400');
+            expect(label.style.fontWeight).toBe('');
             expect(name.style.textShadow).not.toBe('none');
             rerender(renderHeader('#3b82f6'));
-            expect(screen.getByText(text => text.replace(/\u00ad/g, '') === 'Harvest')).toHaveStyle({ color: '#3b82f6' });
+            const customLabel = screen.getByText(text => text.replace(/\u00ad/g, '') === 'Harvest');
+            expect(customLabel).toHaveStyle({ color: '#3b82f6' });
+            expect(customLabel.style.fontWeight).toBe(theme === 'dark' ? '' : '400');
         }
         expect(container.querySelector('.animate-swipe-hint-enter > span')).toHaveClass('text-[rgb(var(--c-input-hint-ink))]');
         expect(player.color).toBe('rgb(var(--c-p-white))');

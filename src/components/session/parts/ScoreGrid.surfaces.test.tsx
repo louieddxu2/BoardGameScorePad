@@ -36,10 +36,10 @@ it('updates mounted player tints and keeps light auto rows continuous with their
         const playerHeader = view.container.querySelector('[data-player-header-id="red"]') as HTMLElement;
         const headerPaint = playerHeader.style.backgroundColor;
         const inputLabel = view.getByText(text => text.replace(/\u00ad/g, '') === 'Input');
-        expect(inputLabel).toHaveStyle({ color: template.columns[0].color });
+        expect(inputLabel).toHaveStyle({ color: template.columns[0].color, fontWeight: 400 });
         expect(inputLabel.style.textShadow).not.toBe('none');
         for (const player of session.players) {
-            expect(view.getByText(player.name)).toHaveStyle({ color: player.color });
+            expect(view.getByText(player.name)).toHaveStyle({ color: player.color, fontWeight: 400 });
         }
         expect(template.columns[0].color).toBe('#f97316');
         expect(view.getByText('2').parentElement).toHaveClass('bg-modal-backdrop/70', 'text-[rgb(var(--c-player-badge-ink))]');

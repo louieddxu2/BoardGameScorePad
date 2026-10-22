@@ -139,6 +139,12 @@ export const getContrastTextStyles = (
 
     // --- Light UI Environment (Clean Mode) ---
     if (resolvedTheme === 'light') {
+        // Custom ink stays normal-weight even when its container uses font-bold.
+        // Semantic UI ink and texture rendering retain their existing typography.
+        const isSystemInk = /var\(\s*--(?:c-(?!p-)|input-context-ink\b)/.test(textColorHex)
+            || /^(?:inherit|initial|unset|currentcolor|transparent)$/i.test(textColorHex);
+        if (!isSystemInk) styles.fontWeight = 400;
+
         // Known UI surfaces use actual contrast, not the palette's coarse tone labels.
         // A reader can be shared by a whole grid render; no element measurements.
         if (options.background) {

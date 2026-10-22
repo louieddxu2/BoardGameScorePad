@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { readColor, type ColorReader } from './color';
 import { compositeColors, contrastAfterRounding, relativeLuminance } from './colorContrast';
 import { PHOTO_DARK_SURFACE_MAX_LUMINANCE } from './photoResultPalette';
+import { getContrastTextStyles } from './ui';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
 export const getPhotoTextOutline = (color: string, softShadow: string, width = 2): string => [
@@ -46,10 +47,11 @@ export const getPhotoPlayerNameStyles = (
             WebkitTextStroke: '', filter: '',
         };
     }
-    // Use the existing export-safe edge, not UI transitions or replacement ink.
-    // Its opaque rim stays legible when the exported photo is scaled down.
+    // Reuse light UI's thin protection: a thick opaque rim makes normal text
+    // look bold. Do not copy UI transitions into the static photo export.
+    const { textShadow } = getContrastTextStyles(color, 'light', { background, read });
     return {
         color,
-        fontWeight: 400, textShadow: getPhotoPlayerNameShadow(color, background, read), WebkitTextStroke: 0, filter: 'none',
+        fontWeight: 400, textShadow, WebkitTextStroke: 0, filter: 'none',
     };
 };

@@ -3,6 +3,7 @@ import { getPhotoPlayerNameShadow, getPhotoPlayerNameStyles } from './photoTextC
 import { getPhotoResultPalette } from './photoResultPalette';
 import { contrastAfterRounding } from './colorContrast';
 import { parseColor } from './color';
+import { getContrastTextStyles } from './ui';
 
 // Independently check the resulting sRGB colors, not just that a shadow property exists.
 const luminance = (color: string) => {
@@ -24,6 +25,7 @@ describe('photo name and surface contrast', () => {
         const style = getPhotoPlayerNameStyles(original, '#eee6d8');
         expect(style).toMatchObject({ color: original, fontWeight: 400, WebkitTextStroke: 0, filter: 'none' });
         expect(style.textShadow).not.toBe('none');
+        expect(style.textShadow).not.toContain('1.25px');
         expect(getPhotoPlayerNameStyles('#111111', '#eee6d8').color).toBe('#111111');
         expect(getPhotoPlayerNameStyles('transparent', '#eee6d8').color).toBe('transparent');
         expect(getPhotoPlayerNameStyles('#111111', '#111111')).toEqual({
@@ -35,7 +37,7 @@ describe('photo name and surface contrast', () => {
             expect(name).toMatchObject({
                 color: original, fontWeight: 400, WebkitTextStroke: 0, filter: 'none',
             });
-            expect(name.textShadow).toBe(getPhotoPlayerNameShadow(original, background));
+            expect(name.textShadow).toBe(getContrastTextStyles(original, 'light', { background }).textShadow);
         }
         for (const original of ['#ef4444', '#3b82f6', '#10b981']) {
             // Formerly red -> rgb(252,220,220), blue -> rgb(213,228,253).
@@ -56,7 +58,10 @@ describe('photo name and surface contrast', () => {
                 const style = getPhotoPlayerNameStyles(color, palette.identity);
                 expect(style.color, `${sample}: ${color}`).toBe(color);
                 expect(style).not.toHaveProperty('transition');
-                expect(style.textShadow).toBe(getPhotoPlayerNameShadow(color, palette.identity));
+                const expectedShadow = style.fontWeight === 700
+                    ? getPhotoPlayerNameShadow(color, palette.identity)
+                    : getContrastTextStyles(color, 'light', { background: palette.identity }).textShadow;
+                expect(style.textShadow).toBe(expectedShadow);
                 if (contrastAfterRounding(parseColor(color)!, background)! < 4.5) {
                     expect(style.textShadow, `${sample}: ${color} needs edge protection`).not.toBe('none');
                 }

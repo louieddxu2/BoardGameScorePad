@@ -106,7 +106,13 @@ describe('Opacity and solid-background contrast', () => {
         expect(getContrastTextStyles('rgb(var(--c-p-black))', 'dark').textShadow).toContain('rgba(255,255,255,0.7)');
         expect(getContrastTextStyles('rgb(var(--c-p-yellow))', 'light').textShadow).toContain('rgba(0,0,0,0.6)');
         expect(getContrastTextStyles('rgb(var(--c-p-emerald))', 'light').textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
+        expect(getContrastTextStyles('rgb(var(--c-p-emerald))', 'light').fontWeight).toBe(400);
+        expect(getContrastTextStyles('rgb(var(--c-p-emerald))', 'dark')).not.toHaveProperty('fontWeight');
         expect(computed).not.toHaveBeenCalled();
+        for (const color of ['rgb(var(--c-txt-primary))', 'rgb(var(--c-status-danger))',
+            'rgb(var(--c-brand-primary))', 'var(--input-context-ink, #fff)', 'inherit']) {
+            expect(getContrastTextStyles(color, 'light')).not.toHaveProperty('fontWeight');
+        }
     });
 
     it('preserves selected label ink and shares the grid color reader for light-surface outlines', () => {
@@ -116,6 +122,7 @@ describe('Opacity and solid-background contrast', () => {
         const options = { background: '#f5f4f0', read };
         const orange = getContrastTextStyles('rgb(var(--test-color))', 'light', options);
         expect(orange).not.toHaveProperty('color');
+        expect(orange.fontWeight).toBe(400);
         expect(orange.textShadow).not.toBe('none');
         expect(getContrastTextStyles('#f97316', 'sage', options)).toEqual(orange);
         expect(getContrastTextStyles('#222', 'light', options)).not.toHaveProperty('color');
@@ -129,6 +136,7 @@ describe('Opacity and solid-background contrast', () => {
             for (const theme of ['dark', 'light', 'sage'] as const) {
                 const style = getContrastTextStyles(color, theme, options);
                 expect(style).not.toHaveProperty('color');
+                if (color !== 'transparent') expect(style.fontWeight).toBe(theme === 'dark' ? undefined : 400);
                 if (color !== 'transparent') expect(style.textShadow).not.toBe('none');
             }
         }
@@ -147,6 +155,7 @@ describe('Opacity and solid-background contrast', () => {
         expect(getContrastTextStyles('transparent', 'light', options).textShadow).toBe('none');
         for (const theme of ['dark', 'light'] as const) {
             const texture = { isTextureMode: true };
+            expect(getContrastTextStyles('#222', theme, texture)).not.toHaveProperty('fontWeight');
             expect(getContrastTextStyles('#222', theme, { ...options, ...texture }))
                 .toEqual(getContrastTextStyles('#222', theme, texture));
         }
