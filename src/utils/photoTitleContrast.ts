@@ -1,6 +1,7 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
 import { createColorReader } from './color';
+import { getPhotoNamePlateBackground } from './photoNamePlate';
 
 interface TitleAppearance {
     color: string;
@@ -121,7 +122,10 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         // Keep the original selected color on this export node, not in saved data.
         // Repeated captures must not inherit a stale adapted color from an earlier capture.
         const color = name.dataset.scorePhotoColor ??= name.style.color;
-        const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, palette.identity, read);
+        const plate = name.closest<HTMLElement>('[data-score-photo-identity]');
+        const background = plate ? getPhotoNamePlateBackground(color, palette.identity, read) : palette.identity;
+        if (plate) plate.style.backgroundColor = background;
+        const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, background, read);
         Object.assign(name.style, styles);
         name.style.setProperty('-webkit-text-stroke', String(WebkitTextStroke ?? ''));
     }

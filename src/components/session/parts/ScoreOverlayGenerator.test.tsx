@@ -5,6 +5,7 @@ import { LanguageContext } from '../../../i18n';
 import { Player } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
+import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
 import { getPlayerStickerIndices } from './StickerElement';
 import { calculateWinners } from '../../../utils/templateUtils';
 
@@ -243,7 +244,11 @@ describe('photo-first score export layout', () => {
       expect(identity.parentElement).toBe(entry);
       expect(identity).toHaveClass('relative');
       expect(identity).toHaveStyle({ borderRadius: '8px' });
-      expect((identity as HTMLElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
+      if (players[index].isAnonymous) {
+        expect((identity as HTMLElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
+      } else {
+        expect(identity).toHaveStyle({ backgroundColor: getPhotoNamePlateBackground(players[index].color, '#293649') });
+      }
       expect((identity as HTMLElement).style.boxShadow).toBe('');
       expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
       if (players[index].isAnonymous) expect(identity.querySelector('[data-sticker-icon]')).not.toBeNull();
@@ -251,7 +256,7 @@ describe('photo-first score export layout', () => {
         expect(identity).toHaveTextContent(players[index].name);
         expect(identity.querySelector('span')).toHaveStyle({ fontSize: '36px', overflowWrap: 'anywhere' });
         expect(identity.querySelector('span')).toHaveStyle({ color: players[index].color });
-        expect(identity.querySelector('span')?.style.textShadow).toBe('0 1px 2px rgba(0,0,0,0.8)');
+        expect(identity.querySelector('span')?.style.textShadow).toBe('none');
       }
     });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');
@@ -263,6 +268,7 @@ describe('photo-first score export layout', () => {
       expect(crown).toHaveStyle({ top: '0px', right: '0px' });
       expect(crown).toHaveClass('text-status-warning');
       expect((crown as SVGElement).style.color).toBe('var(--photo-result-winner, #fbbf24)');
+      expect((crown as SVGElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
       expect(crown).toHaveAttribute('width', '24');
     }
 

@@ -55,8 +55,9 @@ For `C:\board-game-score-pad`:
 # User-Selected Color Contract
 
 - Preserve user-selected foreground RGB and alpha in standard UI and photo-sharing exports. Resolve contrast with outlines, shadows, or backing treatments, not by lightening/darkening the selected ink, replacing it with a fixed color, or blending it into the background.
-- Use normal font weight for user-selected ink on light UI surfaces, and thin contrast protection on non-dark photo name plates. Do not reset typography globally or change dark/texture rendering as part of this rule.
-- For user-selected text outlines in standard UI and photo exports, honor `COLOR_TONES` first. Unregistered colors use Oklab L thresholds calibrated to the existing 17-color classification (dark: about <0.596, light: about >0.815; see `textColorTone.ts`). Do not replace this with foreground/background contrast thresholds without explicit approval. Keep semantic UI and image-scoreboard texture policies unchanged.
+- Use normal font weight for user-selected ink on light UI surfaces and non-dark photo name plates. Do not reset typography globally or change dark/texture rendering as part of this rule.
+- Standard UI text outlines honor `COLOR_TONES` first. Unregistered colors use Oklab L thresholds calibrated to the existing 17-color classification (dark: about <0.596, light: about >0.815; see `textColorTone.ts`). Do not replace this with foreground/background contrast thresholds without explicit approval. Keep semantic UI and image-scoreboard texture policies unchanged.
+- Photo-sharing names instead adapt their own opaque plate to the approved Oklab lightness-gap rule (about 0.334 on dark backings, 0.161 on light, interpolated between; see `photoNamePlate.ts`), with no name outline. Preserve the photo-derived score card and the crown's original backing. Do not use a WCAG ratio in place of this calibrated name-plate policy.
 - Automatic black/white text on a user-selected button background is a separate policy when no foreground color was selected.
 - Image-based scoreboards are a separate feature. Preserve their existing texture-specific ink and blending behavior; do not change it as part of standard UI or photo-sharing color work unless explicitly requested.
 

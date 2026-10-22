@@ -7,6 +7,8 @@ import { useCommonTranslation } from '../../../i18n/common';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
+import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
+import { createColorReader } from '../../../utils/color';
 
 export interface OverlayData {
     gameName: string;
@@ -63,6 +65,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const playerWidth = Math.min(MAX_PLAYER_WIDTH, Math.floor((innerWidth - (targetCols - 1) * GAP_PX) / targetCols));
     // Bound the whole group as well, so five compact cards still wrap as 3+2.
     const resultsWidth = targetCols * playerWidth + (targetCols - 1) * GAP_PX + PADDING_PX * 2;
+    const read = createColorReader();
 
     return (
         <div
@@ -151,6 +154,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         : p.totalScore;
                     const hasDefaultColor = !p.color || p.color === 'transparent';
                     const playerColor = hasDefaultColor ? RESULT_TEXT : p.color;
+                    const nameBackground = !hasDefaultColor && !p.isAnonymous
+                        ? getPhotoNamePlateBackground(playerColor, PHOTO_RESULT_FALLBACK.identity, read) : undefined;
                     const scoreFontSize = Math.min(56, (playerWidth - 64) / (String(displayScore).length * 0.65));
 
                     return (
@@ -172,8 +177,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 // Reserve space within the name box for its superscript crown.
                                 style={{
                                     maxWidth: '100%', minHeight: 50, padding: isCoop ? '10px 8px 6px' : '10px 28px 6px', textAlign: 'center',
-                                    // A small tonal step separates identities without an unrelated UI-colored plate.
-                                    backgroundColor: `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`, borderRadius: 8,
+                                    // Export preparation refreshes this local plate from the sampled photo.
+                                    backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`, borderRadius: 8,
                                 }}
                             >
                                 {isWinner && !isCoop && (
@@ -181,7 +186,11 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                         data-score-photo-winner="true"
                                         size={24}
                                         className="absolute text-status-warning fill-current"
-                                        style={{ top: 0, right: 0, color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})` }}
+                                        style={{
+                                            top: 0, right: 0, color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})`,
+                                            // Preserve the crown's calibrated photo backing even if the name plate changes.
+                                            backgroundColor: `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`, borderRadius: 4,
+                                        }}
                                     />
                                 )}
                                 {p.isAnonymous ? (
@@ -194,10 +203,10 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                         style={{
                                             display: 'block', fontSize: 36, lineHeight: 1.2, overflowWrap: 'anywhere',
                                             ...(hasDefaultColor ? {
-                                                ...getPhotoPlayerNameStyles(PHOTO_RESULT_FALLBACK.text, PHOTO_RESULT_FALLBACK.identity),
+                                                ...getPhotoPlayerNameStyles(PHOTO_RESULT_FALLBACK.text, PHOTO_RESULT_FALLBACK.identity, read),
                                                 color: playerColor, textShadow: 'none',
                                             }
-                                                : getPhotoPlayerNameStyles(playerColor, PHOTO_RESULT_FALLBACK.identity)),
+                                                : getPhotoPlayerNameStyles(playerColor, nameBackground ?? PHOTO_RESULT_FALLBACK.identity, read)),
                                         }}
                                     >
                                         {p.name}

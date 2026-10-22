@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle } from './photoTitleContrast';
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { parseColor } from './color';
-import { getContrastTextStyles } from './ui';
+import { getPhotoPlayerNameStyles } from './photoTextContrast';
+import { getPhotoNameRequiredGap } from './photoNamePlate';
+import { getOklabLightness } from './textColorTone';
 
 const pixels = (...brightness: number[]) => new Uint8ClampedArray(
     brightness.flatMap(value => [value, value, value, 255]),
@@ -102,54 +104,45 @@ describe('photo title contrast', () => {
         blueName.dataset.scorePhotoName = 'custom';
         blueName.dataset.scorePhotoColor = '#3b82f6';
         blueName.style.color = '#3b82f6';
-        root.append(name, defaultName, yellowName, redName, blueName);
-        context.getImageData.mockReturnValue({ data: pixels(240) });
-        await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(name.style.textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
-        expect(defaultName.style.textShadow).toBe('none');
-        expect(name.style.fontWeight).toBe('400');
-        expect(defaultName.style.fontWeight).toBe('400');
-        const lightInk = yellowName.style.color;
-        expect(lightInk).toBe('rgb(250, 204, 21)');
-        expect(yellowName.style.textShadow).not.toBe('none');
-
-        context.getImageData.mockReturnValue({ data: pixels(160) });
-        await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(yellowName.style.fontWeight).toBe('400');
-        expect(defaultName.style.fontWeight).toBe('400');
-        expect(yellowName.style.color).toBe(lightInk);
-        expect(yellowName.style.filter).toBe('none');
-
-        context.getImageData.mockReturnValue({ data: pixels(120) });
-        await prepareScorePhotoTitle(root, new AbortController().signal);
-        for (const coloredName of [redName, blueName]) {
-            expect(coloredName.style.fontWeight).toBe('400');
-            expect(coloredName.style.textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
-            expect(parseColor(coloredName.style.color)).toEqual(parseColor(coloredName.dataset.scorePhotoColor!));
+        const names = [name, defaultName, yellowName, redName, blueName];
+        for (const item of names) {
+            const plate = document.createElement('div');
+            plate.dataset.scorePhotoIdentity = 'true';
+            plate.style.backgroundColor = 'var(--photo-result-identity, #293649)';
+            plate.append(item);
+            root.append(plate);
         }
-        expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
-
-        context.getImageData.mockReturnValue({ data: pixels(20) });
-        await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(name.style.textShadow).toContain('1px 1px 0 rgba(255,255,255,0.7)');
-        expect(defaultName.style.textShadow).toBe('none');
-        expect(name.style.fontWeight).toBe('700');
-        expect(defaultName.style.fontWeight).toBe('700');
+        let firstBackgrounds: string[] | undefined;
+        for (const brightness of [240, 160, 120, 20, 240]) {
+            context.getImageData.mockReturnValue({ data: pixels(brightness) });
+            await prepareScorePhotoTitle(root, new AbortController().signal);
+            const palette = getPhotoResultPalette(pixels(brightness));
+            // Only names get individual plates; the photo-derived card stays unchanged.
+            expect(root.style.getPropertyValue('--photo-result-card')).toBe(palette.card);
+            for (const item of [name, yellowName, redName, blueName]) {
+                const background = item.parentElement!.style.backgroundColor;
+                const bgL = getOklabLightness(parseColor(background)!);
+                const ink = parseColor(item.style.color)!;
+                expect(Math.abs(getOklabLightness(ink) - bgL)).toBeGreaterThanOrEqual(getPhotoNameRequiredGap(bgL));
+                expect(ink).toEqual(parseColor(item.dataset.scorePhotoColor!));
+                expect(item.style.textShadow).toBe('none');
+                expect(item.style.filter).toBe('none');
+                expect(item.style.fontWeight).toBe(String(getPhotoPlayerNameStyles(item.style.color, background).fontWeight));
+            }
+            expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
+            expect(defaultName.style.textShadow).toBe('none');
+            expect(defaultName.parentElement!.style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
+            const backgrounds = names.map(item => item.parentElement!.style.backgroundColor);
+            if (brightness === 240) {
+                if (firstBackgrounds) expect(backgrounds).toEqual(firstBackgrounds);
+                else firstBackgrounds = backgrounds;
+            }
+        }
         expect(name.style.color).toBe('rgb(17, 17, 17)');
         expect(name.textContent).toBe('Player');
-        expect(defaultName.style.color).toBe('var(--photo-result-text, #f8fafc)');
         expect(yellowName.style.color).toBe('rgb(250, 204, 21)');
-        expect(yellowName.style.textShadow).toBe(getContrastTextStyles('#facc15', 'dark').textShadow);
-        expect(yellowName.style.filter).toBe('');
         expect(redName.style.color).toBe('rgb(239, 68, 68)');
         expect(blueName.style.color).toBe('rgb(59, 130, 246)');
-
-        context.getImageData.mockReturnValue({ data: pixels(240) });
-        await prepareScorePhotoTitle(root, new AbortController().signal);
-        expect(name.style.textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
-        expect(yellowName.style.color).toBe(lightInk);
-        expect(yellowName.style.fontWeight).toBe('400');
-        expect(defaultName.style.fontWeight).toBe('400');
         expect(yellowName.dataset.scorePhotoColor).toBe('#facc15');
         expect(context.drawImage).toHaveBeenCalledTimes(10);
         expect(context.getImageData).toHaveBeenCalledTimes(10);
@@ -161,7 +154,11 @@ describe('photo title contrast', () => {
         name.dataset.scorePhotoName = 'custom';
         name.dataset.scorePhotoColor = '#facc15';
         name.style.color = '#998000';
-        root.append(name);
+        const plate = document.createElement('div');
+        plate.dataset.scorePhotoIdentity = 'true';
+        plate.style.backgroundColor = '#facc15';
+        plate.append(name);
+        root.append(plate);
         root.style.setProperty('--photo-result-background', 'hsl(0, 44%, 22%)');
         root.style.setProperty('--photo-result-card', 'hsl(0, 37%, 30%)');
         root.style.setProperty('--photo-result-identity', 'hsl(0, 37%, 26%)');
@@ -176,6 +173,10 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-result-identity')).toBe(PHOTO_RESULT_FALLBACK.identity);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
         expect(name.style.color).toBe('rgb(250, 204, 21)');
+        const bgL = getOklabLightness(parseColor(plate.style.backgroundColor)!);
+        expect(Math.abs(getOklabLightness(parseColor(name.style.color)!) - bgL))
+            .toBeGreaterThanOrEqual(getPhotoNameRequiredGap(bgL));
+        expect(name.style.textShadow).toBe('none');
     });
 
     it('uses the photo brightness for result surfaces and score text regardless of the app theme', async () => {
