@@ -109,7 +109,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-result-text', palette.text);
     root.style.setProperty('--photo-result-muted', palette.muted);
     root.style.setProperty('--photo-result-winner', palette.winner);
-    // Sampling already knows the actual backing: refine each name once, before capture.
+    // Apply the fixed light scoreboard name treatment once, before capture.
     const read = createColorReader();
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {
@@ -123,7 +123,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         // Repeated captures must not inherit a stale adapted color from an earlier capture.
         const color = name.dataset.scorePhotoColor ??= name.style.color;
         const plate = name.closest<HTMLElement>('[data-score-photo-identity]');
-        const background = plate ? getPhotoNamePlateBackground(color, palette.identity, read) : palette.identity;
+        const background = getPhotoNamePlateBackground(color, read);
         if (plate) plate.style.backgroundColor = background;
         const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, background, read);
         Object.assign(name.style, styles);

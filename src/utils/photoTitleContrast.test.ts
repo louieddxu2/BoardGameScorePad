@@ -3,8 +3,7 @@ import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle }
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { parseColor } from './color';
 import { getPhotoPlayerNameStyles } from './photoTextContrast';
-import { getPhotoNameRequiredGap } from './photoNamePlate';
-import { getOklabLightness } from './textColorTone';
+import { getPhotoNamePlateBackground } from './photoNamePlate';
 
 const pixels = (...brightness: number[]) => new Uint8ClampedArray(
     brightness.flatMap(value => [value, value, value, 255]),
@@ -128,11 +127,10 @@ describe('photo title contrast', () => {
             expect(root.style.getPropertyValue('--photo-result-card')).toBe(palette.card);
             for (const item of [name, yellowName, redName, blueName]) {
                 const background = item.parentElement!.style.backgroundColor;
-                const bgL = getOklabLightness(parseColor(background)!);
                 const ink = parseColor(item.style.color)!;
-                expect(Math.abs(getOklabLightness(ink) - bgL)).toBeGreaterThanOrEqual(getPhotoNameRequiredGap(bgL));
+                expect(parseColor(background)).toEqual(parseColor(getPhotoNamePlateBackground(item.dataset.scorePhotoColor!)));
                 expect(ink).toEqual(parseColor(item.dataset.scorePhotoColor!));
-                expect(item.style.textShadow).toBe('none');
+                expect(item.style.textShadow).toBe(getPhotoPlayerNameStyles(item.style.color, background).textShadow);
                 expect(item.style.filter).toBe('none');
                 expect(item.style.fontWeight).toBe(String(getPhotoPlayerNameStyles(item.style.color, background).fontWeight));
                 const card = item.parentElement!.parentElement!;
@@ -186,10 +184,8 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-result-identity')).toBe(PHOTO_RESULT_FALLBACK.identity);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
         expect(name.style.color).toBe('rgb(250, 204, 21)');
-        const bgL = getOklabLightness(parseColor(plate.style.backgroundColor)!);
-        expect(Math.abs(getOklabLightness(parseColor(name.style.color)!) - bgL))
-            .toBeGreaterThanOrEqual(getPhotoNameRequiredGap(bgL));
-        expect(name.style.textShadow).toBe('none');
+        expect(parseColor(plate.style.backgroundColor)).toEqual(parseColor(getPhotoNamePlateBackground('#facc15')));
+        expect(name.style.textShadow).toBe(getPhotoPlayerNameStyles('#facc15', plate.style.backgroundColor).textShadow);
     });
 
     it('uses the photo brightness for result surfaces and score text regardless of the app theme', async () => {

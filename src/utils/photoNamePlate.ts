@@ -1,86 +1,21 @@
-import { formatColor, parseColor, readColor, type ColorReader, type RgbaColor } from './color';
+import { formatColor, readColor, type ColorReader, type RgbaColor } from './color';
 import { compositeColors } from './colorContrast';
-import { PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getOklabLightness, getTextColorTone } from './textColorTone';
 
-const BLACK: RgbaColor = { r: 0, g: 0, b: 0, a: 1 };
-const WHITE: RgbaColor = { r: 255, g: 255, b: 255, a: 1 };
-const FALLBACK = parseColor(PHOTO_RESULT_FALLBACK.identity)!;
-const round = (color: RgbaColor): RgbaColor => ({
-    r: Math.round(color.r), g: Math.round(color.g), b: Math.round(color.b), a: color.a,
-});
+// Match the light scoreboard's reading surface and thin player-color wash.
+// Fixed export paint must not inherit the current app theme or a photo's hue.
+const LIGHT_GRID_BASE: RgbaColor = { r: 251, g: 250, b: 247, a: 1 };
+const PLAYER_TINT_OPACITY = 0.045;
 
-/** Calibrated from the 17 labeled colors on the existing tinted name headers:
- * dark: indigo/violet gap midpoint; light: yellow/amber gap midpoint.
- * Intermediate photo surfaces interpolate; this is not a WCAG contrast ratio. */
-export const getPhotoNameRequiredGap = (backgroundLightness: number): number => {
-    const position = Math.max(0, Math.min(1, (backgroundLightness - 0.26) / 0.72));
-    return 0.3343 + (0.1614 - 0.3343) * position;
-};
-
-/** Seed a muted name header from the player's hue, with a small photo tint. Only
- * light ink prefers a deeper header; other player colors prefer a soft light one.
- * Every preset player color has a passing
- * black or white endpoint. Search is bounded, checks final 8-bit paint, and
- * never samples an image or changes the selected foreground RGB/alpha. */
+/** A quiet near-white name header. Only its backing is tinted; selected ink
+ * retains its RGB/alpha and uses the scoreboard's light-theme edge protection. */
 export const getPhotoNamePlateBackground = (
-    color: string, background: string, read: ColorReader = readColor,
+    color: string, read: ColorReader = readColor,
 ): string => {
     const ink = read(color);
-    if (!ink || ink.a === 0) return background;
-    const source = read(background);
-    const photo = source?.a === 1 ? source : FALLBACK;
-    const darkHeader = getTextColorTone(ink) === 'light';
-    const playerWeight = darkHeader ? 0.44 : 0.18;
-    const photoWeight = 0.06;
-    const neutral = darkHeader ? 0 : 255;
-    // Soften only the backing's chroma; selected ink and the calibrated gap stay intact.
-    const playerNeutral = (ink.r + ink.g + ink.b) / 3;
-    const channel = (value: number, photoValue: number) =>
-        (playerNeutral + (value - playerNeutral) * 0.7) * playerWeight
-        + photoValue * photoWeight + neutral * (1 - playerWeight - photoWeight);
-    const backing: RgbaColor = {
-        r: channel(ink.r, photo.r), g: channel(ink.g, photo.g), b: channel(ink.b, photo.b), a: 1,
-    };
-    const base = round(backing);
-    const inkLightness = ink.a === 1 ? getOklabLightness(ink) : null;
-    const roundedInkLightness = ink.a === 1 ? getOklabLightness(round(ink)) : null;
-    const margin = (plate: RgbaColor): number => {
-        const lightness = getOklabLightness(plate);
-        const paint = ink.a === 1 ? ink : compositeColors(ink, plate);
-        const difference = Math.min(
-            Math.abs((inkLightness ?? getOklabLightness(paint)) - lightness),
-            Math.abs((roundedInkLightness ?? getOklabLightness(round(paint))) - lightness),
-        );
-        return difference - getPhotoNameRequiredGap(lightness);
-    };
-    if (margin(base) >= 0) return formatColor(base);
-
-    const baseLightness = getOklabLightness(base);
-    const find = (endpoint: RgbaColor): RgbaColor | null => {
-        if (margin(endpoint) < 0) return null;
-        let low = 0;
-        let high = 1;
-        let passing = endpoint;
-        for (let step = 0; step < 12; step++) {
-            const amount = (low + high) / 2;
-            const candidate = round({
-                r: base.r + (endpoint.r - base.r) * amount,
-                g: base.g + (endpoint.g - base.g) * amount,
-                b: base.b + (endpoint.b - base.b) * amount, a: 1,
-            });
-            if (margin(candidate) >= 0) { high = amount; passing = candidate; }
-            else low = amount;
-        }
-        return passing;
-    };
-    const dark = find(BLACK);
-    const light = find(WHITE);
-    if (dark && light) {
-        return formatColor(Math.abs(getOklabLightness(dark) - baseLightness)
-            <= Math.abs(getOklabLightness(light) - baseLightness) ? dark : light);
-    }
-    // Imported near-transparent ink may have no passing endpoint; retain its
-    // alpha and use the best available backing rather than inventing a new ink.
-    return formatColor(dark ?? light ?? (margin(BLACK) >= margin(WHITE) ? BLACK : WHITE));
+    const backing = ink
+        ? compositeColors({ ...ink, a: ink.a * PLAYER_TINT_OPACITY }, LIGHT_GRID_BASE)
+        : LIGHT_GRID_BASE;
+    return formatColor({
+        r: Math.round(backing.r), g: Math.round(backing.g), b: Math.round(backing.b), a: 1,
+    });
 };

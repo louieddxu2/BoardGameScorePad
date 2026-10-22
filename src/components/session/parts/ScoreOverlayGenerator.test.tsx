@@ -6,6 +6,7 @@ import { Player } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
+import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { getPlayerStickerIndices } from './StickerElement';
 import { calculateWinners } from '../../../utils/templateUtils';
 
@@ -251,7 +252,7 @@ describe('photo-first score export layout', () => {
       if (players[index].isAnonymous) {
         expect((identity as HTMLElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
       } else {
-        expect(identity).toHaveStyle({ backgroundColor: getPhotoNamePlateBackground(players[index].color, '#293649') });
+        expect(identity).toHaveStyle({ backgroundColor: getPhotoNamePlateBackground(players[index].color) });
       }
       expect((identity as HTMLElement).style.boxShadow).toBe('');
       expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
@@ -260,7 +261,8 @@ describe('photo-first score export layout', () => {
         expect(identity).toHaveTextContent(players[index].name);
         expect(identity.querySelector('span')).toHaveStyle({ fontSize: '36px', overflowWrap: 'anywhere' });
         expect(identity.querySelector('span')).toHaveStyle({ color: players[index].color });
-        expect(identity.querySelector('span')?.style.textShadow).toBe('none');
+        expect(identity.querySelector('span')?.style.textShadow).toBe(getPhotoPlayerNameStyles(players[index].color,
+          getPhotoNamePlateBackground(players[index].color)).textShadow);
       }
     });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');

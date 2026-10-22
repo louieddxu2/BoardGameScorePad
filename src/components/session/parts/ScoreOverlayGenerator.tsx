@@ -155,7 +155,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     const hasDefaultColor = !p.color || p.color === 'transparent';
                     const playerColor = hasDefaultColor ? RESULT_TEXT : p.color;
                     const nameBackground = !hasDefaultColor && !p.isAnonymous
-                        ? getPhotoNamePlateBackground(playerColor, PHOTO_RESULT_FALLBACK.identity, read) : undefined;
+                        ? getPhotoNamePlateBackground(playerColor, read) : undefined;
                     const scoreFontSize = Math.min(56, (playerWidth - 64) / (String(displayScore).length * 0.65));
 
                     return (
@@ -179,7 +179,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 style={{
                                     width: '100%', maxWidth: '100%', minHeight: 50,
                                     padding: isCoop ? '10px 8px 6px' : '10px 44px 6px', textAlign: 'center',
-                                    // A full-width player-hued header; score paint stays photo-derived below it.
+                                    // A full-width light scoreboard wash; score paint stays photo-derived below it.
                                     backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`,
                                     borderRadius: shareTeamResult ? 8 : 0,
                                 }}
