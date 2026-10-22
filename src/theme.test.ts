@@ -102,10 +102,13 @@ describe('Three-theme visual contract', () => {
                 expect(themes.get(theme)?.get(token)).toBe(root.get(token));
             }
         }
-        for (const ink of ['rgb(var(--c-p-white))', 'rgb(var(--c-p-yellow))', '#ffffcc']) {
+        for (const ink of ['rgb(var(--c-p-white))', 'rgb(var(--c-p-yellow))', 'rgb(var(--c-p-skin))', '#ffffcc']) {
             expect(getContrastTextStyles(ink, 'sage')).toEqual(getContrastTextStyles(ink, 'light'));
-            expect(getContrastTextStyles(ink, 'sage').textShadow).toContain('rgba(0,0,0,0.6)');
         }
+        expect(getContrastTextStyles('rgb(var(--c-p-white))', 'sage').textShadow).toContain('1px 0 0 rgba(0,0,0,1)');
+        expect(getContrastTextStyles('rgb(var(--c-p-yellow))', 'sage').textShadow).toBe('none');
+        expect(getContrastTextStyles('rgb(var(--c-p-skin))', 'sage').textShadow).toBe('none');
+        expect(getContrastTextStyles('#ffffcc', 'sage').textShadow).toContain('rgba(0,0,0,0.6)');
         expect(getContrastTextStyles('rgb(var(--c-p-black))', 'sage', { isTextureMode: true }))
             .toEqual(getContrastTextStyles('rgb(var(--c-p-black))', 'dark', { isTextureMode: true }));
     });

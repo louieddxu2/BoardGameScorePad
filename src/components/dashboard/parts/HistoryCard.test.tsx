@@ -8,7 +8,7 @@ import type { HistoryRecord } from '../../../types';
 import { getContrastTextStyles } from '../../../utils/ui';
 import HistoryCard from './HistoryCard';
 
-it('uses normal light-theme player names and scores even for winners, retaining only the shared thin edge', () => {
+it('uses normal light-theme player names and scores even for winners, outlining only the white palette ink', () => {
     const palette = Object.entries(COLOR_TONES).map(([name, tone]) => {
         const channels = appCss.match(new RegExp(`${name}:\\s*(\\d+) (\\d+) (\\d+);`))!.slice(1).map(Number);
         return { name, tone, color: `rgb(${channels.join(',')})` };
@@ -43,7 +43,8 @@ it('uses normal light-theme player names and scores even for winners, retaining 
                         expect(ink.style.fontWeight).toBe(theme === 'dark' ? '' : '400');
                         if (theme !== 'dark') {
                             expect(ink.style.textShadow).not.toContain('rgba(255,255,255');
-                            expect(ink.style.textShadow?.includes('rgba(0,0,0,0.6)')).toBe(tone === 'light');
+                            expect(ink.style.textShadow?.includes('rgba(0,0,0,1)')).toBe(name === '--c-p-white');
+                            if (tone === 'light' && name !== '--c-p-white') expect(ink.style.textShadow).toBe('none');
                         }
                     }
                 }

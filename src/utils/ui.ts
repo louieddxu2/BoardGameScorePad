@@ -161,7 +161,23 @@ export const getContrastTextStyles = (
             : getTextColorTone(ink) === 'light')));
 
         if (shouldProtectLight) {
-            // Thin black edge without increasing the selected text's font weight.
+            if (!isSystemInk) {
+                // Only the three existing light player inks change. Keep raw
+                // RGB/HEX equivalents aligned without resolving palette variables.
+                const isWhite = varName === '--c-p-white'
+                    || (ink?.r === 255 && ink.g === 255 && ink.b === 255);
+                if (isWhite) {
+                    return {
+                        ...styles,
+                        textShadow: '1px 0 0 rgba(0,0,0,1), -1px 0 0 rgba(0,0,0,1), 0 1px 0 rgba(0,0,0,1), 0 -1px 0 rgba(0,0,0,1)',
+                    };
+                }
+                const isYellowOrSkin = varName === '--c-p-yellow' || varName === '--c-p-skin'
+                    || (ink?.r === 250 && ink.g === 204 && ink.b === 21)
+                    || (ink?.r === 254 && ink.g === 215 && ink.b === 170);
+                if (isYellowOrSkin) return { ...styles, textShadow: 'none' };
+            }
+            // Other unregistered light inks and semantic text keep their policy.
             return {
                 ...styles,
                 textShadow: '0.5px 0 0 rgba(0,0,0,0.6), -0.5px 0 0 rgba(0,0,0,0.6), 0 0.5px 0 rgba(0,0,0,0.6), 0 -0.5px 0 rgba(0,0,0,0.6)',

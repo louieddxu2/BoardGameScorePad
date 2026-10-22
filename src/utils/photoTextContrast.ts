@@ -12,7 +12,7 @@ export const getPhotoTextOutline = (color: string, softShadow: string, width = 2
     softShadow,
 ].join(', ');
 
-/** Reuse the scoreboard's ink categories, normal light weight and thin edge.
+/** Reuse the scoreboard's ink categories, normal light weight and palette edges.
  * Export pixels are 3x a typical 360px photo preview; scale shadows, not ink.
  * Photo-derived default names can still retain their original dark weight. */
 export const getPhotoPlayerNameStyles = (

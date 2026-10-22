@@ -107,7 +107,10 @@ describe('Opacity and solid-background contrast', () => {
     it('preserves the existing ink-outline policy and its no-DOM palette fast path', () => {
         const computed = vi.spyOn(globalThis, 'getComputedStyle');
         expect(getContrastTextStyles('rgb(var(--c-p-black))', 'dark').textShadow).toContain('rgba(255,255,255,0.7)');
-        expect(getContrastTextStyles('rgb(var(--c-p-yellow))', 'light').textShadow).toContain('rgba(0,0,0,0.6)');
+        expect(getContrastTextStyles('rgb(var(--c-p-yellow))', 'light').textShadow).toBe('none');
+        expect(getContrastTextStyles('rgb(var(--c-p-skin))', 'light').textShadow).toBe('none');
+        expect(getContrastTextStyles('rgb(var(--c-p-white))', 'light').textShadow)
+            .toBe('1px 0 0 rgba(0,0,0,1), -1px 0 0 rgba(0,0,0,1), 0 1px 0 rgba(0,0,0,1), 0 -1px 0 rgba(0,0,0,1)');
         expect(getContrastTextStyles('rgb(var(--c-p-emerald))', 'light').textShadow).toBe('0 0.5px 1px rgba(0,0,0,0.05)');
         expect(getContrastTextStyles('rgb(var(--c-p-emerald))', 'light').fontWeight).toBe(400);
         expect(getContrastTextStyles('rgb(var(--c-p-emerald))', 'dark')).not.toHaveProperty('fontWeight');
@@ -149,16 +152,16 @@ describe('Opacity and solid-background contrast', () => {
         expect(getContrastTextStyles('#fff', 'dark', options)).toEqual(getContrastTextStyles('#fff', 'dark'));
         expect(getContrastTextStyles('#fff', 'light', { ...options, isTextureMode: true }))
             .toEqual(getContrastTextStyles('#fff', 'light', { isTextureMode: true }));
-        expect(getContrastTextStyles('#fff', 'light').textShadow).toContain('rgba(0,0,0,0.6)');
+        expect(getContrastTextStyles('#fff', 'light').textShadow).toContain('rgba(0,0,0,1)');
     });
 
     it('honors tone categories and calibrated Oklab boundaries, independently of the background', () => {
         const thinBlackEdge = '0.5px 0 0 rgba(0,0,0,0.6), -0.5px 0 0 rgba(0,0,0,0.6), 0 0.5px 0 rgba(0,0,0,0.6), 0 -0.5px 0 rgba(0,0,0,0.6)';
-        for (const color of ['white', 'yellow', 'skin']) {
-            expect(getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light').textShadow).toBe(thinBlackEdge);
+        for (const color of ['yellow', 'skin']) {
+            expect(getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light').textShadow).toBe('none');
         }
-        for (const color of ['red', 'blue', 'emerald', 'lime', 'cyan']) {
-            expect(getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light').textShadow)
+        for (const [name] of Object.entries(COLOR_TONES).filter(([, tone]) => tone !== 'light')) {
+            expect(getContrastTextStyles(`rgb(var(${name}))`, 'light').textShadow)
                 .toBe('0 0.5px 1px rgba(0,0,0,0.05)');
         }
         expect(getContrastTextStyles('#c2c2c2', 'light').textShadow).not.toBe(thinBlackEdge);
@@ -176,7 +179,9 @@ describe('Opacity and solid-background contrast', () => {
             expect(getContrastTextStyles('#222', theme, texture)).not.toHaveProperty('fontWeight');
         }
         const read = vi.fn();
-        getContrastTextStyles('rgb(var(--c-p-yellow))', 'light', { background: 'rgb(var(--unused))', read });
+        for (const color of ['white', 'yellow', 'skin']) {
+            getContrastTextStyles(`rgb(var(--c-p-${color}))`, 'light', { background: 'rgb(var(--unused))', read });
+        }
         expect(read).not.toHaveBeenCalled();
     });
 
