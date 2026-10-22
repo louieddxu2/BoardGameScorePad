@@ -18,7 +18,7 @@ export const getPhotoNameRequiredGap = (backgroundLightness: number): number => 
     return 0.3343 + (0.1614 - 0.3343) * position;
 };
 
-/** Seed the name header from the player's hue, with a small photo tint. Only
+/** Seed a muted name header from the player's hue, with a small photo tint. Only
  * light ink prefers a deeper header; other player colors prefer a soft light one.
  * Every preset player color has a passing
  * black or white endpoint. Search is bounded, checks final 8-bit paint, and
@@ -34,10 +34,13 @@ export const getPhotoNamePlateBackground = (
     const playerWeight = darkHeader ? 0.44 : 0.18;
     const photoWeight = 0.06;
     const neutral = darkHeader ? 0 : 255;
+    // Soften only the backing's chroma; selected ink and the calibrated gap stay intact.
+    const playerNeutral = (ink.r + ink.g + ink.b) / 3;
+    const channel = (value: number, photoValue: number) =>
+        (playerNeutral + (value - playerNeutral) * 0.7) * playerWeight
+        + photoValue * photoWeight + neutral * (1 - playerWeight - photoWeight);
     const backing: RgbaColor = {
-        r: ink.r * playerWeight + photo.r * photoWeight + neutral * (1 - playerWeight - photoWeight),
-        g: ink.g * playerWeight + photo.g * photoWeight + neutral * (1 - playerWeight - photoWeight),
-        b: ink.b * playerWeight + photo.b * photoWeight + neutral * (1 - playerWeight - photoWeight), a: 1,
+        r: channel(ink.r, photo.r), g: channel(ink.g, photo.g), b: channel(ink.b, photo.b), a: 1,
     };
     const base = round(backing);
     const inkLightness = ink.a === 1 ? getOklabLightness(ink) : null;

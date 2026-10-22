@@ -178,7 +178,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 // Reserve space within the name box for its superscript crown.
                                 style={{
                                     width: '100%', maxWidth: '100%', minHeight: 50,
-                                    padding: isCoop ? '10px 8px 6px' : '10px 28px 6px', textAlign: 'center',
+                                    padding: isCoop ? '10px 8px 6px' : '10px 44px 6px', textAlign: 'center',
                                     // A full-width player-hued header; score paint stays photo-derived below it.
                                     backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`,
                                     borderRadius: shareTeamResult ? 8 : 0,
@@ -187,12 +187,12 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 {isWinner && !isCoop && (
                                     <Crown
                                         data-score-photo-winner="true"
-                                        size={24}
+                                        size={32}
                                         className="absolute text-status-warning fill-current"
                                         style={{
-                                            top: 0, right: 0, color: `var(--photo-result-winner, ${PHOTO_RESULT_FALLBACK.winner})`,
-                                            // Preserve the crown's calibrated photo backing even if the name plate changes.
-                                            backgroundColor: `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`, borderRadius: 4,
+                                            top: 8, right: 8, color: PHOTO_RESULT_FALLBACK.winner,
+                                            // A fine edge protects gold on light headers without a separate corner patch.
+                                            stroke: PHOTO_RESULT_FALLBACK.background, strokeWidth: 1.5, paintOrder: 'stroke fill',
                                         }}
                                     />
                                 )}

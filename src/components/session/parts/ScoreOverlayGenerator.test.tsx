@@ -268,12 +268,14 @@ describe('photo-first score export layout', () => {
       .toEqual(['p1', 'p3', 'p4']);
     for (const crown of crowns) {
       expect(crown.parentElement).toHaveAttribute('data-score-photo-identity', 'true');
-      expect(crown.parentElement).toHaveStyle({ padding: '10px 28px 6px', maxWidth: '100%' });
-      expect(crown).toHaveStyle({ top: '0px', right: '0px' });
+      expect(crown.parentElement).toHaveStyle({ padding: '10px 44px 6px', maxWidth: '100%' });
+      expect(crown).toHaveStyle({ top: '8px', right: '8px', color: '#fbbf24', stroke: '#1e293b' });
+      expect((crown as SVGElement).style.strokeWidth).toBe('1.5');
+      expect((crown as SVGElement).style.paintOrder).toBe('stroke fill');
       expect(crown).toHaveClass('text-status-warning');
-      expect((crown as SVGElement).style.color).toBe('var(--photo-result-winner, #fbbf24)');
-      expect((crown as SVGElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
-      expect(crown).toHaveAttribute('width', '24');
+      expect((crown as SVGElement).style.backgroundColor).toBe('');
+      expect(crown).toHaveAttribute('width', '32');
+      expect(crown).toHaveAttribute('height', '32');
     }
 
     const metadata = container.querySelector('[data-score-photo-metadata]')!;

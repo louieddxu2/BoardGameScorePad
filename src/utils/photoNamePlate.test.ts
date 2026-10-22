@@ -37,7 +37,7 @@ it('calibrates the gap to all 51 existing tinted-header decisions, not a contras
     }
 });
 
-it('gives every preset color a passing opaque 8-bit plate across dark, light and colored backgrounds', () => {
+it('gives every preset color a passing, muted opaque 8-bit plate across dark, light and colored backgrounds', () => {
     const backgrounds = Array.from({ length: 256 }, (_, value) => `rgb(${value},${value},${value})`);
     backgrounds.push(...palette.map(entry => entry.color), 'rgba(44, 88, 132, 1)', 'transparent', 'inherit');
     for (const { color } of palette) {
@@ -66,6 +66,20 @@ it('gives every preset color a passing opaque 8-bit plate across dark, light and
     const adjusted = parseColor(getPhotoNamePlateBackground('#3b82f6', '#3b82f6'))!;
     expect(adjusted.r === adjusted.g && adjusted.g === adjusted.b).toBe(false);
     expect(adjusted.b).toBeGreaterThan(adjusted.r);
+    // Backings keep their player's hue but are quieter than the former full-chroma seed.
+    for (const color of ['#ef4444', '#3b82f6', '#10b981', '#facc15']) {
+        const ink = parseColor(color)!;
+        const photo = parseColor('#293649')!;
+        const backing = parseColor(getPhotoNamePlateBackground(color, '#293649'))!;
+        const weight = color === '#facc15' ? 0.44 : 0.18;
+        const neutral = color === '#facc15' ? 0 : 255;
+        const previous = (['r', 'g', 'b'] as const).map(channel =>
+            Math.round(ink[channel] * weight + photo[channel] * 0.06 + neutral * (1 - weight - 0.06)));
+        const channels = [backing.r, backing.g, backing.b];
+        expect(Math.max(...channels) - Math.min(...channels))
+            .toBeLessThan(Math.max(...previous) - Math.min(...previous));
+        expect(channels.indexOf(Math.max(...channels))).toBe(previous.indexOf(Math.max(...previous)));
+    }
 });
 
 it('shares CSS reads, retains unusual/transparent ink, and always terminates for imported colors', () => {
