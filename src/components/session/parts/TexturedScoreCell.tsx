@@ -10,13 +10,6 @@ import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
 import { formatDisplayNumber } from '../../../utils/scoreDisplay';
 import type { TouchActionHandlers } from '../../shared/useTouchAction';
-import { getContrastTextStyles } from '../../../utils/ui';
-
-/** Custom label ink must not blend into a different color on the template image. */
-const selectedLabelStyle = (color?: string): React.CSSProperties => color ? {
-    ...getContrastTextStyles(color, undefined, { isTextureMode: true }),
-    mixBlendMode: 'normal',
-} : {};
 
 interface TexturedScoreCellProps {
     player: Player;
@@ -167,7 +160,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                                 <span
                                     key={`${optIdx}-${lineIdx}`}
                                     className="font-bold text-center break-words w-full hyphenate"
-                                    style={{ ...inkStyle, color: labelColor, ...selectedLabelStyle(opt.color || column.color), fontSize: dynamicFontSize }}
+                                    style={{ ...inkStyle, color: labelColor, fontSize: dynamicFontSize }}
                                 >
                                     {injectSoftHyphens(line)}
                                 </span>
@@ -278,7 +271,7 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                                     style={{
                                         ...inkStyle,
                                         color: labelColor,
-                                        ...selectedLabelStyle(opt.color || column.color),
+                                        mixBlendMode: 'multiply',
                                         fontSize: totalLines > 2 ? '1rem' : '1.25rem'
                                     }}
                                 >
@@ -307,7 +300,6 @@ const TexturedScoreCell: React.FC<TexturedScoreCellProps> = ({
                                         fontFamily: '"Kalam", cursive',
                                         color: opt.color || column.color || 'rgb(var(--c-slate-600) / 0.9)',
                                         mixBlendMode: 'multiply',
-                                        ...selectedLabelStyle(opt.color || column.color),
                                         fontSize: '12px',
                                         transform: `rotate(${((player.id.charCodeAt(0) + i) % 5) - 2}deg)`,
                                     }}

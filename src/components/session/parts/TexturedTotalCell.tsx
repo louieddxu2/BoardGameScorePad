@@ -213,15 +213,11 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
   
   // [Clean Mode Logic] If active, force disable visual effects of "Force Lost" (fading/coloring)
   const visualForceLost = cleanMode ? false : isForceLost;
-  // Status markers/opacity may change, but selected player ink stays unchanged.
-  const displayColor = !isTransparent ? effectiveColor : bgUrl
-      ? (visualForceLost ? 'rgb(var(--c-txt-muted))' : 'rgb(var(--c-txt-primary))')
-      : (visualForceLost ? 'rgb(var(--c-status-danger))' : 'rgb(var(--c-txt-muted))');
 
   const inkStyle: React.CSSProperties = bgUrl ? {
       fontFamily: '"Kalam", "Caveat", cursive',
       transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
-      mixBlendMode: isTransparent ? 'multiply' : 'normal',
+      mixBlendMode: 'multiply',
       textShadow: 'none',
       opacity: visualForceLost ? 0.5 : 1,
   } : {};
@@ -270,7 +266,7 @@ const TexturedTotalCell: React.FC<TexturedTotalCellProps> = ({
 
       <ContrastText 
         className="font-black text-2xl leading-none w-full text-center truncate px-1 z-10" 
-        color={displayColor}
+        color={bgUrl ? (visualForceLost ? 'rgb(var(--c-txt-muted))' : 'rgb(var(--c-txt-primary))') : (visualForceLost ? 'rgb(var(--c-status-danger))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor))}
         style={bgUrl ? inkStyle : { opacity: visualForceLost ? 0.5 : 1 }}
         isTextureMode={!!bgUrl}
       >

@@ -91,7 +91,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
   const inkStyle: React.CSSProperties = bgUrl ? {
     fontFamily: '"Kalam", "Caveat", cursive',
     transform: `rotate(${((player.id.charCodeAt(0)) % 5) - 2}deg)`,
-    mixBlendMode: isTransparent ? 'multiply' : 'normal',
+    mixBlendMode: 'multiply',
     textShadow: 'none',
   } : {};
 
@@ -110,7 +110,7 @@ const TexturedPlayerHeader: React.FC<TexturedPlayerHeaderProps> = ({
 
       <ContrastText 
         className="text-sm font-bold whitespace-nowrap z-10" 
-        color={isTransparent ? (bgUrl ? 'rgb(var(--c-slate-50))' : 'rgb(var(--c-txt-muted))') : effectiveColor}
+        color={bgUrl ? 'rgb(var(--c-slate-50))' : (isTransparent ? 'rgb(var(--c-txt-muted))' : effectiveColor)}
         style={bgUrl ? inkStyle : {}}
         isTextureMode={!!bgUrl}
         background={bgUrl ? undefined : containerStyle.backgroundColor}
