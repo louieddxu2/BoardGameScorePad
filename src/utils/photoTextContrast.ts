@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
 import { readColor, type ColorReader } from './color';
-import { relativeLuminance } from './colorContrast';
-import { PHOTO_DARK_SURFACE_MAX_LUMINANCE } from './photoResultPalette';
+import { getPhotoNamePlateAppearance } from './photoNamePlate';
 import { getContrastTextStyles } from './ui';
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
@@ -18,12 +17,11 @@ export const getPhotoTextOutline = (color: string, softShadow: string, width = 2
 export const getPhotoPlayerNameStyles = (
     color: string, background: string, read: ColorReader = readColor,
 ): CSSProperties => {
-    const backing = read(background);
-    const isDark = backing?.a === 1 && relativeLuminance(backing) <= PHOTO_DARK_SURFACE_MAX_LUMINANCE;
-    const { transition: _transition, ...styles } = getContrastTextStyles(color, isDark ? 'dark' : 'light', { read });
+    const appearance = getPhotoNamePlateAppearance(background, read);
+    const { transition: _transition, ...styles } = getContrastTextStyles(color, appearance, { read });
     return {
         ...styles, color,
-        fontWeight: isDark ? 700 : 400,
+        fontWeight: appearance === 'dark' ? 700 : 400,
         textShadow: styles.textShadow?.replace(/(-?[\d.]+)px/g, (_, value: string) => `${Number(value) * 3}px`),
         WebkitTextStroke: 0, filter: 'none',
     };

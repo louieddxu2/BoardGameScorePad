@@ -1,7 +1,7 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
 import { createColorReader } from './color';
-import { getPhotoNamePlateBackground } from './photoNamePlate';
+import { getPhotoNamePlateAppearance, getPhotoNamePlateBackground } from './photoNamePlate';
 
 interface TitleAppearance {
     color: string;
@@ -109,8 +109,9 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     root.style.setProperty('--photo-result-text', palette.text);
     root.style.setProperty('--photo-result-muted', palette.muted);
     root.style.setProperty('--photo-result-winner', palette.winner);
-    // Apply the fixed light scoreboard name treatment once, before capture.
+    // Photo brightness selects a fixed scoreboard style, never the name plate's hue.
     const read = createColorReader();
+    const nameAppearance = getPhotoNamePlateAppearance(palette.identity, read);
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {
             name.style.fontWeight = String(getPhotoPlayerNameStyles(palette.text, palette.identity, read).fontWeight);
@@ -123,7 +124,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         // Repeated captures must not inherit a stale adapted color from an earlier capture.
         const color = name.dataset.scorePhotoColor ??= name.style.color;
         const plate = name.closest<HTMLElement>('[data-score-photo-identity]');
-        const background = getPhotoNamePlateBackground(color, read);
+        const background = getPhotoNamePlateBackground(color, read, nameAppearance);
         if (plate) plate.style.backgroundColor = background;
         const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, background, read);
         Object.assign(name.style, styles);

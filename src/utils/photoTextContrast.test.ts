@@ -42,7 +42,7 @@ describe('photo name and surface contrast', () => {
         }
     });
 
-    it('keeps RGB, alpha and normal weight on fixed light name plates regardless of the app theme', () => {
+    it('keeps selected RGB/alpha and the matching scoreboard treatment independently of the app theme', () => {
         const originalTheme = document.documentElement.getAttribute('data-theme');
         try {
             for (const theme of ['dark', 'light', 'sage']) {
@@ -60,6 +60,13 @@ describe('photo name and surface contrast', () => {
                         expect(style.textShadow).toBe('none');
                     } else {
                         expect(style.textShadow).toBe('0 1.5px 3px rgba(0,0,0,0.05)');
+                    }
+                    const darkStyle = getPhotoPlayerNameStyles(color, getPhotoNamePlateBackground(color, undefined, 'dark'));
+                    expect(darkStyle).toMatchObject({ color, fontWeight: 700, WebkitTextStroke: 0, filter: 'none' });
+                    if (color === '#1f2937' || color === 'rgba(0,0,0,.4)') {
+                        expect(darkStyle.textShadow).toContain('3px 3px 0 rgba(255,255,255,0.7)');
+                    } else {
+                        expect(darkStyle.textShadow).toBe('0 3px 6px rgba(0,0,0,0.8)');
                     }
                 }
             }

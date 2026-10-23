@@ -123,16 +123,20 @@ describe('photo title contrast', () => {
             context.getImageData.mockReturnValue({ data: pixels(brightness) });
             await prepareScorePhotoTitle(root, new AbortController().signal);
             const palette = getPhotoResultPalette(pixels(brightness));
+            const expectedAppearance = brightness === 20 ? 'dark' : 'light';
             // Only names get individual plates; the photo-derived card stays unchanged.
             expect(root.style.getPropertyValue('--photo-result-card')).toBe(palette.card);
             for (const item of [name, yellowName, redName, blueName]) {
                 const background = item.parentElement!.style.backgroundColor;
                 const ink = parseColor(item.style.color)!;
-                expect(parseColor(background)).toEqual(parseColor(getPhotoNamePlateBackground(item.dataset.scorePhotoColor!)));
+                expect(parseColor(background)).toEqual(parseColor(getPhotoNamePlateBackground(
+                    item.dataset.scorePhotoColor!, undefined, expectedAppearance,
+                )));
                 expect(ink).toEqual(parseColor(item.dataset.scorePhotoColor!));
-                expect(item.style.textShadow).toBe(getPhotoPlayerNameStyles(item.style.color, background).textShadow);
+                expect(item.style.textShadow).toBe(getPhotoPlayerNameStyles(item.style.color, background).textShadow?.trim());
                 expect(item.style.filter).toBe('none');
                 expect(item.style.fontWeight).toBe(String(getPhotoPlayerNameStyles(item.style.color, background).fontWeight));
+                expect(item.style.fontWeight).toBe(expectedAppearance === 'dark' ? '700' : '400');
                 const card = item.parentElement!.parentElement!;
                 const score = card.querySelector<HTMLElement>('[data-score-photo-score]')!;
                 expect(card.style.backgroundColor).toBe('var(--photo-result-card, #334155)');
@@ -184,7 +188,7 @@ describe('photo title contrast', () => {
         expect(root.style.getPropertyValue('--photo-result-identity')).toBe(PHOTO_RESULT_FALLBACK.identity);
         expect(root.style.getPropertyValue('--photo-result-border')).toBe(PHOTO_RESULT_FALLBACK.border);
         expect(name.style.color).toBe('rgb(250, 204, 21)');
-        expect(parseColor(plate.style.backgroundColor)).toEqual(parseColor(getPhotoNamePlateBackground('#facc15')));
+        expect(parseColor(plate.style.backgroundColor)).toEqual(parseColor(getPhotoNamePlateBackground('#facc15', undefined, 'dark')));
         expect(name.style.textShadow).toBe(getPhotoPlayerNameStyles('#facc15', plate.style.backgroundColor).textShadow);
     });
 

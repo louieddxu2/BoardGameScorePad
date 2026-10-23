@@ -252,7 +252,7 @@ describe('photo-first score export layout', () => {
       if (players[index].isAnonymous) {
         expect((identity as HTMLElement).style.backgroundColor).toBe('var(--photo-result-identity, #293649)');
       } else {
-        expect(identity).toHaveStyle({ backgroundColor: getPhotoNamePlateBackground(players[index].color) });
+        expect(identity).toHaveStyle({ backgroundColor: getPhotoNamePlateBackground(players[index].color, undefined, 'dark') });
       }
       expect((identity as HTMLElement).style.boxShadow).toBe('');
       expect(entry.lastElementChild).toHaveTextContent(String(players[index].totalScore));
@@ -262,7 +262,7 @@ describe('photo-first score export layout', () => {
         expect(identity.querySelector('span')).toHaveStyle({ fontSize: '36px', overflowWrap: 'anywhere' });
         expect(identity.querySelector('span')).toHaveStyle({ color: players[index].color });
         expect(identity.querySelector('span')?.style.textShadow).toBe(getPhotoPlayerNameStyles(players[index].color,
-          getPhotoNamePlateBackground(players[index].color)).textShadow);
+          getPhotoNamePlateBackground(players[index].color, undefined, 'dark')).textShadow);
       }
     });
     const crowns = container.querySelectorAll('[data-score-photo-winner]');
