@@ -12,7 +12,6 @@ export const fixedColorExceptions: FixedColorException[] = [
     { file: 'src/components/scanner/ScannerOverlay.tsx', tokens: /^--c-black$/, reason: 'Physical shadow on a drag handle over source imagery.' },
     { file: 'src/components/session/modals/MultiplayerRoomModal.tsx', tokens: /^bg-white$/, reason: 'QR code quiet zone must remain white in both themes.' },
     { file: 'src/components/session/parts/PhotoLightbox.tsx', tokens: /^(?:bg-black\/(?:40|60)|white|black)$/, reason: 'Photo navigation overlays and luminance-based custom-player contrast.' },
-    { file: 'src/components/dashboard/parts/HistoryPhotoGridCanvas.tsx', tokens: /^bg-black\/55$/, reason: 'Date caption is printed over arbitrary photographs.' },
     { file: 'src/components/dashboard/HistoryPhotoGridShareModal.tsx', tokens: /^(?:ring-white\/50|rgba\(15,23,42,0\.34\))$/, reason: 'Photo crop mask and its high-contrast outline.' },
     { file: 'src/components/session/parts/ScoreOverlayGenerator.tsx', tokens: /^(?:#ffffff|rgba\(0,0,0,0\.5\))$/, reason: 'Adaptive exported-photo title fallbacks, independent of the application theme.' },
     { file: 'src/components/session/parts/StickerElement.tsx', tokens: /^#(?:f8fafc|0f172a)$/, reason: 'Choose a contrasting outline for arbitrary user-colored photo stickers.' },

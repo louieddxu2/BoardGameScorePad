@@ -108,6 +108,10 @@ export default {
           warning: 'rgb(var(--c-status-warning) / <alpha-value>)',
           danger: 'rgb(var(--c-status-danger) / <alpha-value>)',
         },
+        pin: {
+          fill: 'rgb(var(--c-pin-fill) / <alpha-value>)',
+          edge: 'rgb(var(--c-pin-edge) / <alpha-value>)',
+        },
         input: {
           border: 'rgb(var(--c-input-border) / <alpha-value>)',
           bg: 'rgb(var(--c-input-bg) / <alpha-value>)',

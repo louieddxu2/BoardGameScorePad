@@ -70,7 +70,7 @@ describe('Three-theme visual contract', () => {
         }
     });
 
-    it('separates yellow winner fills from warning text and outlines them on light history surfaces', () => {
+    it('separates decorative gold from warning text and protects crowns and pins on light surfaces', () => {
         const crown: Record<string, string> = {};
         styles.walkRules('.winner-crown', rule => {
             rule.walkDecls(declaration => { crown[declaration.prop] = declaration.value; });
@@ -83,8 +83,11 @@ describe('Three-theme visual contract', () => {
             expect(fill.g).toBeGreaterThanOrEqual(190);
             expect(fill.b).toBeLessThan(40);
             expect(fill).not.toEqual(color(theme, '--c-status-warning'));
+            expect(color(theme, '--c-pin-fill')).toEqual(fill);
             for (const token of ['--c-app-bg', '--c-surface-bg', '--c-surface-bg-alt', '--c-surface-hover']) {
                 const backing = color(theme, token);
+                expect(contrastOnBackground(color(theme, '--c-pin-edge'), backing), `${theme}: ${token} pin edge`)
+                    .toBeGreaterThanOrEqual(3);
                 const winnerTint = compositeColors({ ...color(theme, '--c-status-warning'), a: 0.1 }, backing);
                 for (const surface of [backing, winnerTint]) {
                     expect(contrastOnBackground(color(theme, '--c-winner-stroke'), surface), `${theme}: ${token} crown edge`)
@@ -94,6 +97,8 @@ describe('Three-theme visual contract', () => {
         }
         expect(color('dark', '--c-winner-fill')).toEqual(color('dark', '--c-status-warning'));
         expect(color('dark', '--c-winner-stroke')).toEqual(color('dark', '--c-winner-fill'));
+        expect(color('dark', '--c-pin-fill')).toEqual(color('dark', '--c-status-warning'));
+        expect(color('dark', '--c-pin-edge')).toEqual(color('dark', '--c-pin-fill'));
     });
 
     it('retains all player palette primitives and gives new themes the existing light-ink protection', () => {

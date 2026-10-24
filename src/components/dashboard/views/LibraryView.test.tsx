@@ -202,10 +202,13 @@ describe('LibraryView compact active and pinned rows', () => {
         expect(activeRow.lastElementChild).toHaveAttribute('title', '繼續遊戲');
         expect(activeRow.children[activeRow.children.length - 2]).toHaveAttribute('aria-label', '刪除');
         expect(pinnedRow.lastElementChild).toHaveAttribute('aria-label', '取消釘選');
+        expect(pinnedRow.lastElementChild).toHaveClass('text-pin-fill');
+        expect(pinnedRow.lastElementChild?.querySelector('svg')).toHaveClass('stroke-pin-edge');
         expect(pinnedRow.children[pinnedRow.children.length - 2]).toHaveAttribute('aria-label', '複製連結');
 
         const recentRow = recentButton.parentElement!;
         expect(recentRow.lastElementChild).toHaveAttribute('aria-label', '釘選');
+        expect(recentRow.lastElementChild).toHaveClass('text-txt-muted', 'hover:text-pin-edge');
         expect(recentRow.querySelectorAll('svg')).toHaveLength(1);
     });
 

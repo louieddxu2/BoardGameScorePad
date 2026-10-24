@@ -173,6 +173,8 @@ html[data-ios-safari-browser='true'] {
   --c-status-warning: 251 191 36; /* amber-400 */
   --c-winner-fill: 251 191 36;
   --c-winner-stroke: 251 191 36;
+  --c-pin-fill: var(--c-winner-fill);
+  --c-pin-edge: var(--c-winner-stroke);
   --c-status-success: var(--c-brand-primary);
   --c-status-info: 56 189 248;  /* sky-400 */
 
@@ -253,6 +255,8 @@ html[data-theme='light'] {
   --c-status-warning: 126 76 6;
   --c-winner-fill: 250 204 21;
   --c-winner-stroke: 153 105 0;
+  --c-pin-fill: var(--c-winner-fill);
+  --c-pin-edge: var(--c-winner-stroke);
   --c-status-success: var(--c-brand-primary);
   --c-status-info: 18 88 120;
 
@@ -335,6 +339,8 @@ html[data-theme='sage'] {
   --c-status-warning: 116 68 8;
   --c-winner-fill: 250 204 21;
   --c-winner-stroke: 153 105 0;
+  --c-pin-fill: var(--c-winner-fill);
+  --c-pin-edge: var(--c-winner-stroke);
   --c-status-success: var(--c-brand-primary);
   --c-status-info: 21 88 123;
   --c-btn-ghost-hover: var(--c-surface-hover);

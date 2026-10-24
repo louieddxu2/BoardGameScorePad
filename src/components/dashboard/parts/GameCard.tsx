@@ -123,9 +123,10 @@ const GameCard: React.FC<GameCardProps> = ({
                 onClick={(e) => { e.stopPropagation(); onPin(e); }}
                 aria-label={t(isPinned ? 'card_unpin' : 'card_pin')}
                 title={t(isPinned ? 'card_unpin' : 'card_pin')}
-                className={`flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${isPinned ? 'text-status-warning' : 'text-txt-muted hover:text-status-warning'}`}
+                className={`flex h-full w-12 shrink-0 items-center justify-center rounded-r-xl transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${isPinned ? 'text-pin-fill' : 'text-txt-muted hover:text-pin-edge'}`}
               >
-                <Pin size={16} fill={isPinned ? 'currentColor' : 'none'} aria-hidden="true" />
+                <Pin size={16} fill={isPinned ? 'currentColor' : 'none'}
+                  className={isPinned ? 'stroke-pin-edge' : undefined} aria-hidden="true" />
               </button>
             )}
           </>
@@ -154,9 +155,10 @@ const GameCard: React.FC<GameCardProps> = ({
         <button
           onClick={onPin}
           aria-label={t(isPinnedInLibrary ? 'card_unpin' : 'card_pin')}
-          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors hover:bg-surface-hover hover:text-status-warning ${isPinnedInLibrary ? 'text-status-warning' : 'text-txt-muted'}`}
+          className={`absolute top-1 right-1 p-1.5 rounded-md transition-colors hover:bg-surface-hover ${isPinnedInLibrary ? 'text-pin-fill' : 'text-txt-muted hover:text-pin-edge'}`}
         >
-          <Pin size={16} fill={isPinnedInLibrary ? 'currentColor' : 'none'} />
+          <Pin size={16} fill={isPinnedInLibrary ? 'currentColor' : 'none'}
+            className={isPinnedInLibrary ? 'stroke-pin-edge' : undefined} />
         </button>
       )}
 

@@ -25,8 +25,7 @@ export interface CropDraft extends EditableGridTile {
 export const EXPORT_GRID_WIDTH = 1080;
 export const PHOTO_RECAP_TILE_COUNT = 8;
 export const PHOTO_RECAP_TILE_ASPECT = 16 / 9;
-export const PHOTO_RECAP_CAPTION_HEIGHT_RATIO = 0.08;
-export const PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO = 0.02;
+export const PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO = 0.008;
 export const getLimitedCandidatePhotos = (item: HistoryPhotoGridItem) => (
   item.candidatePhotos.slice(0, DATA_LIMITS.QUERY.HISTORY_PHOTO_GRID_CANDIDATES)
 );

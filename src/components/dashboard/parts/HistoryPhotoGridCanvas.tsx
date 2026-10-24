@@ -1,7 +1,16 @@
 import React, { useMemo } from 'react';
 import type { buildHistoryStats } from '../../../utils/historyStats';
 import { getHistoryPhotoGridBaseSize } from '../../../utils/historyPhotoGrid';
-import { type EditableGridTile, PHOTO_RECAP_TILE_ASPECT, PHOTO_RECAP_CAPTION_HEIGHT_RATIO, PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO, getTileFrameAspect, formatGridDate } from '../historyPhotoGridModel';
+import { type EditableGridTile, PHOTO_RECAP_TILE_ASPECT, PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO, getTileFrameAspect, formatGridDate } from '../historyPhotoGridModel';
+import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
+
+// Match the photo title's fine edge and local scrim, scaling with preview/export width.
+// Fixed paint avoids extra pixel reads for each preview and export tile.
+const PHOTO_LABEL_PAINT: React.CSSProperties = {
+  color: PHOTO_TITLE_FALLBACK.color,
+  textShadow: PHOTO_TITLE_FALLBACK.shadow.replace(/(-?[\d.]+)px/g,
+    (_, value: string) => `${Number(value) * 0.075}cqw`),
+};
 
 interface PhotoGridCanvasProps {
   tiles: EditableGridTile[];
@@ -23,16 +32,13 @@ export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasP
   const layout = useMemo(() => {
     if (N === 0) return { cols: 1, rows: 1, aspect: PHOTO_RECAP_TILE_ASPECT };
     if (N === 1) return { cols: 1, rows: 1, aspect: PHOTO_RECAP_TILE_ASPECT };
-    if (N === 2) return { cols: 1, rows: 2, aspect: PHOTO_RECAP_TILE_ASPECT / 2 };
-
-    const cols = 2;
-    const rows = N % 2 !== 0 ? 2 + (N - 1) / 2 : N / 2;
-    const photoOnlyAspect = (2 * PHOTO_RECAP_TILE_ASPECT) / rows;
-    const captionHeight = shouldHideTileGameName ? 0 : rows * PHOTO_RECAP_CAPTION_HEIGHT_RATIO;
+    const cols = N === 2 ? 1 : 2;
+    const rows = N === 2 ? 2 : N % 2 !== 0 ? 2 + (N - 1) / 2 : N / 2;
+    const photoOnlyAspect = (cols * PHOTO_RECAP_TILE_ASPECT) / rows;
     const rowGapHeight = Math.max(0, rows - 1) * PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO;
-    const aspect = 1 / (1 / photoOnlyAspect + captionHeight + rowGapHeight);
+    const aspect = 1 / (1 / photoOnlyAspect + rowGapHeight);
     return { cols, rows, aspect };
-  }, [N, shouldHideTileGameName]);
+  }, [N]);
 
   if (N === 0) return null;
 
@@ -57,7 +63,7 @@ export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasP
       </div>
 
       <div
-        className="flex-1 min-h-0 grid gap-x-[0.8cqw] gap-y-[2cqw]"
+        className="flex-1 min-h-0 grid gap-[0.8cqw]"
         style={{
           gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`
@@ -69,6 +75,8 @@ export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasP
           return (
             <button
               key={`${tile.id}-${index}`}
+              type="button"
+              aria-label={`${tile.gameName} · ${formatGridDate(tile.endTime)}`}
               onClick={() => onSelect?.(tiles.indexOf(tile))}
               disabled={!onSelect}
               className={`bg-app-bg-deep border border-surface-border rounded-[1cqw] overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0 ${
@@ -115,20 +123,22 @@ export const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
 
 const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = ({ tile, hideGameName }) => {
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden bg-app-bg-deep">
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-app-bg-deep">
-        <PhotoImage tile={tile} />
-        <div className="pointer-events-none absolute right-[1.5cqw] bottom-[1.5cqw] px-[1.2cqw] py-[0.8cqw] rounded-[0.8cqw] bg-black/55 text-txt-on-color">
-          <span className="text-[2.2cqw] leading-none text-txt-on-color/75 font-mono">{formatGridDate(tile.endTime)}</span>
+    <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
+      <PhotoImage tile={tile} />
+      <div className="pointer-events-none absolute inset-x-[1.5cqw] top-[1.5cqw] flex items-start gap-[1.5cqw]" style={PHOTO_LABEL_PAINT}>
+        {!hideGameName && (
+          <div className="relative min-w-0 text-left">
+            <div aria-hidden="true" className="absolute -inset-[1cqw]" style={{ background: PHOTO_TITLE_FALLBACK.background }} />
+            <span className="relative line-clamp-2 text-[3.2cqw] leading-tight font-black p-[0.15cqw] break-words">
+              {tile.gameName}
+            </span>
+          </div>
+        )}
+        <div className="relative ml-auto shrink-0">
+          <div aria-hidden="true" className="absolute -inset-[1cqw]" style={{ background: PHOTO_TITLE_FALLBACK.background }} />
+          <span className="relative text-[2.2cqw] leading-tight font-mono font-semibold whitespace-nowrap">{formatGridDate(tile.endTime)}</span>
         </div>
       </div>
-      {!hideGameName && (
-        <div className="flex-none h-[8cqw] min-h-0 px-[2cqw] bg-app-bg-deep flex items-center">
-          <span className="min-w-0 flex-1 truncate text-left text-[3.2cqw] leading-none font-bold text-txt-primary">
-            {tile.gameName}
-          </span>
-        </div>
-      )}
     </div>
   );
 };
