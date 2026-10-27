@@ -56,7 +56,7 @@ export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasP
           <div className="text-[4.2cqw] leading-tight font-black text-txt-title truncate">{contextLabel}</div>
         </div>
         <div className="flex items-center gap-[1.5cqw] text-right shrink-0">
-          <StatPill value={stats.gameCount} label={labels.games} />
+          {stats.gameCount > 1 && <StatPill value={stats.gameCount} label={labels.games} />}
           <StatPill value={stats.playCount} label={labels.plays} />
           <StatPill value={stats.playerCount} label={labels.players} />
         </div>
