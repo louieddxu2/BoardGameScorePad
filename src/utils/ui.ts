@@ -19,13 +19,12 @@ export const getTouchDistance = (touches: { length: number; [index: number]: { c
 // --- Color Luminance Helpers ---
 
 /**
- * Extracts the CSS variable name from a color string if present.
+ * Extracts the outer CSS variable's palette name, ignoring nested fallbacks.
  * Example: "rgb(var(--c-p-black))" -> "--c-p-black"
  */
 const extractVarName = (colorStr: string): string | null => {
-    // Support player colors (--c-p-), text colors (--c-txt-), and status colors (--c-status-)
-    const match = colorStr.match(/--(c-p|c-txt|c-status)-[a-z-]+/);
-    return match ? match[0] : null;
+    const name = colorStr.match(/var\(\s*(--[\w-]+)/)?.[1];
+    return name && /^--(?:c-p|c-txt|c-status)-[a-z-]+$/.test(name) ? name : null;
 };
 
 /**

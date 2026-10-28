@@ -5,6 +5,7 @@ import type { Player } from '../../../types';
 import InputPanelHeader from './InputPanelHeader';
 import appCss from '../../../index.css?raw';
 import { createColorReader } from '../../../utils/color';
+import { getContrastTextStyles } from '../../../utils/ui';
 
 it('renders valid live player-color tints without rewriting the saved player color', () => {
     const player: Player = { id: 'player', name: 'Ada', color: 'rgb(var(--c-p-emerald))', scores: {}, totalScore: 0 };
@@ -45,6 +46,7 @@ it('preserves selected name/context colors while keeping unspecified context lab
             expect(name).toHaveStyle({ color: player.color });
             expect(name.style.fontWeight).toBe(theme === 'dark' ? '' : '400');
             expect(label.style.fontWeight).toBe('');
+            expect(label.style.textShadow).toBe(getContrastTextStyles(ink).textShadow);
             expect(name.style.textShadow).not.toBe('none');
             rerender(renderHeader('#3b82f6'));
             const customLabel = screen.getByText(text => text.replace(/\u00ad/g, '') === 'Harvest');
