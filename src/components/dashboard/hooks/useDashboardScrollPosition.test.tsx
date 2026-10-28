@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useDashboardScrollPosition } from './useDashboardScrollPosition';
 
 const ScrollHarness = ({ mode, query = '', hidden = false, onRender }: {
-  mode: 'library' | 'history'; query?: string; hidden?: boolean; onRender?: () => void;
+  mode: 'settings' | 'library' | 'history'; query?: string; hidden?: boolean; onRender?: () => void;
 }) => {
   onRender?.();
   const ref = useRef<HTMLDivElement>(null);
@@ -29,6 +29,11 @@ describe('dashboard scroll context', () => {
     rerender(<ScrollHarness mode="history" />);
     expect(screen.getByTestId('scroll').scrollTop).toBe(0);
     scrollTo(430);
+    rerender(<ScrollHarness mode="settings" />);
+    expect(screen.getByTestId('scroll').scrollTop).toBe(0);
+    scrollTo(90);
+    rerender(<ScrollHarness mode="history" />);
+    expect(screen.getByTestId('scroll').scrollTop).toBe(430);
     rerender(<ScrollHarness mode="history" hidden />);
     rerender(<ScrollHarness mode="history" />);
     expect(screen.getByTestId('scroll').scrollTop).toBe(430);

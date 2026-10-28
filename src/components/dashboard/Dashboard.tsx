@@ -16,6 +16,8 @@ import PullActionIsland from './parts/PullActionIsland';
 import StartGamePanel from '../../features/game-selector/components/StartGamePanel';
 import { LibraryView } from './views/LibraryView';
 import { HistoryView } from './views/HistoryView';
+import { SettingsView } from './views/SettingsView';
+import type { DashboardMode } from './dashboardMode';
 import { DashboardModals } from './parts/DashboardModals';
 import DashboardFAB from './parts/DashboardFAB';
 import HistoryStatsPanel from './HistoryStatsPanel';
@@ -149,7 +151,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [isStatsMode, setIsStatsMode] = useState(false);
-  const [viewMode, setViewMode] = useState<'library' | 'history'>('library');
+  const [viewMode, setViewMode] = useState<DashboardMode>('library');
+  const [isBackupBusy, setIsBackupBusy] = useState(false);
   const [isAiPromptOpen, setIsAiPromptOpen] = useState(false);
   const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
   const { isKeyboardOpen } = useKeyboardStatus();
@@ -288,10 +291,14 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const debugGestures = useDebugGestures({
     viewMode,
     setViewMode,
+    disabled: isBackupBusy,
+    canOpenSettings: !isSearchActive,
     onTriggerInspector: () => modals.actions.setShowInspector(true)
   });
 
   // --- UI Logic ---
+
+  useModalBackHandler(viewMode === 'settings' && isVisible, () => setViewMode('library'), 'dashboard-settings');
 
   // [Migrated] 搜尋介面返回鍵由 useModalBackHandler 統一管理
   useModalBackHandler(isSearchActive, () => {
@@ -330,13 +337,14 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   const { pullY, pullX, activeState, isPulling } = usePullAction(scrollContainerRef, {
     onTriggerSearch: () => { setIsSearchActive(true); setIsSetupMode(false); },
     onTriggerCloud: handleHeaderCloudClick,
-    disabled: false
+    disabled: viewMode === 'settings' || isBackupBusy
   });
 
   // Damped swipe effect
   let validOffset = 0;
   if (!isPulling) {
-    if (viewMode === 'library') validOffset = Math.min(0, debugGestures.swipeOffset);
+    if (viewMode === 'library') validOffset = debugGestures.swipeOffset;
+    else if (viewMode === 'settings') validOffset = Math.min(0, debugGestures.swipeOffset);
     else if (viewMode === 'history') validOffset = Math.max(0, debugGestures.swipeOffset);
   }
   const dampedOffset = validOffset * 0.5;
@@ -352,7 +360,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-app-bg transition-colors duration-300 overflow-hidden relative">
       <DashboardHeader
-        isSearchActive={isSearchActive}
+        isSearchActive={viewMode !== 'settings' && isSearchActive}
         setIsSearchActive={(active) => {
           setIsSearchActive(active);
           if (!active) setIsSearchInputFocused(false);
@@ -366,7 +374,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         onInstallClick={onInstallClick}
         onShowInstallGuide={() => modals.actions.setShowInstallGuide(true)}
         viewMode={viewMode}
-        setViewMode={setViewMode}
+        setViewMode={(mode) => { if (!isBackupBusy) setViewMode(mode); }}
         themeMode={themeMode}
         onToggleTheme={onToggleTheme}
         isConnected={isConnected}
@@ -396,7 +404,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           className="p-4 space-y-4 min-h-full transition-transform duration-75 ease-out pb-32"
           style={{ transform: `translateX(${dampedOffset}px)` }}
         >
-          {viewMode === 'history' ? (
+          {viewMode === 'settings' || isBackupBusy ? (
+            <SettingsView themeMode={themeMode} onToggleTheme={onToggleTheme} onBusyChange={setIsBackupBusy} />
+          ) : viewMode === 'history' ? (
             <HistoryView
               records={historyRecords}
               totalCount={historyCount || 0}
@@ -446,7 +456,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       </div>
 
       <DashboardFAB
-        isVisible={!isSetupMode && !isStatsMode}
+        isVisible={viewMode !== 'settings' && !isBackupBusy && !isSetupMode && !isStatsMode}
         mode={viewMode === 'history' ? 'stats' : 'play'}
         title={viewMode === 'history' ? tDashboard('dash_stats') : undefined}
         onClick={() => {

@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Leaf } from 'lucide-react';
+import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Leaf, Settings } from 'lucide-react';
+import type { DashboardMode } from '../dashboardMode';
+import { useSettingsTranslation } from '../../../i18n/settings';
 import { APP_THEMES, nextAppTheme, type AppTheme } from '../../../theme';
 import { useTranslation } from '../../../i18n'; // Keep for language context
 import { useCommonTranslation } from '../../../i18n/common';
@@ -21,8 +23,8 @@ interface DashboardHeaderProps {
   canInstall: boolean;
   onInstallClick: () => void;
   onShowInstallGuide: () => void;
-  viewMode: 'library' | 'history';
-  setViewMode: (mode: 'library' | 'history') => void;
+  viewMode: DashboardMode;
+  setViewMode: (mode: DashboardMode) => void;
   // Theme Props
   themeMode: AppTheme;
   onToggleTheme: () => void;
@@ -65,6 +67,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { t: tCommon } = useCommonTranslation();
   const { t: tDash } = useDashboardTranslation();
   const { t: tCloud } = useCloudTranslation();
+  const tSettings = useSettingsTranslation();
   const { icon: ThemeIcon, className: themeIconClass } = themeIndicators[themeMode];
   const themeControlLabel = tDash('dash_switch_theme', {
     current: tDash(APP_THEMES[themeMode].labelKey),
@@ -240,6 +243,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               </h1>
 
               {/* Unified Toggle Button - Width 56px, tight padding */}
+              <div className="flex items-center gap-0.5 shrink-0">
+              <button type="button" aria-label={tSettings('settings')} aria-pressed={viewMode === 'settings'}
+                onClick={() => setViewMode(viewMode === 'settings' ? 'library' : 'settings')}
+                className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary ${viewMode === 'settings' ? 'bg-surface-alt text-brand-primary' : 'text-txt-muted hover:bg-surface-hover hover:text-txt-primary'}`}>
+                <Settings size={20} />
+              </button>
               <button
                 onClick={toggleView}
                 className="relative h-9 w-[56px] bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group active:scale-95"
@@ -268,8 +277,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   <History size={20} strokeWidth={viewMode === 'history' ? 2.5 : 2} />
                 </div>
               </button>
+              </div>
 
               {/* Cloud Connect Toggle (New Position) */}
+              {viewMode !== 'settings' && (
               <button
                 onClick={onCloudClick}
                 disabled={isSyncing}
@@ -282,13 +293,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 {isSyncing ? <Loader2 className="animate-spin" size={18} /> :
                   isConnected ? <Cloud size={18} /> : <CloudOff size={18} />}
               </button>
+              )}
             </div>
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-1 shrink-0 ml-1">
-              <button onClick={() => setIsSearchActive(true)} className="p-2 text-txt-muted hover:text-txt-primary hover:bg-surface-alt rounded-lg transition-colors">
+              {viewMode !== 'settings' && <button onClick={() => setIsSearchActive(true)} className="p-2 text-txt-muted hover:text-txt-primary hover:bg-surface-alt rounded-lg transition-colors">
                 <Search size={20} />
-              </button>
+              </button>}
 
               {/* Language Toggle Removed from here */}
 

@@ -79,7 +79,7 @@ const SwipeLibraryHarness: React.FC<{
 }> = ({ props, onSearch = () => undefined, onHistorySelect = () => undefined }) => {
     useMobileZoom();
     const scrollRef = React.useRef<HTMLDivElement>(null);
-    const [viewMode, setViewMode] = React.useState<'library' | 'history'>('library');
+    const [viewMode, setViewMode] = React.useState<'settings' | 'library' | 'history'>('library');
     const gestures = useDebugGestures({ viewMode, setViewMode, onTriggerInspector: vi.fn() });
     usePullAction(scrollRef, { onTriggerSearch: onSearch, onTriggerCloud: () => undefined });
     React.useEffect(() => {

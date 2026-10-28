@@ -1,17 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import { useSwipe } from '../../../hooks/useSwipe';
 import { touchGestureGuard } from '../../../utils/touchGesture';
+import type { DashboardMode } from '../dashboardMode';
 
 interface UseDebugGesturesProps {
-  viewMode: 'library' | 'history';
-  setViewMode: (mode: 'library' | 'history') => void;
+  viewMode: DashboardMode;
+  setViewMode: (mode: DashboardMode) => void;
+  disabled?: boolean;
+  canOpenSettings?: boolean;
   onTriggerInspector: () => void;
 }
 
 export const useDebugGestures = ({
   viewMode,
   setViewMode,
-  onTriggerInspector
+  onTriggerInspector,
+  disabled = false,
+  canOpenSettings = true,
 }: UseDebugGesturesProps) => {
   
   // Refs for custom debug gesture logic
@@ -30,9 +35,13 @@ export const useDebugGestures = ({
   const SWIPE_THRESHOLD = 35;
   const { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, swipeOffset } = useSwipe({
     onSwipeLeft: () => {
+      if (disabled) return;
+      if (viewMode === 'settings') setViewMode('library');
       if (viewMode === 'library') setViewMode('history');
     },
     onSwipeRight: () => {
+      if (disabled) return;
+      if (viewMode === 'library' && canOpenSettings) setViewMode('settings');
       if (viewMode === 'history') setViewMode('library');
     },
   }, {
@@ -43,6 +52,7 @@ export const useDebugGestures = ({
   // Custom Debug Gesture: Long Pull Left in History View
   const handleDebugTouchStart = (e: React.TouchEvent) => {
       resetDebug();
+      if (disabled) return;
       onTouchStart(e);
       const round = touchGestureGuard.getState().round;
       if (viewMode === 'history' && e.touches.length === 1 && touchGestureGuard.isAllowed(round)) {

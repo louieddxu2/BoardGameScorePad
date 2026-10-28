@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDebugGestures } from './useDebugGestures';
 import { useMobileZoom } from '../../../hooks/useMobileZoom';
 import { suppressInvalidTouchClick } from '../../../utils/touchGesture';
+import type { DashboardMode } from '../dashboardMode';
 
 const GestureHarness = ({ initialMode = 'library', inspect = vi.fn(), activate = vi.fn() }: {
-    initialMode?: 'library' | 'history'; inspect?: () => void; activate?: () => void;
+    initialMode?: DashboardMode; inspect?: () => void; activate?: () => void;
 }) => {
     useMobileZoom();
     const [viewMode, setViewMode] = useState(initialMode);
@@ -80,6 +81,17 @@ describe('dashboard swipe from compact game rows', () => {
 
         expect(screen.getByText('library')).toBeInTheDocument();
         swipeOn(screen.getByRole('button', { name: 'Game row' }));
+        expect(screen.getByText('history')).toBeInTheDocument();
+    });
+
+    it('places settings before the library and preserves the existing left swipe to history', () => {
+        render(<GestureHarness />);
+        const row = () => screen.getByRole('button', { name: 'Game row' });
+        swipeOn(row(), 'touchEnd', 1);
+        expect(screen.getByText('settings')).toBeInTheDocument();
+        swipeOn(row());
+        expect(screen.getByText('library')).toBeInTheDocument();
+        swipeOn(row());
         expect(screen.getByText('history')).toBeInTheDocument();
     });
 

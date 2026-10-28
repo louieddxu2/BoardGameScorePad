@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import type { RefObject, UIEvent } from 'react';
 
-type DashboardMode = 'library' | 'history';
+import type { DashboardMode } from '../dashboardMode';
 
 /** Keep one position per existing view, not a second mounted list or query. */
 export const useDashboardScrollPosition = (
@@ -9,7 +9,7 @@ export const useDashboardScrollPosition = (
   viewMode: DashboardMode,
   searchQuery: string,
 ) => {
-  const positionsRef = useRef<Record<DashboardMode, number>>({ library: 0, history: 0 });
+  const positionsRef = useRef<Record<DashboardMode, number>>({ settings: 0, library: 0, history: 0 });
   const activeModeRef = useRef(viewMode);
   const query = searchQuery.trim();
   const queryRef = useRef(query);
@@ -19,7 +19,7 @@ export const useDashboardScrollPosition = (
     if (!container) return;
     if (queryRef.current !== query) {
       // Both modes now display a different result set. Old heights are invalid.
-      positionsRef.current = { library: 0, history: 0 };
+      positionsRef.current = { settings: 0, library: 0, history: 0 };
       queryRef.current = query;
     }
     activeModeRef.current = viewMode;
