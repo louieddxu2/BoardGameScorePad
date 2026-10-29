@@ -242,26 +242,26 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 {tCommon('app_name')}
               </h1>
 
-              {/* Settings sits immediately beside the compact view toggle. */}
+              {/* Fixed horizontal geometry keeps icon spacing tight when root rem scales. */}
               <div className="flex items-center gap-0 shrink-0">
               <button type="button" aria-label={tSettings('settings')} aria-pressed={viewMode === 'settings'}
                 onClick={() => setViewMode(viewMode === 'settings' ? 'library' : 'settings')}
-                className={`h-9 w-7 rounded-lg flex items-center justify-end transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary ${viewMode === 'settings' ? 'bg-surface-alt text-brand-primary' : 'text-txt-muted hover:bg-surface-hover hover:text-txt-primary'}`}>
+                className={`h-9 w-[24px] rounded-lg flex items-center justify-end transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary ${viewMode === 'settings' ? 'bg-surface-alt text-brand-primary' : 'text-txt-muted hover:bg-surface-hover hover:text-txt-primary'}`}>
                 <Settings size={20} />
               </button>
               <button
                 onClick={toggleView}
-                className="relative h-9 w-12 bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group active:scale-95"
+                className="relative h-9 w-[40px] bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group active:scale-95"
                 title={viewMode === 'library' ? tCloud('cloud_tab_history') : tCloud('cloud_tab_templates')}
               >
                 {/* Central Slash (Background) */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                  <span className="text-txt-muted/20 font-bold text-sm -rotate-12 select-none">/</span>
+                  <span className="text-txt-muted/20 font-bold text-[14px] -rotate-12 select-none">/</span>
                 </div>
 
                 {/* Icon Container - Library (Calculator) */}
                 <div
-                  className={`absolute flex items-center justify-center left-1.5
+                  className={`absolute flex items-center justify-center left-[2px]
                         ${viewMode === 'library' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
@@ -270,7 +270,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
                 {/* Icon Container - History (History Clock) */}
                 <div
-                  className={`absolute flex items-center justify-center right-1.5
+                  className={`absolute flex items-center justify-center right-[2px]
                         ${viewMode === 'history' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
