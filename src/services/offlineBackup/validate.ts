@@ -12,43 +12,69 @@ export interface ValidatedBackup {
   preferences: Preferences;
   databaseVersion: number;
 }
-function invalid(): never { throw new BackupError('invalid'); }
+function invalid(detail = ''): never { throw new BackupError('invalid', detail); }
 const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && !value.includes('\0');
 const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
 
-function validateTemplate(value: unknown) {
-  if (!isObject(value) || !text(value.id) || typeof value.name !== 'string' || !Array.isArray(value.columns)) invalid();
+function validateTemplate(value: unknown, prefix = '') {
+  if (!isObject(value)) invalid(prefix || 'template');
+  if (!text(value.id)) invalid(`${prefix}id`);
+  if (typeof value.name !== 'string') invalid(`${prefix}name`);
+  if (!Array.isArray(value.columns)) invalid(`${prefix}columns`);
   const ids = new Set<string>();
-  for (const col of value.columns as unknown[]) {
+  for (const [index, col] of (value.columns as unknown[]).entries()) {
+    const field = `${prefix}columns[${index}]`;
     // Legacy columns omit formula; migrateColumn supplies/converts it when opened.
     // Keep the stored snapshot intact, as the cloud restore does.
-    if (!isObject(col) || !text(col.id) || ids.has(col.id) || typeof col.name !== 'string'
-      || (col.formula !== undefined && typeof col.formula !== 'string')) invalid();
+    if (!isObject(col)) invalid(field);
+    if (!text(col.id) || ids.has(col.id)) invalid(`${field}.id`);
+    if (typeof col.name !== 'string') invalid(`${field}.name`);
+    if (col.formula !== undefined && typeof col.formula !== 'string') invalid(`${field}.formula`);
     ids.add(col.id as string);
   }
 }
 
-function validateRows(table: string, rows: unknown): asserts rows is Row[] {
+function validateHistorySnapshot(value: unknown) {
+  // getRecordTemplate already renders these legacy simple-board markers using a
+  // virtual template. Preserve them instead of treating them as full templates.
+  if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) return;
+  if (!isObject(value)) invalid('snapshotTemplate');
+  if (value.columns === undefined) return;
+  validateTemplate(value, 'snapshotTemplate.');
+}
+
+function validateRows(table: string, rows: unknown, onRow: (index: number) => void): asserts rows is Row[] {
   if (!Array.isArray(rows)) invalid();
   const key = table === 'templatePrefs' ? 'templateId' : table === 'analyticsLogs' ? 'historyId' : 'id';
   const ids = new Set<string>();
-  for (const row of rows as unknown[]) {
-    if (!isObject(row) || !text(row[key]) || ids.has(row[key] as string)) invalid();
+  for (const [index, row] of (rows as unknown[]).entries()) {
+    onRow(index);
+    if (!isObject(row)) invalid('record');
+    if (!text(row[key]) || ids.has(row[key] as string)) invalid(key);
     ids.add(row[key] as string);
     if (table === 'templates') validateTemplate(row);
     if (table === 'history' || table === 'sessions') {
-      if (!text(row.templateId) || !number(row.startTime) || !Array.isArray(row.players)) invalid();
+      if (!text(row.templateId)) invalid('templateId');
+      if (!number(row.startTime)) invalid('startTime');
+      if (!Array.isArray(row.players)) invalid('players');
       const players = new Set<string>();
-      for (const player of row.players as unknown[]) {
-        if (!isObject(player) || !text(player.id) || players.has(player.id) || typeof player.name !== 'string'
-          || typeof player.color !== 'string' || !isObject(player.scores) || !number(player.totalScore)) invalid();
+      for (const [playerIndex, player] of (row.players as unknown[]).entries()) {
+        const field = `players[${playerIndex}]`;
+        if (!isObject(player)) invalid(field);
+        if (!text(player.id) || players.has(player.id)) invalid(`${field}.id`);
+        if (typeof player.name !== 'string') invalid(`${field}.name`);
+        if (typeof player.color !== 'string') invalid(`${field}.color`);
+        if (!isObject(player.scores)) invalid(`${field}.scores`);
+        if (!number(player.totalScore)) invalid(`${field}.totalScore`);
         players.add(player.id as string);
       }
-      if (row.photos !== undefined && (!Array.isArray(row.photos) || !row.photos.every(text))) invalid();
-      if (row.photoContentIds !== undefined && (!isObject(row.photoContentIds) || !Object.values(row.photoContentIds).every(text))) invalid();
+      if (row.photos !== undefined && (!Array.isArray(row.photos) || !row.photos.every(text))) invalid('photos');
+      if (row.photoContentIds !== undefined && (!isObject(row.photoContentIds) || !Object.values(row.photoContentIds).every(text))) invalid('photoContentIds');
       if (table === 'history') {
-        if (typeof row.gameName !== 'string' || !number(row.endTime) || !Array.isArray(row.winnerIds) || !row.winnerIds.every(text)) invalid();
-        if (row.snapshotTemplate !== undefined && row.snapshotTemplate !== null) validateTemplate(row.snapshotTemplate);
+        if (typeof row.gameName !== 'string') invalid('gameName');
+        if (!number(row.endTime)) invalid('endTime');
+        if (!Array.isArray(row.winnerIds) || !row.winnerIds.every(text)) invalid('winnerIds');
+        validateHistorySnapshot(row.snapshotTemplate);
       } else if (typeof row.name !== 'string' || !['active', 'completed'].includes(String(row.status))) invalid();
     }
     if (table.startsWith('saved') || table === 'bggGames') {
@@ -120,7 +146,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
         else invalid();
       }
       location = `table: ${table}`;
-      validateRows(table, rows);
+      validateRows(table, rows, index => { location = `table: ${table} / row: ${index + 1}`; });
       tables[table] = rows;
     }
     const images: LocalImage[] = [];
@@ -181,6 +207,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     return { tables, images, preferences: manifest.preferences, databaseVersion: manifest.databaseVersion };
   } catch (error) {
     if (error instanceof BackupError && error.code !== 'invalid') throw error;
-    throw new BackupError('invalid', location.slice(0, 240));
+    const field = error instanceof BackupError && error.message !== 'invalid' ? ` / ${error.message}` : '';
+    throw new BackupError('invalid', (location + field).slice(0, 240));
   }
 }

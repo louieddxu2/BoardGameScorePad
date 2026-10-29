@@ -6,6 +6,7 @@ import { validateOfflineBackup } from './validate';
 import { DATA_TABLES, ROOT, MANIFEST, jsonBytes, parseJson, readBlob, pack, unpack, digest, type Manifest } from './format';
 import type { GameTemplate, HistoryRecord } from '../../types';
 import { migrateTemplate } from '../../utils/dataMigration';
+import { getRecordTemplate } from '../../utils/historyUtils';
 
 vi.mock('../../db', async () => {
   const { default: Dexie } = await import('dexie');
@@ -72,6 +73,39 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('offline full-data backup', () => {
+  it('preserves legacy simple-history snapshot markers supported by the history viewer', async () => {
+    await seed();
+    await db.history.clear();
+    const markers = [[], {}, { bggId: '123', defaultScoringRule: 'COOP' }];
+    for (const [index, snapshotTemplate] of markers.entries()) {
+      await db.table('history').put({ ...record, id: `legacy-${index}`, snapshotTemplate });
+    }
+    const archive = await exportOfflineBackup();
+    await db.history.clear();
+    await importOfflineBackup(archive);
+    for (const [index, snapshot] of markers.entries()) {
+      const restored = (await db.history.get(`legacy-${index}`))!;
+      expect(restored.snapshotTemplate).toEqual(snapshot);
+      expect(restored.players).toEqual(record.players);
+      expect(restored.winnerIds).toEqual(record.winnerIds);
+      expect(getRecordTemplate(restored)).toMatchObject({ id: record.templateId, name: record.gameName });
+    }
+    for (const [patch, field] of [
+      [{ snapshotTemplate: { ...template, columns: 'broken' } }, 'snapshotTemplate.columns'],
+      [{ players: [{ ...player, totalScore: 'broken' }] }, 'players[0].totalScore'],
+    ] as const) {
+      const damaged = await rewrite(archive, async (files, manifest) => {
+        const path = manifest.tables.history[0];
+        files[path] = jsonBytes({ ...(parseJson(files[path]) as object), ...patch });
+        manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
+      });
+      await expect(importOfflineBackup(damaged)).rejects.toMatchObject({
+        code: 'invalid', message: `table: history / row: 1 / ${field}`,
+      });
+      expect(await db.history.count()).toBe(markers.length);
+    }
+  });
+
   it('round-trips legacy columns without rewriting snapshots and still rejects malformed formulas before replacement', async () => {
     await seed();
     const legacy = { ...template, columns: [
@@ -97,7 +131,9 @@ describe('offline full-data backup', () => {
       files[path] = jsonBytes({ ...legacy, columns: [{ ...legacy.columns[0], formula: false }] });
       manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
     });
-    await expect(importOfflineBackup(malformed)).rejects.toMatchObject({ code: 'invalid', message: 'table: templates' });
+    await expect(importOfflineBackup(malformed)).rejects.toMatchObject({
+      code: 'invalid', message: 'table: templates / row: 1 / columns[0].formula',
+    });
     expect((await db.history.get(record.id))!.snapshotTemplate.columns).toEqual(legacy.columns);
   });
 

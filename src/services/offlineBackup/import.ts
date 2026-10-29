@@ -10,7 +10,7 @@ const TRANSIENT_TABLES = [
 
 function detachCloud(row: Row): Row {
   const { cloudFolderId: _folder, photoCloudIds: _photos, cloudImageId: _image, lastSyncedAt: _synced, ...rest } = row;
-  if (rest.snapshotTemplate && typeof rest.snapshotTemplate === 'object') {
+  if (rest.snapshotTemplate && typeof rest.snapshotTemplate === 'object' && !Array.isArray(rest.snapshotTemplate)) {
     rest.snapshotTemplate = detachCloud(rest.snapshotTemplate as Row);
   }
   return rest;
