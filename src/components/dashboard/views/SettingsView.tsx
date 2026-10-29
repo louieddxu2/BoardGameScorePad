@@ -46,7 +46,8 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
     setFilename('');
     try {
       if (mode === 'exporting') {
-        const blob = await exportOfflineBackup(setFilename);
+        let hasMissingReferences = false;
+        const blob = await exportOfflineBackup(setFilename, ids => { hasMissingReferences = ids.length > 0; });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -57,7 +58,7 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
         link.click();
         link.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-        setFeedback({ text: t('export_success'), error: false });
+        setFeedback({ text: t(hasMissingReferences ? 'export_success_with_missing_refs' : 'export_success'), error: false });
       } else if (file) {
         await importOfflineBackup(file, setFilename);
         // Recreate all in-memory preferences and query owners from the committed snapshot.

@@ -6,7 +6,9 @@ import {
   readBlob, pack, type Manifest, type Progress, type BackupTables, type Preferences, type Row,
 } from './format';
 
-export async function exportOfflineBackup(onProgress: Progress = () => {}): Promise<Blob> {
+export async function exportOfflineBackup(
+  onProgress: Progress = () => {}, onMissingImages: (ids: readonly string[]) => void = () => {},
+): Promise<Blob> {
   onProgress('_System/settings_backup.json');
   // One consistent snapshot; compression and Blob reads happen after the read transaction.
   const snapshot = await db.transaction('r', [...DATA_TABLES.map(name => db.table(name)), db.images, db.builtins], async () => {
@@ -23,7 +25,7 @@ export async function exportOfflineBackup(onProgress: Progress = () => {}): Prom
     if (value !== null) preferences[key] = value;
   }
   const manifest: Manifest = {
-    format: 'BoardGameScorePad', version: 1, databaseVersion: db.verno, createdAt: Date.now(),
+    format: 'BoardGameScorePad', version: 2, databaseVersion: db.verno, createdAt: Date.now(),
     tables: {} as Manifest['tables'], images: [], preferences, files: {},
   };
   const archive: Zippable = Object.create(null);
@@ -33,15 +35,21 @@ export async function exportOfflineBackup(onProgress: Progress = () => {}): Prom
   const imageById = new Map(snapshot.images.map(image => [image.id, image]));
   const imagePaths = new Map<string, string>();
   const imageBytes = new Map<string, Uint8Array>();
+  const missingPaths = new Map<string, Set<string>>();
   const add = async (path: string, bytes: Uint8Array, photo = false) => {
     if (Object.prototype.hasOwnProperty.call(archive, path)) return;
     onProgress(path.slice(ROOT.length));
     archive[path] = [bytes, { level: photo ? 0 : 6 }];
     manifest.files[path] = { size: bytes.length, sha256: await digest(bytes) };
   };
-  const addImage = async (id: string, path: string, contentId?: string) => {
+  const addImage = async (id: string, path: string) => {
     const image = imageById.get(id);
-    if (!image?.blob || (contentId && image.contentId !== contentId)) throw new BackupError('missing_image', id);
+    if (!image?.blob) {
+      const paths = missingPaths.get(id) || new Set<string>();
+      paths.add(path.slice(ROOT.length));
+      missingPaths.set(id, paths);
+      return;
+    }
     let bytes = imageBytes.get(id);
     if (!bytes) {
       bytes = await readBlob(image.blob);
@@ -51,7 +59,7 @@ export async function exportOfflineBackup(onProgress: Progress = () => {}): Prom
     if (!imagePaths.has(id)) imagePaths.set(id, path);
   };
   const addTemplateImage = async (template: Row, folder: string) => {
-    if (typeof template.imageId === 'string' && !imagePaths.has(template.imageId)) {
+    if (typeof template.imageId === 'string' && template.imageId && !imagePaths.has(template.imageId)) {
       await addImage(template.imageId, `${folder}/${encodeURIComponent(template.imageId)}.jpg`);
     }
   };
@@ -73,8 +81,8 @@ export async function exportOfflineBackup(onProgress: Progress = () => {}): Prom
       if (table === 'templates') await addTemplateImage(row, folder);
       else {
         for (const id of row.photos as string[] || []) {
-          const revision = (row.photoContentIds as Record<string, string> | undefined)?.[id];
-          await addImage(id, `${folder}/${encodeURIComponent(revision ? `${id}_${revision}` : id)}.jpg`, revision);
+          const revision = imageById.get(id)?.contentId ?? (row.photoContentIds as Record<string, string> | undefined)?.[id];
+          await addImage(id, `${folder}/${encodeURIComponent(revision ? `${id}_${revision}` : id)}.jpg`);
         }
         if (table === 'history' && row.snapshotTemplate) await addTemplateImage(row.snapshotTemplate as Row, folder);
       }
@@ -82,6 +90,7 @@ export async function exportOfflineBackup(onProgress: Progress = () => {}): Prom
   }
   for (const image of snapshot.images) {
     if (image.relatedType === 'template' && snapshot.builtinIds.has(image.relatedId) && !imagePaths.has(image.id)) continue;
+    if (!image.blob) throw new BackupError('invalid');
     if (!imagePaths.has(image.id)) await addImage(image.id, `${ROOT}_System/Images/${encodeURIComponent(image.id)}.jpg`);
     const { blob: _blob, cloudId: _cloudId, isSynced: _synced, rotationSource, ...meta } = image;
     let source: Manifest['images'][number]['rotationSource'];
@@ -105,8 +114,16 @@ export async function exportOfflineBackup(onProgress: Progress = () => {}): Prom
       sessionContextWeights: extractSessionContextWeights(tables.weights as unknown as Parameters<typeof extractSessionContextWeights>[0]) },
     timestamp: manifest.createdAt,
   }));
+  if (missingPaths.size > 0) {
+    manifest.missingImageIds = [...missingPaths.keys()];
+    await add(`${ROOT}_System/missing_image_references.json`, jsonBytes({
+      description: 'These references have no corresponding file in the local snapshot. Records and existing files are preserved unchanged. No cloud comparison was performed.',
+      images: [...missingPaths].map(([id, paths]) => ({ id, references: [...paths] })),
+    }));
+  }
   archive[MANIFEST] = jsonBytes(manifest);
   onProgress('ZIP');
   const bytes = await pack(archive);
+  onMissingImages(manifest.missingImageIds || []);
   return new Blob([new Uint8Array(bytes).buffer], { type: 'application/zip' });
 }

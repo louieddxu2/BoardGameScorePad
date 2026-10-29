@@ -37,7 +37,10 @@ it('asks for destructive replacement confirmation before importing and keeps can
 
 it('locks the controls during export and downloads a ZIP with the backup filename', async () => {
   let finish!: (blob: Blob) => void;
-  mocks.exportData.mockImplementation(() => new Promise<Blob>(resolve => { finish = resolve; }));
+  mocks.exportData.mockImplementation((_progress, onMissing) => {
+    onMissing(['old-background']);
+    return new Promise<Blob>(resolve => { finish = resolve; });
+  });
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   const createUrl = vi.fn(() => 'blob:backup');
   Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createUrl });
@@ -61,4 +64,5 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   expect(anchor.href).toBe('blob:backup');
   expect(busy).toHaveBeenLastCalledWith(false);
   expect(exportButton).not.toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent('Image references without matching local files were preserved');
 });

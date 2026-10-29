@@ -25,9 +25,10 @@ export type ImageEntry = {
   rotationSource?: { path: string; mimeType: string; quarterTurns: 1 | 2 | 3 };
 };
 export interface Manifest {
-  format: 'BoardGameScorePad'; version: 1; databaseVersion: number; createdAt: number;
+  format: 'BoardGameScorePad'; version: 1 | 2; databaseVersion: number; createdAt: number;
   tables: Record<DataTable, string[]>; images: ImageEntry[]; preferences: Preferences;
   files: Record<string, { size: number; sha256: string }>;
+  missingImageIds?: string[]; // Pre-existing dangling references, not files omitted from this ZIP.
 }
 
 export const jsonBytes = (value: unknown) => strToU8(JSON.stringify(value, null, 2));

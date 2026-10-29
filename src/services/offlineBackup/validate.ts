@@ -45,7 +45,7 @@ function validateRows(table: string, rows: unknown): asserts rows is Row[] {
       if (row.photoContentIds !== undefined && (!isObject(row.photoContentIds) || !Object.values(row.photoContentIds).every(text))) invalid();
       if (table === 'history') {
         if (typeof row.gameName !== 'string' || !number(row.endTime) || !Array.isArray(row.winnerIds) || !row.winnerIds.every(text)) invalid();
-        validateTemplate(row.snapshotTemplate);
+        if (row.snapshotTemplate !== undefined && row.snapshotTemplate !== null) validateTemplate(row.snapshotTemplate);
       } else if (typeof row.name !== 'string' || !['active', 'completed'].includes(String(row.status))) invalid();
     }
     if (table.startsWith('saved') || table === 'bggGames') {
@@ -77,7 +77,10 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     const files = await unpack(await readBlob(blob));
     if (!files[MANIFEST]) invalid();
     const raw = parseJson(files[MANIFEST]);
-    if (!isObject(raw) || raw.format !== 'BoardGameScorePad' || raw.version !== 1 || !number(raw.databaseVersion)
+    if (isObject(raw) && raw.format === 'BoardGameScorePad' && typeof raw.version === 'number' && raw.version > 2) {
+      throw new BackupError('unsupported');
+    }
+    if (!isObject(raw) || raw.format !== 'BoardGameScorePad' || ![1, 2].includes(raw.version as number) || !number(raw.databaseVersion)
       || !number(raw.createdAt) || !isObject(raw.tables) || !isObject(raw.files) || !Array.isArray(raw.images)) invalid();
     validatePreferences(raw.preferences);
     const manifest = raw as unknown as Manifest;
@@ -115,7 +118,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
       if (!isObject(entry) || !text(entry.id) || imageIds.has(entry.id) || !text(entry.relatedId)
         || !['template', 'session'].includes(entry.relatedType) || !number(entry.createdAt)
         || typeof entry.mimeType !== 'string' || !entry.mimeType.startsWith('image/')
-        || !text(entry.path) || !manifest.files[entry.path] || files[entry.path].length === 0
+        || !text(entry.path) || !manifest.files[entry.path]
         || (entry.contentId !== undefined && !text(entry.contentId))) invalid();
       imageIds.add(entry.id);
       const image: LocalImage = {
@@ -127,25 +130,38 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
         const source = entry.rotationSource;
         if (!isObject(source) || ![1, 2, 3].includes(source.quarterTurns as number)
           || typeof source.mimeType !== 'string' || !source.mimeType.startsWith('image/')
-          || !text(source.path) || !manifest.files[source.path] || files[source.path].length === 0) invalid();
+          || !text(source.path) || !manifest.files[source.path]) invalid();
         image.rotationSource = { quarterTurns: source.quarterTurns,
           blob: new Blob([new Uint8Array(files[source.path]).buffer], { type: source.mimeType }) };
       }
       images.push(image);
     }
     const imageById = new Map(images.map(image => [image.id, image]));
+    const missing = manifest.missingImageIds ?? [];
+    if (manifest.version === 1 && missing.length > 0) invalid();
+    if (missing.length > 0 && !manifest.files[`${ROOT}_System/missing_image_references.json`]) invalid();
+    if (!Array.isArray(missing) || !missing.every(text) || new Set(missing).size !== missing.length
+      || missing.some(id => imageById.has(id))) invalid();
+    const missingIds = new Set(missing);
+    const usedMissingIds = new Set<string>();
+    const checkImage = (id: string) => {
+      if (imageById.has(id)) return;
+      if (!missingIds.has(id)) invalid();
+      usedMissingIds.add(id);
+    };
     const checkTemplate = (template: Row) => {
-      if (template.imageId !== undefined && (!text(template.imageId) || !imageById.has(template.imageId))) invalid();
+      if (template.imageId === undefined || template.imageId === null || template.imageId === '') return;
+      if (!text(template.imageId)) invalid();
+      checkImage(template.imageId);
     };
     tables.templates.forEach(checkTemplate);
     for (const row of [...tables.history, ...tables.sessions]) {
       for (const id of row.photos as string[] || []) {
-        const image = imageById.get(id);
-        const revision = (row.photoContentIds as Record<string, string> | undefined)?.[id];
-        if (!image || (revision && revision !== image.contentId)) invalid();
+        checkImage(id);
       }
       if (row.snapshotTemplate) checkTemplate(row.snapshotTemplate as Row);
     }
+    if (usedMissingIds.size !== missingIds.size) invalid();
     return { tables, images, preferences: manifest.preferences, databaseVersion: manifest.databaseVersion };
   } catch (error) {
     if (error instanceof BackupError) throw error;

@@ -71,8 +71,31 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('offline full-data backup', () => {
+  it('copies the complete local snapshot even when history retains a deleted background or an older photo revision marker', async () => {
+    await seed();
+    // Replacing a template background deletes the old image, but history keeps its snapshot ID.
+    await db.images.delete('background');
+    await db.templates.update(template.id, { imageId: 'new-background' });
+    await db.images.put({ id: 'new-background', relatedId: template.id, relatedType: 'template',
+      createdAt: 3, mimeType: 'image/jpeg', blob: new Blob(['new background'], { type: 'image/jpeg' }) });
+    await db.images.put({ ...(await db.images.get('photo'))!, contentId: 'r3' });
+    const onMissing = vi.fn();
+    const archive = await exportOfflineBackup(undefined, onMissing);
+    const files = await unpack(await readBlob(archive));
+    expect(onMissing).toHaveBeenCalledWith(['background']);
+    expect(parseJson(files[MANIFEST])).toHaveProperty('missingImageIds', ['background']);
+    expect(Object.keys(files)).toContain(`${ROOT}_System/missing_image_references.json`);
+    expect(Object.keys(files)).toContain(`${ROOT}_History/測試_遊戲_h1/photo_r3.jpg`);
+    await importOfflineBackup(archive);
+    expect((await db.history.get('h1'))!.snapshotTemplate.imageId).toBe('background');
+    expect((await db.history.get('h1'))!.photoContentIds).toEqual({ photo: 'r2' });
+    expect((await db.images.get('photo'))!.contentId).toBe('r3');
+    expect(await (await db.images.get('new-background'))!.blob.text()).toBe('new background');
+  });
+
   it('round-trips readable cloud folders, original photo bytes, IDs and local learning data while preserving built-ins', async () => {
     await seed();
+    await db.table('history').put({ ...record, id: 'simple-history', snapshotTemplate: undefined, photos: [] });
     const archive = await exportOfflineBackup();
     const files = await unpack(await readBlob(archive));
     expect(Object.keys(files)).toContain(`${ROOT}_Templates/測試_遊戲_ab12cd34/data.json`);
@@ -93,6 +116,7 @@ describe('offline full-data backup', () => {
     expect(await db.templates.get(template.id)).not.toHaveProperty('cloudImageId');
     expect(await db.history.get('h1')).toMatchObject({ id: 'h1', winnerIds: ['p1'], players: [player], photoContentIds: { photo: 'r2' } });
     expect(await db.history.get('h1')).not.toHaveProperty('cloudFolderId');
+    expect(await db.history.get('simple-history')).not.toHaveProperty('snapshotTemplate');
     expect(await db.savedPlayers.count()).toBe(1);
     expect(await db.savedGames.get('game-id')).toBeDefined();
     expect(await db.weights.get('weight')).toBeDefined();
@@ -109,6 +133,8 @@ describe('offline full-data backup', () => {
     expect(localStorage.getItem('sm_pinned_ids')).toBe(JSON.stringify([template.id]));
     expect(localStorage.getItem('app_theme_mode')).toBe('sage');
     expect(localStorage.getItem('google_user_email')).toBe('private@example.test');
+    const legacy = await rewrite(archive, (_files, manifest) => { manifest.version = 1; });
+    await expect(importOfflineBackup(legacy)).resolves.toBeUndefined();
   });
 
   it('rejects incomplete or corrupted photos before replacing any existing data', async () => {
@@ -117,7 +143,10 @@ describe('offline full-data backup', () => {
     for (const missing of [true, false]) {
       const damaged = await rewrite(archive, (files, manifest) => {
         const path = manifest.images.find(image => image.id === 'photo')!.path;
-        if (missing) delete files[path];
+        if (missing) {
+          delete files[path];
+          manifest.missingImageIds = ['photo'];
+        }
         else files[path][0] ^= 1;
       });
       await expect(importOfflineBackup(damaged)).rejects.toMatchObject({ code: 'invalid' });
@@ -153,10 +182,15 @@ describe('offline full-data backup', () => {
     expect(localStorage.getItem('app_theme_mode')).toBe('light');
   });
 
-  it('rejects missing source photos, invalid preferences and built-in template injection', async () => {
+  it('preserves missing local photo references while still rejecting invalid preferences and built-in template injection', async () => {
     await seed();
     await db.images.delete('photo');
-    await expect(exportOfflineBackup()).rejects.toMatchObject({ code: 'missing_image' });
+    const localCopy = await exportOfflineBackup();
+    const restored = await validateOfflineBackup(localCopy);
+    expect(restored.tables.history[0].photos).toEqual(['photo']);
+    expect(restored.images.some(image => image.id === 'photo')).toBe(false);
+    await importOfflineBackup(localCopy);
+    expect((await db.history.get('h1'))!.photos).toEqual(['photo']);
     await db.history.clear();
     const archive = await exportOfflineBackup();
     const badPreferences = await rewrite(archive, (_files, manifest) => { manifest.preferences.sm_pinned_ids = '{broken'; });

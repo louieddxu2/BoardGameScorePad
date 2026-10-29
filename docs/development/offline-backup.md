@@ -46,9 +46,18 @@ ZIP support is bundled with the app for offline use. Compression runs through
 fflate's asynchronous ZIP API; existing photos use STORE without recompression.
 There are no full database/image reads until an export or import is requested.
 Export holds a consistent database snapshot and ZIP buffers in memory, so very
-large photo libraries can still be limited by available device memory. Missing
-local photos/backgrounds stop export rather than producing an incomplete backup.
+large photo libraries can still be limited by available device memory. Export
+copies the local snapshot; it does not compare with or require Google Drive.
+Pre-existing image references without local files are preserved verbatim, listed
+in `_System/missing_image_references.json` and declared in the manifest. This can
+occur when historical snapshots retain a replaced/deleted background's old ID.
+Photo revision markers are copied independently of the current local Blob, just
+as they exist locally; they are cloud synchronization metadata, not evidence of
+a missing local file. Import accepts explicitly declared dangling references but
+still rejects any file missing or corrupted relative to the ZIP's file manifest.
+History without a template snapshot (simple scoreboards) is also valid.
 
-Archives currently support format version 1. Newer database versions are rejected
-by older apps. Import bounds decompressed input size and rejects duplicate or
+Exports use format version 2, which explicitly records pre-existing dangling
+image references. Import also accepts version 1 archives. Newer archive or
+database versions are rejected by older apps. Import bounds decompressed input size and rejects duplicate or
 unsafe paths. Checksums detect corruption; they are not a signature or encryption.
