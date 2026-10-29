@@ -106,8 +106,10 @@ describe('offline full-data backup', () => {
     const settings = parseJson(files[`${ROOT}_System/settings_backup.json`]) as Record<string, unknown>;
     expect(settings.library).toMatchObject({ players: [{ id: 'p1', name: '玩家' }] });
     expect(new TextDecoder().decode(files[MANIFEST])).not.toContain('private@example.test');
+    // Fresh user stores, as in a private window; retain only this installation's built-ins.
+    for (const table of DATA_TABLES) await db.table(table).clear();
+    await db.images.filter(image => image.relatedId !== 'builtin').delete();
     await db.templates.put({ ...template, id: 'old' });
-    await db.history.clear();
     await db.savedPlayers.put({ id: 'old-player', name: 'old', lastUsed: 0, usageCount: 0 });
     await db.table('multiplayerOutbox').put({ id: 'outdated-delivery' });
     localStorage.setItem('app_theme_mode', 'light');

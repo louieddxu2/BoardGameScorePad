@@ -9,11 +9,27 @@ const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importD
 vi.mock('../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: mocks.confirm }) }));
 vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: mocks.exportData }));
 vi.mock('../../../services/offlineBackup/import', () => ({ importOfflineBackup: mocks.importData }));
-afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); });
+afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
   <SettingsView themeMode="sage" onToggleTheme={vi.fn()} onBusyChange={busy} />
 </LanguageContext.Provider>);
+
+it('shows a successful import result even when the browser does not carry out reload', async () => {
+  mocks.confirm.mockResolvedValue(true);
+  mocks.importData.mockResolvedValue(undefined);
+  const reload = vi.fn();
+  vi.stubGlobal('window', new Proxy(window, { get(target, property) {
+    return property === 'location' ? { reload } : Reflect.get(target, property, target);
+  } }));
+  renderSettings();
+  fireEvent.change(screen.getByLabelText('Import all data'), {
+    target: { files: [new File(['zip'], 'backup.zip', { type: 'application/zip' })] },
+  });
+  await waitFor(() => expect(mocks.importData).toHaveBeenCalledTimes(1));
+  expect(await screen.findByRole('status')).toHaveTextContent('All data imported');
+  expect(reload).toHaveBeenCalledTimes(1);
+});
 
 it('asks for destructive replacement confirmation before importing and keeps cancelled data untouched', async () => {
   mocks.confirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true);

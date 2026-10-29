@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import { useModalBackHandler } from './useModalBackHandler';
 
@@ -32,6 +32,8 @@ export const ConfirmationProvider: React.FC<{ children: ReactNode }> = ({ childr
     options: ConfirmOptions;
     resolve: (value: boolean) => void;
   } | null>(null);
+  const isClosingRef = useRef(false);
+  const pendingResolutionRef = useRef<(() => void) | null>(null);
 
   const confirm = useCallback((options: ConfirmOptions) => {
     return new Promise<boolean>((resolve) => {
@@ -43,16 +45,34 @@ export const ConfirmationProvider: React.FC<{ children: ReactNode }> = ({ childr
     });
   }, []);
 
-  const handleClose = useCallback((result: boolean) => {
+  const settle = useCallback((result: boolean) => {
     if (modalState) {
-      modalState.resolve(result);
+      pendingResolutionRef.current = () => modalState.resolve(result);
       setModalState(null);
     }
   }, [modalState]);
 
   // Hook into mobile back button behavior
   // Important: This is the core requirement for PWA "precautions" mentioned by user
-  useModalBackHandler(!!modalState?.isOpen, () => handleClose(false), 'global-confirm');
+  const { triggerClose } = useModalBackHandler(!!modalState?.isOpen, () => settle(false), 'global-confirm', { immediate: true });
+
+  useEffect(() => {
+    if (modalState || !pendingResolutionRef.current) return;
+    const resolve = pendingResolutionRef.current;
+    pendingResolutionRef.current = null;
+    isClosingRef.current = false;
+    // Commit the closed modal and its history cleanup before a caller can open another.
+    resolve();
+  }, [modalState]);
+
+  const handleClose = useCallback(async (result: boolean) => {
+    if (!modalState || isClosingRef.current) return;
+    isClosingRef.current = true;
+    // Complete the shared history traversal before callers mutate data or reload.
+    // Native Back already consumed its entry and goes directly through settle().
+    await triggerClose(1, { waitForPopstate: true });
+    settle(result);
+  }, [modalState, settle, triggerClose]);
 
   return (
     <ConfirmationContext.Provider value={{ confirm }}>

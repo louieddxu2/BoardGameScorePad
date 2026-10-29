@@ -61,8 +61,10 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
         setFeedback({ text: t(hasMissingReferences ? 'export_success_with_missing_refs' : 'export_success'), error: false });
       } else if (file) {
         await importOfflineBackup(file, setFilename);
+        setFeedback({ text: t('import_success'), error: false });
         // Recreate all in-memory preferences and query owners from the committed snapshot.
-        window.location.reload();
+        try { window.location.reload(); }
+        catch (error) { console.warn('Data imported, but page reload was blocked', error); }
       }
     } catch (error) {
       console.error('Offline backup failed', error);
@@ -78,6 +80,7 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
 
   return <section aria-labelledby="settings-title" className="max-w-xl mx-auto space-y-6">
     <h2 id="settings-title" className="text-xl font-bold text-txt-primary">{t('settings')}</h2>
+    {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-status-danger text-sm' : 'text-status-success text-sm'}>{feedback.text}</p>}
     <button type="button" disabled={!!operation} onClick={onToggleTheme}
       className="w-full min-h-[56px] px-4 py-3 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover transition-colors">
       <Palette size={20} className="text-txt-muted shrink-0" />
@@ -106,7 +109,6 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
         event.target.value = '';
         if (file) void run('importing', file);
       }} />
-    {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-status-danger text-sm' : 'text-status-success text-sm'}>{feedback.text}</p>}
     {operation && createPortal(<div className="fixed inset-0 z-[120] bg-modal-backdrop/90 flex items-center justify-center p-6"
       role="dialog" aria-modal="true" aria-label={t(operation)} tabIndex={-1} ref={progressRef}
       onKeyDown={event => { if (event.key === 'Tab') event.preventDefault(); }}>
