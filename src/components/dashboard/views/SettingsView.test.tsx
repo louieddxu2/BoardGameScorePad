@@ -15,20 +15,36 @@ const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider valu
   <SettingsView themeMode="sage" onToggleTheme={vi.fn()} onBusyChange={busy} />
 </LanguageContext.Provider>);
 
-it('shows a successful import result even when the browser does not carry out reload', async () => {
-  mocks.confirm.mockResolvedValue(true);
-  mocks.importData.mockResolvedValue(undefined);
+it('waits for import to commit and the completion acknowledgement before reloading', async () => {
+  let finishImport!: () => void;
+  let acknowledge!: (value: boolean) => void;
+  mocks.confirm.mockResolvedValueOnce(true).mockImplementationOnce(() => new Promise<boolean>(resolve => { acknowledge = resolve; }));
+  mocks.importData.mockImplementationOnce(() => new Promise<void>(resolve => { finishImport = resolve; }));
   const reload = vi.fn();
   vi.stubGlobal('window', new Proxy(window, { get(target, property) {
     return property === 'location' ? { reload } : Reflect.get(target, property, target);
   } }));
-  renderSettings();
+  const busy = vi.fn();
+  renderSettings(busy);
   fireEvent.change(screen.getByLabelText('Import all data'), {
     target: { files: [new File(['zip'], 'backup.zip', { type: 'application/zip' })] },
   });
   await waitFor(() => expect(mocks.importData).toHaveBeenCalledTimes(1));
+  expect(mocks.confirm).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('dialog', { name: 'Validating and importing' })).toBeInTheDocument();
+  expect(reload).not.toHaveBeenCalled();
+  await act(async () => { finishImport(); });
+  expect(mocks.confirm).toHaveBeenLastCalledWith({
+    title: 'Import complete', message: 'All data imported. Press Confirm to reload the page and apply settings.',
+    confirmText: 'Confirm', hideCancel: true,
+  });
+  expect(screen.queryByRole('dialog', { name: 'Validating and importing' })).not.toBeInTheDocument();
+  expect(busy).toHaveBeenLastCalledWith(true);
+  expect(reload).not.toHaveBeenCalled();
   expect(await screen.findByRole('status')).toHaveTextContent('All data imported');
+  await act(async () => { acknowledge(true); });
   expect(reload).toHaveBeenCalledTimes(1);
+  expect(busy).toHaveBeenLastCalledWith(false);
 });
 
 it('asks for destructive replacement confirmation before importing and keeps cancelled data untouched', async () => {

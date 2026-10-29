@@ -62,8 +62,13 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
       } else if (file) {
         await importOfflineBackup(file, setFilename);
         setFeedback({ text: t('import_success'), error: false });
+        setOperation(null);
+        const acknowledged = await confirm({
+          title: t('import_done'), message: t('import_reload_message'),
+          confirmText: t('confirm'), hideCancel: true,
+        });
         // Recreate all in-memory preferences and query owners from the committed snapshot.
-        try { window.location.reload(); }
+        try { if (acknowledged) window.location.reload(); }
         catch (error) { console.warn('Data imported, but page reload was blocked', error); }
       }
     } catch (error) {
