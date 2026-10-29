@@ -49,7 +49,7 @@ it('waits for import to commit and the completion acknowledgement before reloadi
 
 it('asks for destructive replacement confirmation before importing and keeps cancelled data untouched', async () => {
   mocks.confirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-  mocks.importData.mockRejectedValue(new BackupError('invalid'));
+  mocks.importData.mockRejectedValue(new BackupError('invalid', 'table: history'));
   renderSettings();
   const file = new File(['invalid'], 'backup.zip', { type: 'application/zip' });
   const input = screen.getByLabelText('Import all data');
@@ -65,6 +65,8 @@ it('asks for destructive replacement confirmation before importing and keeps can
   expect(mocks.importData).toHaveBeenCalledTimes(1);
   expect(mocks.importData).toHaveBeenCalledWith(file, expect.any(Function));
   expect(screen.getByRole('alert')).toHaveTextContent('Existing data has not been replaced');
+  expect(screen.getByRole('alert')).toHaveTextContent('Check location: table: history');
+  expect(mocks.confirm).toHaveBeenCalledTimes(2);
 });
 
 it('locks the controls during export and downloads a ZIP with the backup filename', async () => {

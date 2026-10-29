@@ -5,6 +5,7 @@ import { importOfflineBackup } from './import';
 import { validateOfflineBackup } from './validate';
 import { DATA_TABLES, ROOT, MANIFEST, jsonBytes, parseJson, readBlob, pack, unpack, digest, type Manifest } from './format';
 import type { GameTemplate, HistoryRecord } from '../../types';
+import { migrateTemplate } from '../../utils/dataMigration';
 
 vi.mock('../../db', async () => {
   const { default: Dexie } = await import('dexie');
@@ -71,6 +72,35 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('offline full-data backup', () => {
+  it('round-trips legacy columns without rewriting snapshots and still rejects malformed formulas before replacement', async () => {
+    await seed();
+    const legacy = { ...template, columns: [
+      { id: 'score', name: '分數', type: 'number', weight: 2 },
+      { id: 'choice', name: '選項', type: 'select', options: [{ label: '完成', value: 5 }] },
+    ] };
+    await db.table('templates').put(legacy);
+    await db.table('history').put({ ...record, snapshotTemplate: legacy });
+    const archive = await exportOfflineBackup();
+    await db.templates.clear();
+    await db.history.clear();
+    await importOfflineBackup(archive);
+    expect(await db.templates.get(template.id)).toEqual(expect.objectContaining({ columns: legacy.columns }));
+    const restored = (await db.history.get(record.id))!;
+    expect(restored.snapshotTemplate.columns).toEqual(legacy.columns);
+    expect(restored.players).toEqual(record.players);
+    expect(migrateTemplate(restored.snapshotTemplate).columns).toMatchObject([
+      { id: 'score', formula: 'a1×c1', constants: { c1: 2 } },
+      { id: 'choice', formula: 'a1', inputType: 'clicker', quickActions: [{ label: '完成', value: 5 }] },
+    ]);
+    const malformed = await rewrite(archive, async (files, manifest) => {
+      const path = manifest.tables.templates[0];
+      files[path] = jsonBytes({ ...legacy, columns: [{ ...legacy.columns[0], formula: false }] });
+      manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
+    });
+    await expect(importOfflineBackup(malformed)).rejects.toMatchObject({ code: 'invalid', message: 'table: templates' });
+    expect((await db.history.get(record.id))!.snapshotTemplate.columns).toEqual(legacy.columns);
+  });
+
   it('copies the complete local snapshot even when history retains a deleted background or an older photo revision marker', async () => {
     await seed();
     // Replacing a template background deletes the old image, but history keeps its snapshot ID.

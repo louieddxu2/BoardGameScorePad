@@ -75,7 +75,9 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
       console.error('Offline backup failed', error);
       const key = error instanceof BackupError ? `error_${error.code}` as const
         : error instanceof Error && ['QuotaExceededError', 'SecurityError'].includes(error.name) ? 'error_storage' : 'error_unknown';
-      setFeedback({ text: t(key), error: true });
+      const location = error instanceof BackupError && error.code === 'invalid' && error.message !== error.code
+        ? ` ${t('error_location')}${error.message}` : '';
+      setFeedback({ text: t(key) + location, error: true });
     } finally {
       setOperation(null);
       onBusyChange(false);

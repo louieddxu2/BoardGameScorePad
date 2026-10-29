@@ -20,7 +20,10 @@ function validateTemplate(value: unknown) {
   if (!isObject(value) || !text(value.id) || typeof value.name !== 'string' || !Array.isArray(value.columns)) invalid();
   const ids = new Set<string>();
   for (const col of value.columns as unknown[]) {
-    if (!isObject(col) || !text(col.id) || ids.has(col.id) || typeof col.name !== 'string' || typeof col.formula !== 'string') invalid();
+    // Legacy columns omit formula; migrateColumn supplies/converts it when opened.
+    // Keep the stored snapshot intact, as the cloud restore does.
+    if (!isObject(col) || !text(col.id) || ids.has(col.id) || typeof col.name !== 'string'
+      || (col.formula !== undefined && typeof col.formula !== 'string')) invalid();
     ids.add(col.id as string);
   }
 }
@@ -73,8 +76,10 @@ function validatePreferences(value: unknown): asserts value is Preferences {
 
 /** Validate every document and asset before a caller may replace local data. */
 export async function validateOfflineBackup(blob: Blob, onProgress: Progress = () => {}): Promise<ValidatedBackup> {
+  let location = 'ZIP';
   try {
     const files = await unpack(await readBlob(blob));
+    location = MANIFEST.slice(ROOT.length);
     if (!files[MANIFEST]) invalid();
     const raw = parseJson(files[MANIFEST]);
     if (isObject(raw) && raw.format === 'BoardGameScorePad' && typeof raw.version === 'number' && raw.version > 2) {
@@ -82,10 +87,13 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     }
     if (!isObject(raw) || raw.format !== 'BoardGameScorePad' || ![1, 2].includes(raw.version as number) || !number(raw.databaseVersion)
       || !number(raw.createdAt) || !isObject(raw.tables) || !isObject(raw.files) || !Array.isArray(raw.images)) invalid();
+    location = '_System/settings_backup.json (preferences)';
     validatePreferences(raw.preferences);
+    location = MANIFEST.slice(ROOT.length);
     const manifest = raw as unknown as Manifest;
     if (Object.keys(files).length !== Object.keys(manifest.files).length + 1) invalid();
     for (const [path, meta] of Object.entries(manifest.files)) {
+      location = path.slice(ROOT.length);
       if (!safePath(path) || path === MANIFEST || !isObject(meta) || !number(meta.size)
         || typeof meta.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(meta.sha256)) invalid();
       const bytes = files[path];
@@ -97,6 +105,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     if (Object.keys(manifest.tables).length !== DATA_TABLES.length) invalid();
     const usedPaths = new Set<string>();
     for (const table of DATA_TABLES) {
+      location = `table: ${table}`;
       const paths = manifest.tables[table];
       if (!Array.isArray(paths) || (!['templates', 'sessions', 'history'].includes(table) && paths.length !== 1)) invalid();
       const rows: unknown[] = [];
@@ -104,17 +113,20 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
         const area = table === 'templates' ? '_Templates/' : table === 'history' ? '_History/' : table === 'sessions' ? '_Active/' : '_System/tables/';
         if (typeof path !== 'string' || !path.startsWith(ROOT + area) || usedPaths.has(path) || !manifest.files[path]) invalid();
         usedPaths.add(path);
+        location = path.slice(ROOT.length);
         const data = parseJson(files[path]);
         if (['templates', 'sessions', 'history'].includes(table)) rows.push(data);
         else if (Array.isArray(data)) rows.push(...data);
         else invalid();
       }
+      location = `table: ${table}`;
       validateRows(table, rows);
       tables[table] = rows;
     }
     const images: LocalImage[] = [];
     const imageIds = new Set<string>();
     for (const entry of manifest.images) {
+      location = 'images';
       if (!isObject(entry) || !text(entry.id) || imageIds.has(entry.id) || !text(entry.relatedId)
         || !['template', 'session'].includes(entry.relatedType) || !number(entry.createdAt)
         || typeof entry.mimeType !== 'string' || !entry.mimeType.startsWith('image/')
@@ -127,6 +139,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
         isSynced: false, ...(entry.contentId ? { contentId: entry.contentId } : {}),
       };
       if (entry.rotationSource !== undefined) {
+        location = entry.path.slice(ROOT.length);
         const source = entry.rotationSource;
         if (!isObject(source) || ![1, 2, 3].includes(source.quarterTurns as number)
           || typeof source.mimeType !== 'string' || !source.mimeType.startsWith('image/')
@@ -137,6 +150,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
       images.push(image);
     }
     const imageById = new Map(images.map(image => [image.id, image]));
+    location = '_System/missing_image_references.json';
     const missing = manifest.missingImageIds ?? [];
     if (manifest.version === 1 && missing.length > 0) invalid();
     if (missing.length > 0 && !manifest.files[`${ROOT}_System/missing_image_references.json`]) invalid();
@@ -154,8 +168,10 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
       if (!text(template.imageId)) invalid();
       checkImage(template.imageId);
     };
+    location = 'table: templates (images)';
     tables.templates.forEach(checkTemplate);
     for (const row of [...tables.history, ...tables.sessions]) {
+      location = `record: ${row.id} (images)`;
       for (const id of row.photos as string[] || []) {
         checkImage(id);
       }
@@ -164,7 +180,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     if (usedMissingIds.size !== missingIds.size) invalid();
     return { tables, images, preferences: manifest.preferences, databaseVersion: manifest.databaseVersion };
   } catch (error) {
-    if (error instanceof BackupError) throw error;
-    throw new BackupError('invalid');
+    if (error instanceof BackupError && error.code !== 'invalid') throw error;
+    throw new BackupError('invalid', location.slice(0, 240));
   }
 }
