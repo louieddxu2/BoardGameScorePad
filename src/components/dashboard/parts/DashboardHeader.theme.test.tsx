@@ -27,7 +27,7 @@ it('cycles from the actual top-left control and exposes current/next themes to t
     render(<Header />);
     const button = screen.getByRole('button', { name: '目前為深色，切換為暖紙淺色' });
     expect(button.tagName).toBe('BUTTON');
-    expect(button).toHaveClass('min-w-[44px]', 'min-h-[44px]');
+    expect(button).toHaveClass('w-9', 'h-9');
     fireEvent.click(button);
     expect(button).toHaveAccessibleName('目前為暖紙淺色，切換為鼠尾草綠');
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');

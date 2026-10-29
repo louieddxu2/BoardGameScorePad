@@ -221,16 +221,16 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         ) : (
           <div className="flex justify-between items-center w-full animate-in fade-in duration-300 gap-2">
             {/* Left Side: Logo, Title, Toggle */}
-            <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
               {/* Logo: Toggle Theme */}
               <button
                 type="button"
-                className="bg-surface-alt min-w-[44px] min-h-[44px] flex items-center justify-center p-1.5 rounded-xl border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
+                className="bg-surface-alt w-9 h-9 flex items-center justify-center p-1 rounded-lg border border-surface-border shrink-0 cursor-pointer active:scale-90 transition-transform focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
                 onClick={(e) => { e.stopPropagation(); onToggleTheme(); }}
                 title={themeControlLabel}
                 aria-label={themeControlLabel}
               >
-                <ThemeIcon size={24} className={themeIconClass} />
+                <ThemeIcon size={20} className={themeIconClass} />
               </button>
               {/* Title: Toggle Language */}
               <h1
@@ -242,16 +242,16 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 {tCommon('app_name')}
               </h1>
 
-              {/* Unified Toggle Button - Width 56px, tight padding */}
-              <div className="flex items-center gap-0.5 shrink-0">
+              {/* Settings sits immediately beside the compact view toggle. */}
+              <div className="flex items-center gap-0 shrink-0">
               <button type="button" aria-label={tSettings('settings')} aria-pressed={viewMode === 'settings'}
                 onClick={() => setViewMode(viewMode === 'settings' ? 'library' : 'settings')}
-                className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary ${viewMode === 'settings' ? 'bg-surface-alt text-brand-primary' : 'text-txt-muted hover:bg-surface-hover hover:text-txt-primary'}`}>
+                className={`h-9 w-7 rounded-lg flex items-center justify-end transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary ${viewMode === 'settings' ? 'bg-surface-alt text-brand-primary' : 'text-txt-muted hover:bg-surface-hover hover:text-txt-primary'}`}>
                 <Settings size={20} />
               </button>
               <button
                 onClick={toggleView}
-                className="relative h-9 w-[56px] bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group active:scale-95"
+                className="relative h-9 w-12 bg-surface-alt border border-surface-border rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group active:scale-95"
                 title={viewMode === 'library' ? tCloud('cloud_tab_history') : tCloud('cloud_tab_templates')}
               >
                 {/* Central Slash (Background) */}
@@ -261,7 +261,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
                 {/* Icon Container - Library (Calculator) */}
                 <div
-                  className={`absolute flex items-center justify-center left-2.5 
+                  className={`absolute flex items-center justify-center left-1.5
                         ${viewMode === 'library' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
@@ -270,7 +270,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
                 {/* Icon Container - History (History Clock) */}
                 <div
-                  className={`absolute flex items-center justify-center right-2.5
+                  className={`absolute flex items-center justify-center right-1.5
                         ${viewMode === 'history' ? 'icon-toggle-active' : 'z-10 text-txt-muted'}
                     `}
                 >
