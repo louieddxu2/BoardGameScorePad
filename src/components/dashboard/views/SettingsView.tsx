@@ -9,6 +9,8 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import { exportOfflineBackup } from '../../../services/offlineBackup/export';
 import { importOfflineBackup } from '../../../services/offlineBackup/import';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../../db';
 
 export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
   themeMode: AppTheme; onToggleTheme: () => void; onBusyChange: (busy: boolean) => void;
@@ -21,7 +23,8 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
   const busyRef = useRef(false);
   const [operation, setOperation] = useState<'exporting' | 'importing' | null>(null);
   const [filename, setFilename] = useState('');
-  const [feedback, setFeedback] = useState<{ text: string; error: boolean } | null>(null);
+  const [feedback, setFeedback] = useState<{ text: string; error: boolean; warning?: boolean } | null>(null);
+  const lastReport = useLiveQuery(() => db.backupReports.get('latest'), []);
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
   useEffect(() => {
     if (!operation) return;
@@ -60,11 +63,13 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
         setFeedback({ text: t(hasMissingReferences ? 'export_success_with_missing_refs' : 'export_success'), error: false });
       } else if (file) {
-        await importOfflineBackup(file, setFilename);
-        setFeedback({ text: t('import_success'), error: false });
+        const report = await importOfflineBackup(file, setFilename);
+        const partial = report.issues.length > 0;
+        setFeedback({ text: t(partial ? 'import_partial' : 'import_success'), error: false, warning: partial });
         setOperation(null);
         const acknowledged = await confirm({
-          title: t('import_done'), message: t('import_reload_message'),
+          title: t(partial ? 'import_partial_done' : 'import_done'),
+          message: t(partial ? 'import_partial_reload' : 'import_reload_message'),
           confirmText: t('confirm'), hideCancel: true,
         });
         // Recreate all in-memory preferences and query owners from the committed snapshot.
@@ -87,7 +92,12 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
 
   return <section aria-labelledby="settings-title" className="max-w-xl mx-auto space-y-6">
     <h2 id="settings-title" className="text-xl font-bold text-txt-primary">{t('settings')}</h2>
-    {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-status-danger text-sm' : 'text-status-success text-sm'}>{feedback.text}</p>}
+    {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-status-danger text-sm' : feedback.warning ? 'text-status-warning text-sm' : 'text-status-success text-sm'}>{feedback.text}</p>}
+    {!!lastReport?.issues.length && <details className="text-sm text-txt-secondary">
+      <summary className="cursor-pointer text-status-warning">{t('import_issues')} ({lastReport.issues.length})</summary>
+      <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap break-all">{lastReport.issues.map(issue =>
+        `${issue.path} — ${t(`issue_${issue.reason}`)}${issue.detail ? ` (${issue.detail})` : ''}`).join('\n')}</pre>
+    </details>}
     <button type="button" disabled={!!operation} onClick={onToggleTheme}
       className="w-full min-h-[56px] px-4 py-3 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover transition-colors">
       <Palette size={20} className="text-txt-muted shrink-0" />

@@ -70,6 +70,115 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('offline full-data backup', () => {
+  it('recovers usable records when any declared file is missing, truncated, changed or invalid JSON', async () => {
+    await seed();
+    await db.history.put({ ...record, id: 'healthy-history', photos: [] });
+    const archive = await exportOfflineBackup();
+    const manifest = parseJson((await unpack(await readBlob(archive)))[MANIFEST]) as Manifest;
+    let checked = 0;
+    for (const path of Object.keys(manifest.files)) {
+      for (const mode of ['missing', 'truncated', 'changed', ...(path.endsWith('.json') ? ['json'] : [])]) {
+        const damaged = await rewrite(archive, async (files, index) => {
+          if (mode === 'missing') delete files[path];
+          else if (mode === 'truncated') files[path] = files[path].subarray(0, Math.max(0, files[path].length - 1));
+          else if (mode === 'changed') files[path][0] ^= 1;
+          else {
+            files[path] = new TextEncoder().encode('{broken');
+            index.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
+          }
+        });
+        const report = await importOfflineBackup(damaged);
+        expect(report.issues, `${mode}: ${path}`).toContainEqual(expect.objectContaining({ path: path.slice(ROOT.length),
+          reason: mode === 'missing' ? 'missing' : mode === 'json' ? 'invalid' : 'checksum' }));
+        expect(await db.backupReports.get('latest')).toEqual(report);
+        if (path !== manifest.tables.history[1]) {
+          expect(await db.history.get('healthy-history'), path).toMatchObject({ players: record.players, winnerIds: record.winnerIds });
+        } else expect(await db.history.get('h1')).toMatchObject({ players: record.players });
+        if (path === manifest.images.find(image => image.id === 'photo')!.rotationSource!.path) {
+          expect(await (await db.images.get('photo'))!.blob.text()).toBe('rotated-photo');
+          expect((await db.images.get('photo'))!.rotationSource).toBeUndefined();
+        }
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(60);
+    const reExported = await unpack(await readBlob(await exportOfflineBackup()));
+    expect(reExported[`${ROOT}_System/restore_report.json`]).toBeDefined();
+  }, 15000);
+
+  it.each([32, 800000])('isolates a broken DEFLATE stream with %i bytes of input, including worker decoding', async sizeOfNote => {
+    await seed();
+    let state = 123456;
+    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const note = Array.from({ length: sizeOfNote }, () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return alphabet[(state >>> 16) % alphabet.length];
+    }).join('');
+    await db.history.update('h1', { note });
+    await db.history.put({ ...record, id: 'healthy-history', photos: [] });
+    const archive = await exportOfflineBackup();
+    const target = `${ROOT}_History/測試_遊戲_h1/session.json`;
+    const targets = new Set([target, `${ROOT}_Templates/測試_遊戲_ab12cd34/data.json`]);
+    const bytes = await readBlob(archive);
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let damaged = 0;
+    for (let offset = 0; offset + 30 < bytes.length && view.getUint32(offset, true) === 0x04034b50;) {
+      const nameLength = view.getUint16(offset + 26, true);
+      const extraLength = view.getUint16(offset + 28, true);
+      const size = view.getUint32(offset + 18, true);
+      const name = new TextDecoder().decode(bytes.subarray(offset + 30, offset + 30 + nameLength));
+      const payload = offset + 30 + nameLength + extraLength;
+      if (targets.has(name)) {
+        expect(view.getUint16(offset + 8, true)).toBe(8);
+        if (name === target && sizeOfNote > 320000) expect(size).toBeGreaterThan(320000);
+        bytes[payload] = 7; // Reserved DEFLATE block type: decompression must fail.
+        damaged++;
+      }
+      offset = payload + size;
+    }
+    expect(damaged).toBe(2);
+    const report = await importOfflineBackup(new Blob([new Uint8Array(bytes).buffer]));
+    for (const path of targets) expect(report.issues).toContainEqual({ path: path.slice(ROOT.length), reason: 'checksum' });
+    expect(await db.history.get('h1')).toBeUndefined();
+    expect(await db.history.get('healthy-history')).toMatchObject({ players: record.players });
+    expect(await db.templates.get(template.id)).toBeUndefined();
+    expect(await db.savedPlayers.get('p1')).toBeDefined();
+  }, 10000);
+
+  it('isolates simultaneous missing files and malformed or duplicate list rows while keeping healthy rows', async () => {
+    await seed();
+    await db.history.put({ ...record, id: 'healthy-history', photos: [] });
+    const damaged = await rewrite(await exportOfflineBackup(), async (files, manifest) => {
+      delete files[manifest.images.find(image => image.id === 'photo')!.path];
+      delete files[manifest.tables.history[0]];
+      const path = manifest.tables.savedPlayers[0];
+      files[path] = jsonBytes([
+        { id: 'first', name: 'duplicate' }, { id: 'second', name: 'duplicate' },
+        { id: 'invalid' }, { id: 'healthy', name: 'healthy' },
+      ]);
+      manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
+    });
+    const report = await importOfflineBackup(damaged);
+    expect(await db.history.get('healthy-history')).toMatchObject({ players: record.players });
+    expect((await db.savedPlayers.toArray()).map(row => row.id)).toEqual(['first', 'healthy']);
+    expect(report.issues).toContainEqual(expect.objectContaining({ reason: 'missing' }));
+    expect(report.issues).toContainEqual(expect.objectContaining({ detail: 'duplicate key' }));
+    expect(report.issues.filter(issue => issue.reason === 'invalid')).toHaveLength(2);
+  });
+
+  it('stops before replacement when the backup index itself cannot be read', async () => {
+    await seed();
+    const archive = await exportOfflineBackup();
+    for (const mode of ['missing index', 'invalid index', 'no payload']) {
+      const files = await unpack(await readBlob(archive));
+      if (mode === 'missing index') delete files[MANIFEST];
+      else if (mode === 'invalid index') files[MANIFEST] = new TextEncoder().encode('{broken');
+      else for (const path of Object.keys(files)) if (path !== MANIFEST) delete files[path];
+      await expect(importOfflineBackup(new Blob([new Uint8Array(await pack(files)).buffer]))).rejects.toMatchObject({ code: 'invalid' });
+      expect(await db.history.get(record.id)).toEqual(record);
+    }
+  });
+
   it('preserves legacy simple-history snapshot markers supported by the history viewer', async () => {
     await seed();
     await db.history.clear();
@@ -96,14 +205,14 @@ describe('offline full-data backup', () => {
         files[path] = jsonBytes({ ...(parseJson(files[path]) as object), ...patch });
         manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
       });
-      await expect(importOfflineBackup(damaged)).rejects.toMatchObject({
-        code: 'invalid', message: `table: history / row: 1 / ${field}`,
-      });
-      expect(await db.history.count()).toBe(markers.length);
+      const report = await importOfflineBackup(damaged);
+      expect(report.issues).toContainEqual(expect.objectContaining({ reason: 'invalid', detail: field }));
+      expect(await db.history.count()).toBe(markers.length - 1);
+      expect(await db.history.get('legacy-1')).toBeDefined();
     }
   });
 
-  it('round-trips legacy columns without rewriting snapshots and still rejects malformed formulas before replacement', async () => {
+  it('round-trips legacy columns without rewriting snapshots and isolates malformed formulas', async () => {
     await seed();
     const legacy = { ...template, columns: [
       { id: 'score', name: '分數', type: 'number', weight: 2 },
@@ -128,9 +237,7 @@ describe('offline full-data backup', () => {
       files[path] = jsonBytes({ ...legacy, columns: [{ ...legacy.columns[0], formula: false }] });
       manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
     });
-    await expect(importOfflineBackup(malformed)).rejects.toMatchObject({
-      code: 'invalid', message: 'table: templates / row: 1 / columns[0].formula',
-    });
+    expect((await importOfflineBackup(malformed)).issues).toContainEqual(expect.objectContaining({ reason: 'invalid', detail: 'columns[0].formula' }));
     expect((await db.history.get(record.id))!.snapshotTemplate.columns).toEqual(legacy.columns);
   });
 
@@ -213,8 +320,8 @@ describe('offline full-data backup', () => {
     for (const [name, rows] of expectedTables) expect(await db.table(name).toArray(), name).toEqual(rows);
     for (const key of PREFERENCE_KEYS) expect(localStorage.getItem(key), key).toBe(preferences[key]);
     expect(localStorage.getItem('google_user_email')).toBe('private@example.test');
-    const legacy = await rewrite(archive, (_files, manifest) => { manifest.version = 1; });
-    await expect(importOfflineBackup(legacy)).resolves.toBeUndefined();
+    const legacy = await rewrite(archive, (_files, manifest) => { manifest.version = 1; manifest.databaseVersion = 33; });
+    await expect(importOfflineBackup(legacy)).resolves.toMatchObject({ issues: [] });
   });
 
   it('restores mixed legacy records, unnamed/orphaned sessions and image Blobs without MIME metadata from an existing ZIP', async () => {
@@ -270,22 +377,29 @@ describe('offline full-data backup', () => {
     for (const image of photoImages) expect(await (await db.images.get(image.id))!.blob.text()).toBe(image.body);
   });
 
-  it('refuses to export data the shared importer would reject before producing a ZIP', async () => {
+  it('exports readable raw data and records damaged local items without blocking healthy records', async () => {
     await seed();
-    const progress = vi.fn();
     await db.table('templates').update(template.id, { imageId: 42 });
-    await expect(exportOfflineBackup(progress)).rejects.toMatchObject({
-      code: 'invalid', message: 'table: templates / row: 1 / imageId',
-    });
-    await db.templates.put(template);
     await db.table('history').update(record.id, { players: [{ ...player, totalScore: 'broken' }] });
-    await expect(exportOfflineBackup(progress)).rejects.toMatchObject({
-      code: 'invalid', message: 'table: history / row: 1 / players[0].totalScore',
-    });
-    expect(progress).not.toHaveBeenCalledWith('ZIP');
+    await db.history.put({ ...record, id: 'healthy', photos: ['missing-blob'] });
+    await db.table('images').put({ id: 'missing-blob', relatedId: 'healthy', relatedType: 'session', createdAt: 1, mimeType: '' });
+    localStorage.setItem('sm_pinned_ids', '{broken');
+    const warnings = vi.fn();
+    const archive = await exportOfflineBackup(undefined, warnings);
+    const files = await unpack(await readBlob(archive));
+    expect(files[`${ROOT}_System/export_report.json`]).toBeDefined();
+    expect(warnings.mock.calls[0][0].length).toBeGreaterThan(0);
+    // Even a schema-damaged record is retained as readable JSON for manual recovery.
+    expect(parseJson(files[`${ROOT}_History/測試_遊戲_h1/session.json`])).toMatchObject({ players: [{ totalScore: 'broken' }] });
+    const report = await importOfflineBackup(archive);
+    expect(await db.history.get('h1')).toBeUndefined();
+    expect(await db.history.get('healthy')).toMatchObject({ players: record.players, photos: ['missing-blob'] });
+    expect(await db.images.get('missing-blob')).toBeUndefined();
+    expect(report.issues).toContainEqual(expect.objectContaining({ reason: 'invalid', detail: 'players[0].totalScore' }));
+    expect(report.issues).toContainEqual({ path: 'image:missing-blob', reason: 'missing' });
   });
 
-  it('rejects incomplete or corrupted photos before replacing any existing data', async () => {
+  it('restores all other data when a declared photo is missing or corrupted and persists its report', async () => {
     await seed();
     const archive = await exportOfflineBackup();
     for (const missing of [true, false]) {
@@ -297,24 +411,27 @@ describe('offline full-data backup', () => {
         }
         else files[path][0] ^= 1;
       });
-      await expect(importOfflineBackup(damaged)).rejects.toMatchObject({ code: 'invalid' });
-      expect(await db.history.get('h1')).toEqual(record);
-      expect(await db.images.count()).toBe(3);
+      const report = await importOfflineBackup(damaged);
+      expect(report.issues).toContainEqual(expect.objectContaining({ reason: missing ? 'missing' : 'checksum' }));
+      expect(await db.history.get('h1')).toMatchObject({ gameName: record.gameName, players: record.players, photos: record.photos });
+      expect(await db.images.get('photo')).toBeUndefined();
+      expect(await db.images.count()).toBe(2);
+      expect(await db.backupReports.get('latest')).toEqual(report);
     }
   });
 
-  it('rolls back every table if a unique-index write fails after earlier clears', async () => {
+  it('rolls back every table and the diagnostic report if a database write fails after earlier clears', async () => {
     await seed();
-    const damaged = await rewrite(await exportOfflineBackup(), async (files, manifest) => {
-      const path = manifest.tables.savedPlayers[0];
-      files[path] = jsonBytes([{ id: 'a', name: 'duplicate' }, { id: 'b', name: 'duplicate' }]);
-      manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
-    });
-    await expect(importOfflineBackup(damaged)).rejects.toThrow();
+    const archive = await exportOfflineBackup();
+    const previous = { id: 'latest' as const, createdAt: 1, issues: [] };
+    await db.backupReports.put(previous);
+    vi.spyOn(db.backupReports, 'put').mockRejectedValueOnce(new Error('write failed'));
+    await expect(importOfflineBackup(archive)).rejects.toThrow('write failed');
     expect(await db.history.get('h1')).toEqual(record);
     expect(await db.templates.get(template.id)).toEqual(template);
     expect(await db.savedPlayers.toArray()).toMatchObject([{ id: 'p1' }]);
     expect(localStorage.getItem('app_theme_mode')).toBe('sage');
+    expect(await db.backupReports.get('latest')).toEqual(previous);
   });
 
   it('rolls back tables and preferences when localStorage fails during replacement', async () => {
@@ -330,7 +447,7 @@ describe('offline full-data backup', () => {
     expect(localStorage.getItem('app_theme_mode')).toBe('light');
   });
 
-  it('preserves missing local photo references while still rejecting invalid preferences and built-in template injection', async () => {
+  it('preserves missing photo references while isolating invalid preferences and built-in ID collisions', async () => {
     await seed();
     await db.images.delete('photo');
     const localCopy = await exportOfflineBackup();
@@ -342,14 +459,17 @@ describe('offline full-data backup', () => {
     await db.history.clear();
     const archive = await exportOfflineBackup();
     const badPreferences = await rewrite(archive, (_files, manifest) => { manifest.preferences.sm_pinned_ids = '{broken'; });
-    await expect(validateOfflineBackup(badPreferences)).rejects.toMatchObject({ code: 'invalid' });
+    const partial = await validateOfflineBackup(badPreferences);
+    expect(partial.preferences).not.toHaveProperty('sm_pinned_ids');
+    expect(partial.issues).toContainEqual(expect.objectContaining({ path: '_System/settings_backup.json#sm_pinned_ids', reason: 'invalid' }));
     const builtin = await rewrite(archive, async (files, manifest) => {
       const path = manifest.tables.templates[0];
       files[path] = jsonBytes({ ...template, id: 'builtin' });
       manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
     });
-    await expect(importOfflineBackup(builtin)).rejects.toMatchObject({ code: 'invalid' });
-    expect(await db.templates.get(template.id)).toBeDefined();
+    expect((await importOfflineBackup(builtin)).issues).toContainEqual(expect.objectContaining({ path: 'templates:builtin', reason: 'invalid' }));
+    expect(await db.templates.get('builtin')).toBeUndefined();
+    expect(await db.builtins.get('builtin')).toEqual({ ...template, id: 'builtin' });
   });
 
   it('does not restore room or device state and rejects replacement while a room is active', async () => {

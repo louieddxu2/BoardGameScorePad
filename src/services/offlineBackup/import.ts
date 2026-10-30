@@ -1,6 +1,7 @@
 import { db } from '../../db';
 import { DATA_TABLES, PREFERENCE_KEYS, BackupError, type Preferences, type Row, type Progress } from './format';
 import { validateOfflineBackup } from './validate';
+import type { OfflineBackupReport } from '../../types';
 
 // Device/room identities, cached links and pending network deliveries are never portable.
 const TRANSIENT_TABLES = [
@@ -17,8 +18,9 @@ function detachCloud(row: Row): Row {
 }
 
 /** Full replacement, deliberately separate from the cloud restore/merge operation. */
-export async function importOfflineBackup(blob: Blob, onProgress: Progress = () => {}): Promise<void> {
+export async function importOfflineBackup(blob: Blob, onProgress: Progress = () => {}): Promise<OfflineBackupReport> {
   const backup = await validateOfflineBackup(blob, onProgress);
+  const report: OfflineBackupReport = { id: 'latest', createdAt: Date.now(), issues: backup.issues };
   if (backup.databaseVersion > db.verno) throw new BackupError('unsupported');
   const previous: Preferences = {};
   for (const key of PREFERENCE_KEYS) {
@@ -29,11 +31,15 @@ export async function importOfflineBackup(blob: Blob, onProgress: Progress = () 
   try {
     onProgress('');
     await db.transaction('rw', [
-      ...DATA_TABLES.map(name => db.table(name)), ...TRANSIENT_TABLES.map(name => db.table(name)), db.images, db.builtins,
+      ...DATA_TABLES.map(name => db.table(name)), ...TRANSIENT_TABLES.map(name => db.table(name)), db.images, db.builtins, db.backupReports,
     ], async () => {
       if (await db.multiplayerRooms.filter(room => room.status !== 'completed').count()) throw new BackupError('busy');
       const builtinIds = new Set(await db.builtins.toCollection().primaryKeys());
-      if (backup.tables.templates.some(row => builtinIds.has(row.id as string))) throw new BackupError('invalid');
+      backup.tables.templates = backup.tables.templates.filter(row => {
+        if (!builtinIds.has(row.id as string)) return true;
+        report.issues.push({ path: `templates:${row.id}`, reason: 'invalid', detail: 'built-in ID collision' });
+        return false;
+      });
       const builtinImages = await db.images.filter(image => image.relatedType === 'template' && builtinIds.has(image.relatedId)).toArray();
       const builtinImageIds = new Set(builtinImages.map(image => image.id));
       // Preserve sessions whose original template was removed too: activation
@@ -54,6 +60,7 @@ export async function importOfflineBackup(blob: Blob, onProgress: Progress = () 
         if (value === undefined) localStorage.removeItem(key);
         else localStorage.setItem(key, value);
       }
+      await db.backupReports.put(report);
     });
   } catch (error) {
     if (preferencesTouched) {
@@ -67,4 +74,5 @@ export async function importOfflineBackup(blob: Blob, onProgress: Progress = () 
     }
     throw error;
   }
+  return report;
 }

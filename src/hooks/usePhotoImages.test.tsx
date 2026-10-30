@@ -23,6 +23,16 @@ beforeEach(() => {
 });
 
 describe('photo URL ownership', () => {
+  it('finishes loading and keeps healthy photos usable when a restored photo file is missing', async () => {
+    const ids = ['old', 'missing', 'new'];
+    vi.mocked(imageService.getImage).mockImplementation(async id =>
+      id === 'missing' ? undefined : { id, blob: originals.get(id)! } as LocalImage);
+    const { result } = renderHook(() => usePhotoImages(ids));
+    await waitFor(() => expect(result.current.images.map(image => image.id)).toEqual(['new', 'old']));
+    expect(result.current.loading).toBe(false);
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
+  });
+
   it('cycles direction from one original, keeps order/IDs, avoids rereads and releases every URL once', async () => {
     const { result, rerender, unmount } = renderHook(
       ({ contentIds }: { contentIds: PhotoContentIds }) => usePhotoImages(photoIds, contentIds),

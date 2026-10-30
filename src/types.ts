@@ -154,6 +154,18 @@ export interface LocalImage {
   rotationSource?: { blob: Blob; quarterTurns: 1 | 2 | 3 }; // Avoid cumulative JPEG loss while rotating
 }
 
+export interface OfflineBackupIssue {
+  path: string;
+  reason: 'missing' | 'checksum' | 'invalid';
+  detail?: string;
+}
+
+export interface OfflineBackupReport {
+  id: 'latest';
+  createdAt: number;
+  issues: OfflineBackupIssue[];
+}
+
 /**
  * [Core Interface] 遊戲身分識別
  * 定義了「這是一個什麼遊戲」的最小資訊集。

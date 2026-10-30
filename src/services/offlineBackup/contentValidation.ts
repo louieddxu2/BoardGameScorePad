@@ -1,5 +1,5 @@
 import { isAppTheme } from '../../theme';
-import { DATA_TABLES, PREFERENCE_KEYS, BackupError, isObject, type Row, type Preferences, type ImageEntry, type Manifest, type BackupTables } from './format';
+import { PREFERENCE_KEYS, BackupError, isObject, type Row, type Preferences, type ImageEntry, type Manifest } from './format';
 
 function invalid(detail = ''): never { throw new BackupError('invalid', detail); }
 export const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && !value.includes('\0');
@@ -117,18 +117,3 @@ export function validateBackupPreferences(value: unknown): asserts value is Pref
     }
   }
 }
-
-/** Preflight the same data contract before export, without re-reading/unzipping it. */
-export function validateBackupContent(tables: BackupTables, preferences: Preferences) {
-  let location = '_System/settings_backup.json (preferences)';
-  try {
-    validateBackupPreferences(preferences);
-    for (const table of DATA_TABLES) {
-      validateBackupRows(table, tables[table], index => { location = `table: ${table} / row: ${index + 1}`; });
-    }
-  } catch (error) {
-    const detail = error instanceof BackupError && error.message !== 'invalid' ? ` / ${error.message}` : '';
-    throw new BackupError('invalid', location + detail);
-  }
-}
-

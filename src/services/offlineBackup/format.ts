@@ -1,4 +1,4 @@
-import { strFromU8, strToU8, unzip, zip, type Zippable } from 'fflate';
+import { strFromU8, strToU8, unzip, zip, Unzip, AsyncUnzipInflate, type Zippable, type FlateError } from 'fflate';
 import { BackupError } from './errors';
 export { BackupError } from './errors';
 
@@ -65,10 +65,11 @@ export const pack = (files: Zippable) => new Promise<Uint8Array>((resolve, rejec
   zip(files, { level: 6 }, (error, bytes) => error ? reject(error) : resolve(bytes));
 });
 
-export function unpack(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
+export function unpack(bytes: Uint8Array, onDamagedFile?: (path: string) => void): Promise<Record<string, Uint8Array>> {
   return new Promise((resolve, reject) => {
     let totalSize = 0;
     let invalid = false;
+    let completed = false;
     const names = new Set<string>();
     unzip(bytes, { filter(file) {
       if (file.name.endsWith('/')) return false;
@@ -76,6 +77,75 @@ export function unpack(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
       if (!safePath(file.name) || names.has(file.name) || names.size >= MAX_BACKUP_FILES || totalSize > MAX_BACKUP_BYTES) invalid = true;
       names.add(file.name);
       return !invalid;
-    } }, (error, files) => error || invalid ? reject(new BackupError('invalid')) : resolve(files));
+    } }, (error, files) => {
+      if (completed) return;
+      completed = true;
+      if (invalid) reject(new BackupError('invalid'));
+      else if (error && onDamagedFile) recoverZip(bytes, onDamagedFile).then(resolve, reject);
+      else if (error) reject(new BackupError('invalid'));
+      else resolve(files);
+    });
+  });
+}
+
+// Keep the normal unzip path fast. Only a damaged compressed entry needs this
+// per-file decoder, so one bad DEFLATE stream does not hide healthy neighbours.
+class RecoverableInflate extends AsyncUnzipInflate {
+  push(chunk: Uint8Array, final: boolean) {
+    try { super.push(chunk, final); }
+    catch (error) { this.ondata(error as FlateError, new Uint8Array(), true); }
+  }
+}
+
+function recoverZip(bytes: Uint8Array, onDamagedFile: (path: string) => void): Promise<Record<string, Uint8Array>> {
+  return new Promise((resolve, reject) => {
+    const files: Record<string, Uint8Array> = Object.create(null);
+    const names = new Set<string>();
+    const terminations: (() => void)[] = [];
+    let pending = 0;
+    let scanned = false;
+    let failed = false;
+    let declaredBytes = 0;
+    let actualBytes = 0;
+    const finish = () => { if (scanned && !pending && !failed) resolve(files); };
+    const fail = () => { failed = true; terminations.forEach(stop => stop()); reject(new BackupError('invalid')); };
+    const stream = new Unzip(file => {
+      if (file.name.endsWith('/')) return;
+      if (!safePath(file.name) || names.has(file.name) || names.size >= MAX_BACKUP_FILES) { fail(); return; }
+      names.add(file.name);
+      declaredBytes += file.originalSize || 0;
+      if (declaredBytes > MAX_BACKUP_BYTES) { fail(); return; }
+      if (file.compression !== 0 && file.compression !== 8) { onDamagedFile(file.name); return; }
+      pending++;
+      let done = false;
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      terminations.push(() => file.terminate());
+      file.ondata = (error, data, final) => {
+        if (failed || done) return;
+        if (error) {
+          done = true; pending--; onDamagedFile(file.name); file.terminate(); finish(); return;
+        }
+        actualBytes += data.length;
+        if (actualBytes > MAX_BACKUP_BYTES) { fail(); return; }
+        chunks.push(data); size += data.length;
+        if (final) {
+          const result = new Uint8Array(size);
+          let offset = 0;
+          for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
+          files[file.name] = result;
+          done = true; pending--; finish();
+        }
+      };
+      file.start();
+    });
+    stream.register(RecoverableInflate);
+    try {
+      for (let offset = 0; offset < bytes.length && !failed; offset += 65536) {
+        stream.push(bytes.subarray(offset, offset + 65536), offset + 65536 >= bytes.length);
+      }
+      scanned = true;
+      finish();
+    } catch { fail(); }
   });
 }
