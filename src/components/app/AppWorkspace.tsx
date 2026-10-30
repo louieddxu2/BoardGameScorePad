@@ -30,6 +30,7 @@ type AppWorkspaceProps = {
   isCloudImporting: boolean;
   showLandscapeOverlay: boolean;
   zoomLevel: number;
+  onZoomChange: (value: number) => void;
   isInstalled: boolean;
   canInstall: boolean;
   isIOSPwaGuideVisible: boolean;
@@ -52,6 +53,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
   isCloudImporting,
   showLandscapeOverlay,
   zoomLevel,
+  onZoomChange,
   isInstalled,
   canInstall,
   isIOSPwaGuideVisible,
@@ -139,6 +141,8 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           setSearchQuery={appData.setSearchQuery}
           themeMode={appData.themeMode}
           onToggleTheme={appData.toggleTheme}
+          zoomLevel={zoomLevel}
+          onZoomChange={onZoomChange}
           onTemplateSelect={actions.initSetup}
           onDirectResume={actions.handleDirectResume}
           onDiscardSession={actions.handleDiscardActiveSession}

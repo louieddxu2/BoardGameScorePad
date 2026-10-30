@@ -2,19 +2,74 @@ import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SettingsView } from './SettingsView';
-import { LanguageContext } from '../../../i18n';
+import { LanguageContext, LanguageProvider } from '../../../i18n';
+import { useMobileZoom } from '../../../hooks/useMobileZoom';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import type { OfflineBackupResult } from '../../../services/offlineBackup/import';
 
-const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn() }));
+const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(),
+  openCloud: vi.fn(), toggleTheme: vi.fn(), busy: vi.fn() }));
 vi.mock('../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: mocks.confirm }) }));
 vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: mocks.exportData }));
 vi.mock('../../../services/offlineBackup/import', () => ({ importOfflineBackup: mocks.importData }));
 afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
-  <SettingsView themeMode="sage" onToggleTheme={vi.fn()} onBusyChange={busy} />
+  <SettingsView themeMode="sage" onToggleTheme={vi.fn()} onBusyChange={busy}
+    zoomLevel={1} onZoomChange={vi.fn()} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={vi.fn()} />
 </LanguageContext.Provider>);
+
+function SettingsWithLivePreferences() {
+  const { zoomLevel, setZoomLevel } = useMobileZoom();
+  return <SettingsView themeMode="sage" onToggleTheme={mocks.toggleTheme} onBusyChange={mocks.busy}
+    zoomLevel={zoomLevel} onZoomChange={setZoomLevel} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={mocks.openCloud} />;
+}
+
+it('uses the existing zoom and language owners and opens cloud management only when requested', () => {
+  const oldLanguage = localStorage.getItem('app_language');
+  const oldZoom = localStorage.getItem('app_zoom_level');
+  const oldFont = document.documentElement.style.fontSize;
+  const oldFactor = document.documentElement.style.getPropertyValue('--app-zoom-level');
+  const oldLang = document.documentElement.lang;
+  localStorage.setItem('app_language', 'en');
+  localStorage.setItem('app_zoom_level', '1.15');
+  const swipeStart = vi.fn();
+  const view = render(<LanguageProvider><div onTouchStart={swipeStart}><SettingsWithLivePreferences /></div></LanguageProvider>);
+  try {
+    const slider = screen.getByRole('slider', { name: 'Interface size' });
+    expect(slider).toHaveValue('115');
+    expect(screen.getByText('115%')).toBeInTheDocument();
+    fireEvent.touchStart(slider, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(slider, { touches: [] });
+    expect(swipeStart).not.toHaveBeenCalled();
+    fireEvent.change(slider, { target: { value: '125' } });
+    expect(screen.getByText('125%')).toBeInTheDocument();
+    expect(localStorage.getItem('app_zoom_level')).toBe('1.25');
+    expect(document.documentElement.style.fontSize).toBe('20px');
+    fireEvent.click(screen.getByRole('button', { name: 'Reset to 100%' }));
+    expect(slider).toHaveValue('100');
+    expect(localStorage.getItem('app_zoom_level')).toBe('1');
+    expect(mocks.openCloud).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Cloud backup/ }));
+    expect(mocks.openCloud).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /Appearance/ }));
+    expect(mocks.toggleTheme).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), { target: { value: 'zh-TW' } });
+    expect(localStorage.getItem('app_language')).toBe('zh-TW');
+    expect(screen.getByRole('combobox', { name: '語言' })).toHaveValue('zh-TW');
+    expect(screen.getByRole('button', { name: /雲端備份/ })).toBeInTheDocument();
+  } finally {
+    view.unmount();
+    for (const [key, previous] of [['app_language', oldLanguage], ['app_zoom_level', oldZoom]]) {
+      if (previous === null) localStorage.removeItem(key!);
+      else localStorage.setItem(key!, previous!);
+    }
+    document.documentElement.style.fontSize = oldFont;
+    if (oldFactor) document.documentElement.style.setProperty('--app-zoom-level', oldFactor);
+    else document.documentElement.style.removeProperty('--app-zoom-level');
+    document.documentElement.lang = oldLang;
+  }
+});
 
 it('waits for import to commit and the completion acknowledgement before reloading', async () => {
   let finishImport!: (result: OfflineBackupResult) => void;
@@ -42,7 +97,7 @@ it('waits for import to commit and the completion acknowledgement before reloadi
   expect(screen.queryByRole('dialog', { name: 'Validating and importing' })).not.toBeInTheDocument();
   expect(busy).toHaveBeenLastCalledWith(true);
   expect(reload).not.toHaveBeenCalled();
-  expect(await screen.findByRole('status')).toHaveTextContent('All data imported');
+  expect(await screen.findByText(/^All data imported/)).toHaveAttribute('role', 'status');
   await act(async () => { acknowledge(true); });
   expect(reload).toHaveBeenCalledTimes(1);
   expect(busy).toHaveBeenLastCalledWith(false);
@@ -59,7 +114,7 @@ it('shows damage details for the current import and clears them when settings is
   expect(mocks.confirm).toHaveBeenLastCalledWith(expect.objectContaining({
     title: 'Usable data imported', message: expect.stringContaining('_History/game/photo.jpg'),
   }));
-  expect(screen.getByRole('status')).toHaveTextContent('Usable data imported');
+  expect(screen.getByText(/^Usable data imported\./)).toHaveAttribute('role', 'status');
   expect(screen.getByText('This import: missing or damaged items (1)')).toBeInTheDocument();
   view.unmount();
   renderSettings();
@@ -108,6 +163,9 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   expect(progress.dispatchEvent(tab)).toBe(false);
   expect(exportButton).toBeDisabled();
   expect(screen.getByRole('button', { name: /Import all data/ })).toBeDisabled();
+  expect(screen.getByRole('slider', { name: 'Interface size' })).toBeDisabled();
+  expect(screen.getByRole('combobox', { name: 'Language' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /Cloud backup/ })).toBeDisabled();
   expect(busy).toHaveBeenLastCalledWith(true);
   const blob = new Blob(['zip'], { type: 'application/zip' });
   await act(async () => { finish(blob); });
@@ -117,5 +175,5 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   expect(anchor.href).toBe('blob:backup');
   expect(busy).toHaveBeenLastCalledWith(false);
   expect(exportButton).not.toBeDisabled();
-  expect(screen.getByRole('status')).toHaveTextContent('Missing or damaged items and image references were recorded');
+  expect(screen.getByText(/^Readable local data exported/)).toHaveTextContent('Missing or damaged items and image references were recorded');
 });

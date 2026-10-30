@@ -47,7 +47,7 @@ it('routes the entry to the introduction without a host room, then shows QR in t
     view: AppView.ACTIVE_SESSION,
     appData: { currentSession: { id: 'session-1' }, activeTemplate: { id: 'template-1' } } as Props['appData'],
     pendingTemplate: null, pendingSessionPreview: null,
-    isCloudImporting: false, showLandscapeOverlay: false, zoomLevel: 1,
+    isCloudImporting: false, showLandscapeOverlay: false, zoomLevel: 1, onZoomChange: vi.fn(),
     isInstalled: false, canInstall: false, isIOSPwaGuideVisible: false,
     setView: vi.fn(), setPendingTemplate: vi.fn(), setEditorInitialName: vi.fn(),
     setIsIOSPwaGuideVisible: vi.fn(), handleInstallClick: vi.fn(), tApp: (key) => key,

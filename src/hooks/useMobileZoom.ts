@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getTouchDistance } from '../utils/ui';
 import { touchGestureGuard } from '../utils/touchGesture';
 
 const MOBILE_ZOOM_IGNORE_SELECTOR = '[data-mobile-zoom-ignore="true"]';
+export const MOBILE_ZOOM_MIN = 0.75;
+export const MOBILE_ZOOM_MAX = 1.3;
 
 export const getMobileZoomGestureState = touchGestureGuard.getState;
 
@@ -20,6 +22,9 @@ export const useMobileZoom = () => {
   const touchStartDist = useRef(0);
   const initialZoomRef = useRef(1.0);
   const isZooming = useRef(false);
+  const updateZoomLevel = useCallback((value: number) => {
+    if (Number.isFinite(value)) setZoomLevel(Math.max(MOBILE_ZOOM_MIN, Math.min(MOBILE_ZOOM_MAX, value)));
+  }, []);
 
   useEffect(() => {
     const savedZoom = localStorage.getItem('app_zoom_level');
@@ -73,7 +78,7 @@ export const useMobileZoom = () => {
         if (e.touches.length === 2 && touchStartDist.current > 0) {
           const currentDist = getTouchDistance(e.touches);
           const scale = currentDist / touchStartDist.current;
-          setZoomLevel(Math.max(0.75, Math.min(1.3, initialZoomRef.current * scale)));
+          setZoomLevel(Math.max(MOBILE_ZOOM_MIN, Math.min(MOBILE_ZOOM_MAX, initialZoomRef.current * scale)));
         }
       }
     };
@@ -114,5 +119,5 @@ export const useMobileZoom = () => {
     };
   }, []);
 
-  return zoomLevel;
+  return { zoomLevel, setZoomLevel: updateZoomLevel };
 };

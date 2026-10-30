@@ -44,7 +44,7 @@ describe('useMobileZoom', () => {
     localStorage.setItem('app_zoom_level', String(zoom));
     const { result } = renderHook(() => useMobileZoom());
 
-    expect(result.current).toBe(zoom);
+    expect(result.current.zoomLevel).toBe(zoom);
     expect(document.documentElement.style.fontSize).toBe(`${16 * zoom}px`);
     expect(document.documentElement.style.getPropertyValue('--app-zoom-level')).toBe(String(zoom));
   });
@@ -66,6 +66,17 @@ describe('useMobileZoom', () => {
     expect(localStorage.getItem('app_zoom_level')).toBe('1.2');
     expect(document.documentElement.style.fontSize).toBe('19.2px');
     expect(document.documentElement.style.getPropertyValue('--app-zoom-level')).toBe('1.2');
+  });
+
+  it('starts pinch scaling from the latest size chosen in settings', () => {
+    const { result } = renderHook(() => useMobileZoom());
+    act(() => { result.current.setZoomLevel(1.1); });
+    act(() => {
+      dispatchTouchEvent(window, 'touchstart', [{ clientX: 0, clientY: 0 }, { clientX: 100, clientY: 0 }]);
+      dispatchTouchEvent(window, 'touchmove', [{ clientX: 0, clientY: 0 }, { clientX: 110, clientY: 0 }]);
+    });
+    expect(result.current.zoomLevel).toBeCloseTo(1.21);
+    expect(Number(localStorage.getItem('app_zoom_level'))).toBeCloseTo(1.21);
   });
 
   it('ignores two-finger gestures that start inside local photo crop editors', () => {

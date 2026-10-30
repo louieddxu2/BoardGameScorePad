@@ -1,21 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Upload, Loader2, Palette, ChevronRight } from 'lucide-react';
+import { Download, Upload, Loader2, Cloud, CloudOff, ChevronRight } from 'lucide-react';
 import type { AppTheme } from '../../../theme';
-import { APP_THEMES } from '../../../theme';
 import { useSettingsTranslation } from '../../../i18n/settings';
-import { useDashboardTranslation } from '../../../i18n/dashboard';
+import { SettingsPreferences } from './SettingsPreferences';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import { exportOfflineBackup } from '../../../services/offlineBackup/export';
 import { importOfflineBackup } from '../../../services/offlineBackup/import';
 import type { OfflineBackupIssue } from '../../../types';
 
-export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
+export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel, onZoomChange,
+  isCloudConnected, isCloudSyncing, onOpenCloud }: {
   themeMode: AppTheme; onToggleTheme: () => void; onBusyChange: (busy: boolean) => void;
+  zoomLevel: number; onZoomChange: (value: number) => void;
+  isCloudConnected: boolean; isCloudSyncing: boolean; onOpenCloud: () => void;
 }) {
   const t = useSettingsTranslation();
-  const { t: tDash } = useDashboardTranslation();
   const { confirm } = useConfirm();
   const inputRef = useRef<HTMLInputElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -101,14 +102,20 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange }: {
       <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap break-all">{importIssues.map(issue =>
         `${issue.path} — ${t(`issue_${issue.reason}`)}${issue.detail ? ` (${issue.detail})` : ''}`).join('\n')}</pre>
     </details>}
-    <button type="button" disabled={!!operation} onClick={onToggleTheme}
-      className="w-full min-h-[56px] px-4 py-3 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover transition-colors">
-      <Palette size={20} className="text-txt-muted shrink-0" />
-      <span className="flex-1 text-left">{t('appearance')}</span>
-      <span className="text-sm text-txt-secondary">{tDash(APP_THEMES[themeMode].labelKey)}</span>
-      <ChevronRight size={16} className="text-txt-muted" />
-    </button>
+    <SettingsPreferences themeMode={themeMode} onToggleTheme={onToggleTheme} zoomLevel={zoomLevel}
+      onZoomChange={onZoomChange} disabled={!!operation} />
     <div className="space-y-3">
+      <h3 className="text-sm font-medium text-txt-secondary">{t('data_backup')}</h3>
+      <button type="button" disabled={!!operation || isCloudSyncing} onClick={onOpenCloud}
+        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
+        {isCloudSyncing ? <Loader2 size={22} className="text-txt-muted shrink-0 animate-spin" />
+          : isCloudConnected ? <Cloud size={22} className="text-brand-primary shrink-0" /> : <CloudOff size={22} className="text-txt-muted shrink-0" />}
+        <span className="flex-1 min-w-0"><span className="block font-medium">{t('cloud_backup')}</span>
+          <span className="block text-sm text-txt-secondary mt-1">{t('cloud_description')}</span>
+          <span className="block text-sm text-txt-muted mt-1">{t('cloud_shortcut')}</span></span>
+        <span className="text-sm text-txt-secondary shrink-0">{t(isCloudSyncing ? 'cloud_syncing' : isCloudConnected ? 'cloud_connected' : 'cloud_disconnected')}</span>
+        <ChevronRight size={16} className="text-txt-muted shrink-0" />
+      </button>
       <button type="button" disabled={!!operation} onClick={() => void run('exporting')}
         className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
         <Download size={22} className="text-brand-primary shrink-0" />

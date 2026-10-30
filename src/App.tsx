@@ -81,7 +81,7 @@ const App: React.FC = () => {
   const deepLinkHandledRef = useRef(false);
 
   // Hardware & Environment Side Effects Hooks
-  const zoomLevel = useMobileZoom();
+  const { zoomLevel, setZoomLevel } = useMobileZoom();
   const showLandscapeOverlay = useLandscapeOrientation();
   const { isInstalled, canInstall, handleInstallClick } = usePwaInstall();
 
@@ -390,6 +390,7 @@ const App: React.FC = () => {
       isCloudImporting={isCloudImporting}
       showLandscapeOverlay={showLandscapeOverlay}
       zoomLevel={zoomLevel}
+      onZoomChange={setZoomLevel}
       isInstalled={isInstalled}
       canInstall={canInstall}
       isIOSPwaGuideVisible={isIOSPwaGuideVisible}

@@ -3,6 +3,13 @@ import { useTranslation } from './index';
 const translations = {
   'zh-TW': {
     settings: '設定', appearance: '介面色系',
+    interface_settings: '介面', interface_size: '介面大小', reset_size: '恢復 100%',
+    appearance_shortcut: '也可以點左上角圖示切換。', size_shortcut: '也可以用雙指縮放介面。',
+    language: '語言', language_zh_tw: '繁體中文', language_en: 'English',
+    language_shortcut: '也可以點上方網站名稱切換。',
+    data_backup: '資料備份', cloud_backup: '雲端備份', cloud_description: '管理 Google Drive 備份與還原。',
+    cloud_shortcut: '也可以點首頁上方的雲端圖示開啟。',
+    cloud_connected: '已連線', cloud_disconnected: '未連線', cloud_syncing: '處理中',
     export_all: '匯出全部資料', import_all: '匯入全部資料',
     export_description: '下載 ZIP 備份，包含自訂計分板、遊戲紀錄、進行中遊戲、照片與設定。',
     import_description: '從 ZIP 備份還原，覆蓋此裝置既有的所有資料。',
@@ -27,6 +34,13 @@ const translations = {
   },
   en: {
     settings: 'Settings', appearance: 'Appearance',
+    interface_settings: 'Interface', interface_size: 'Interface size', reset_size: 'Reset to 100%',
+    appearance_shortcut: 'You can also tap the top-left icon to switch.', size_shortcut: 'You can also pinch to resize the interface.',
+    language: 'Language', language_zh_tw: '繁體中文', language_en: 'English',
+    language_shortcut: 'You can also tap the app title above to switch.',
+    data_backup: 'Data backup', cloud_backup: 'Cloud backup', cloud_description: 'Manage Google Drive backups and restore data.',
+    cloud_shortcut: 'You can also open this from the cloud icon on the home page.',
+    cloud_connected: 'Connected', cloud_disconnected: 'Not connected', cloud_syncing: 'Working',
     export_all: 'Export all data', import_all: 'Import all data',
     export_description: 'Download a ZIP backup of custom scoreboards, game records, active games, photos and settings.',
     import_description: 'Restore a ZIP backup, replacing all existing data on this device.',
