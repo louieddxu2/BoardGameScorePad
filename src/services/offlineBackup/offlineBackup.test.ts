@@ -3,23 +3,21 @@ import { db } from '../../db';
 import { exportOfflineBackup } from './export';
 import { importOfflineBackup } from './import';
 import { validateOfflineBackup } from './validate';
-import { DATA_TABLES, ROOT, MANIFEST, jsonBytes, parseJson, readBlob, pack, unpack, digest, type Manifest } from './format';
+import { DATA_TABLES, PREFERENCE_KEYS, ROOT, MANIFEST, jsonBytes, parseJson, readBlob, pack, unpack, digest, type Manifest } from './format';
 import type { GameTemplate, HistoryRecord } from '../../types';
 import { migrateTemplate } from '../../utils/dataMigration';
 import { getRecordTemplate } from '../../utils/historyUtils';
+import { loadSessionActivation } from '../../hooks/sessionActivation';
+import { imageService } from '../imageService';
 
 vi.mock('../../db', async () => {
   const { default: Dexie } = await import('dexie');
   const { indexedDB, IDBKeyRange } = await import('fake-indexeddb');
-  const database = new Dexie('offline-backup-test', { indexedDB, IDBKeyRange });
-  const { DATA_TABLES: names } = await import('./format');
-  const stores: Record<string, string> = Object.fromEntries(names.map(name => [name,
-    name === 'templatePrefs' ? 'templateId' : name === 'analyticsLogs' ? 'historyId' : name === 'savedPlayers' ? 'id,&name' : 'id']));
-  Object.assign(stores, { images: 'id', builtins: 'id', systemOverrides: 'id', savedCurrentSession: 'id',
-    templateShareCache: 'templateId', multiplayerRooms: 'roomId', multiplayerDevices: 'id', multiplayerSequences: 'id',
-    multiplayerOutbox: 'id', multiplayerPatchReceipts: 'id', multiplayerParticipantBindings: 'id' });
-  database.version(1).stores(stores);
-  return { db: database };
+  Dexie.dependencies.indexedDB = indexedDB;
+  Dexie.dependencies.IDBKeyRange = IDBKeyRange;
+  // Use the production schema against in-memory IndexedDB, never the user's DB.
+  const { ScorePadDatabase } = await vi.importActual<typeof import('../../db')>('../../db');
+  return { db: new ScorePadDatabase() };
 });
 
 const template: GameTemplate = { id: 'ab12cd34', name: '測試/遊戲', columns: [{ id: 'score', name: '分數', formula: 'a1', inputType: 'keypad', isScoring: true }],
@@ -32,7 +30,6 @@ const record: HistoryRecord = { id: 'h1', templateId: template.id, gameName: tem
 async function seed() {
   await db.templates.put(template);
   await db.builtins.put({ ...template, id: 'builtin' });
-  await db.table('systemOverrides').put({ ...template, id: 'builtin' });
   await db.history.put(record);
   await db.sessions.put({ id: 'active', templateId: template.id, name: template.name, startTime: 3, players: [player], status: 'active' });
   await db.images.bulkPut([
@@ -161,6 +158,22 @@ describe('offline full-data backup', () => {
 
   it('round-trips readable cloud folders, original photo bytes, IDs and local learning data while preserving built-ins', async () => {
     await seed();
+    await db.templatePrefs.put({ templateId: template.id, lastPlayerCount: 4, defaultScoringRule: 'COOP_NO_SCORE' });
+    await db.savedLocations.put({ id: 'loc1', name: '家裡', lastUsed: 2, usageCount: 3 });
+    await db.bggGames.put({ id: '123', name: 'Game', altNames: ['遊戲'], updatedAt: 4 });
+    for (const table of ['savedWeekdays', 'savedTimeSlots', 'savedPlayerCounts', 'savedGameModes', 'savedGameLifecycleContexts'] as const) {
+      await db.table(table).put({ id: `${table}-entry`, name: table, lastUsed: 5, usageCount: 8,
+        meta: { relations: { players: [{ id: 'p1', weight: 0.5 }] } } });
+    }
+    const preferences = {
+      app_theme_mode: 'sage', app_language: 'en', app_zoom_level: '1.3', app_edit_mode: 'false', app_voice_enabled: 'true',
+      sm_pinned_ids: JSON.stringify([template.id, 'builtin']), sm_new_badge_ids: '["builtin"]',
+      sm_pref_advance_direction: 'horizontal', sm_pref_standard_unit: '分', sm_pref_product_unit_a: '',
+      sm_pref_product_unit_b: '棟', sm_pref_editor_adv: 'true',
+    };
+    for (const key of PREFERENCE_KEYS) localStorage.setItem(key, preferences[key]);
+    const expectedTables = new Map(await Promise.all(DATA_TABLES.filter(name => !['templates', 'history', 'sessions'].includes(name))
+      .map(async name => [name, await db.table(name).toArray()] as const)));
     await db.table('history').put({ ...record, id: 'simple-history', snapshotTemplate: undefined, photos: [] });
     const archive = await exportOfflineBackup();
     const files = await unpack(await readBlob(archive));
@@ -197,12 +210,79 @@ describe('offline full-data backup', () => {
     expect(await db.multiplayerOutbox.count()).toBe(0);
     expect(await db.builtins.get('builtin')).toEqual({ ...template, id: 'builtin' });
     expect(await (await db.images.get('builtin-bg'))!.blob.text()).toBe('builtin');
-    expect(await db.table('systemOverrides').get('builtin')).toEqual({ ...template, id: 'builtin' });
-    expect(localStorage.getItem('sm_pinned_ids')).toBe(JSON.stringify([template.id]));
-    expect(localStorage.getItem('app_theme_mode')).toBe('sage');
+    for (const [name, rows] of expectedTables) expect(await db.table(name).toArray(), name).toEqual(rows);
+    for (const key of PREFERENCE_KEYS) expect(localStorage.getItem(key), key).toBe(preferences[key]);
     expect(localStorage.getItem('google_user_email')).toBe('private@example.test');
     const legacy = await rewrite(archive, (_files, manifest) => { manifest.version = 1; });
     await expect(importOfflineBackup(legacy)).resolves.toBeUndefined();
+  });
+
+  it('restores mixed legacy records, unnamed/orphaned sessions and image Blobs without MIME metadata from an existing ZIP', async () => {
+    await seed();
+    const legacyTemplate = { ...template, imageId: undefined, hasImage: false,
+      columns: [{ id: 'score', name: '分數', formula: null, weight: 2 }] };
+    await db.table('templates').put(legacyTemplate);
+    const legacyRecord = { ...record, id: 'legacy-null', photos: null, photoContentIds: null,
+      snapshotTemplate: { columns: null, bggId: '123' },
+      players: [{ ...player, color: 'transparent', totalScore: -12.5, scores: { score: -12.5 } }], winnerIds: [] };
+    await db.table('history').put(legacyRecord);
+    await db.table('sessions').put({ id: 'unnamed', templateId: template.id, players: [player], startTime: 1, status: 'active' });
+    await db.sessions.put({ id: 'orphan', templateId: 'deleted-template', name: '原有遊戲', players: [player], startTime: 1, status: 'active' });
+    const image = await imageService.saveImage(new Blob(['raw-image']), record.id, 'session', 'untyped-image');
+    await db.images.put({ ...image, rotationSource: { blob: new Blob(['original-image'], { type: 'application/octet-stream' }), quarterTurns: 2 } });
+    // Version 1 also stored JSON rows verbatim; consume the existing bytes, not a re-export after clearing data.
+    const archive = await rewrite(await exportOfflineBackup(), (_files, manifest) => { manifest.version = 1; });
+    for (const table of DATA_TABLES) await db.table(table).clear();
+    await db.images.filter(row => row.relatedId !== 'builtin').delete();
+    await importOfflineBackup(archive);
+    const restored = (await db.history.get(legacyRecord.id))!;
+    const { cloudFolderId: _folder, photoCloudIds: _photos, ...expectedRecord } = legacyRecord;
+    expect(restored).toEqual(expectedRecord);
+    expect(getRecordTemplate(restored)).toMatchObject({ id: template.id, name: record.gameName, columns: [] });
+    const unnamed = (await db.sessions.get('unnamed'))!;
+    expect(unnamed).not.toHaveProperty('name');
+    const activated = await loadSessionActivation(unnamed, async id => await db.templates.get(id) ?? null, () => true);
+    expect(activated?.session.name).toBe(template.name);
+    expect(activated?.template.columns[0].formula).toBe('a1×c1');
+    expect(await db.sessions.get('orphan')).toMatchObject({ templateId: 'deleted-template', name: '原有遊戲' });
+    const restoredImage = (await db.images.get(image.id))!;
+    expect(restoredImage.mimeType).toBe('');
+    expect(await restoredImage.blob.text()).toBe('raw-image');
+    expect(await restoredImage.rotationSource!.blob.text()).toBe('original-image');
+  });
+
+  it('keeps distinct records and photo revisions whose names previously produced the same ZIP path', async () => {
+    await seed();
+    const photoImages = [
+      { id: 'photo', contentId: 'a_b', body: 'first-photo' },
+      { id: 'photo_a', contentId: 'b', body: 'second-photo' },
+    ];
+    for (const image of photoImages) await imageService.saveImage(new Blob([image.body], { type: 'image/jpeg' }), 'h1', 'session', image.id, image.contentId);
+    await db.history.update('h1', { photos: photoImages.map(image => image.id) });
+    await db.history.put({ ...record, id: 'b_c', gameName: 'Game', photos: [] });
+    await db.history.put({ ...record, id: 'c', gameName: 'Game_b', photos: [] });
+    const archive = await exportOfflineBackup();
+    await db.history.clear();
+    await importOfflineBackup(archive);
+    expect(await db.history.count()).toBe(3);
+    expect(await db.history.get('b_c')).toMatchObject({ gameName: 'Game' });
+    expect(await db.history.get('c')).toMatchObject({ gameName: 'Game_b' });
+    for (const image of photoImages) expect(await (await db.images.get(image.id))!.blob.text()).toBe(image.body);
+  });
+
+  it('refuses to export data the shared importer would reject before producing a ZIP', async () => {
+    await seed();
+    const progress = vi.fn();
+    await db.table('templates').update(template.id, { imageId: 42 });
+    await expect(exportOfflineBackup(progress)).rejects.toMatchObject({
+      code: 'invalid', message: 'table: templates / row: 1 / imageId',
+    });
+    await db.templates.put(template);
+    await db.table('history').update(record.id, { players: [{ ...player, totalScore: 'broken' }] });
+    await expect(exportOfflineBackup(progress)).rejects.toMatchObject({
+      code: 'invalid', message: 'table: history / row: 1 / players[0].totalScore',
+    });
+    expect(progress).not.toHaveBeenCalledWith('ZIP');
   });
 
   it('rejects incomplete or corrupted photos before replacing any existing data', async () => {

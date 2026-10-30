@@ -1,7 +1,7 @@
 import type { LocalImage } from '../../types';
-import { isAppTheme } from '../../theme';
+import { validateBackupRows, validateBackupPreferences, validateBackupImage, text, number } from './contentValidation';
 import {
-  MANIFEST, ROOT, DATA_TABLES, PREFERENCE_KEYS, BackupError, isObject, safePath,
+  MANIFEST, ROOT, DATA_TABLES, BackupError, isObject, safePath,
   parseJson, digest, unpack, readBlob, type BackupTables, type Manifest, type Preferences,
   type Progress, type Row,
 } from './format';
@@ -12,93 +12,7 @@ export interface ValidatedBackup {
   preferences: Preferences;
   databaseVersion: number;
 }
-function invalid(detail = ''): never { throw new BackupError('invalid', detail); }
-const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && !value.includes('\0');
-const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
-
-function validateTemplate(value: unknown, prefix = '') {
-  if (!isObject(value)) invalid(prefix || 'template');
-  if (!text(value.id)) invalid(`${prefix}id`);
-  if (typeof value.name !== 'string') invalid(`${prefix}name`);
-  if (!Array.isArray(value.columns)) invalid(`${prefix}columns`);
-  const ids = new Set<string>();
-  for (const [index, col] of (value.columns as unknown[]).entries()) {
-    const field = `${prefix}columns[${index}]`;
-    // Legacy columns omit formula; migrateColumn supplies/converts it when opened.
-    // Keep the stored snapshot intact, as the cloud restore does.
-    if (!isObject(col)) invalid(field);
-    if (!text(col.id) || ids.has(col.id)) invalid(`${field}.id`);
-    if (typeof col.name !== 'string') invalid(`${field}.name`);
-    if (col.formula !== undefined && typeof col.formula !== 'string') invalid(`${field}.formula`);
-    ids.add(col.id as string);
-  }
-}
-
-function validateHistorySnapshot(value: unknown) {
-  // getRecordTemplate already renders these legacy simple-board markers using a
-  // virtual template. Preserve them instead of treating them as full templates.
-  if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) return;
-  if (!isObject(value)) invalid('snapshotTemplate');
-  if (value.columns === undefined) return;
-  validateTemplate(value, 'snapshotTemplate.');
-}
-
-function validateRows(table: string, rows: unknown, onRow: (index: number) => void): asserts rows is Row[] {
-  if (!Array.isArray(rows)) invalid();
-  const key = table === 'templatePrefs' ? 'templateId' : table === 'analyticsLogs' ? 'historyId' : 'id';
-  const ids = new Set<string>();
-  for (const [index, row] of (rows as unknown[]).entries()) {
-    onRow(index);
-    if (!isObject(row)) invalid('record');
-    if (!text(row[key]) || ids.has(row[key] as string)) invalid(key);
-    ids.add(row[key] as string);
-    if (table === 'templates') validateTemplate(row);
-    if (table === 'history' || table === 'sessions') {
-      if (!text(row.templateId)) invalid('templateId');
-      if (!number(row.startTime)) invalid('startTime');
-      if (!Array.isArray(row.players)) invalid('players');
-      const players = new Set<string>();
-      for (const [playerIndex, player] of (row.players as unknown[]).entries()) {
-        const field = `players[${playerIndex}]`;
-        if (!isObject(player)) invalid(field);
-        if (!text(player.id) || players.has(player.id)) invalid(`${field}.id`);
-        if (typeof player.name !== 'string') invalid(`${field}.name`);
-        if (typeof player.color !== 'string') invalid(`${field}.color`);
-        if (!isObject(player.scores)) invalid(`${field}.scores`);
-        if (!number(player.totalScore)) invalid(`${field}.totalScore`);
-        players.add(player.id as string);
-      }
-      if (row.photos !== undefined && (!Array.isArray(row.photos) || !row.photos.every(text))) invalid('photos');
-      if (row.photoContentIds !== undefined && (!isObject(row.photoContentIds) || !Object.values(row.photoContentIds).every(text))) invalid('photoContentIds');
-      if (table === 'history') {
-        if (typeof row.gameName !== 'string') invalid('gameName');
-        if (!number(row.endTime)) invalid('endTime');
-        if (!Array.isArray(row.winnerIds) || !row.winnerIds.every(text)) invalid('winnerIds');
-        validateHistorySnapshot(row.snapshotTemplate);
-      } else if (typeof row.name !== 'string' || !['active', 'completed'].includes(String(row.status))) invalid();
-    }
-    if (table.startsWith('saved') || table === 'bggGames') {
-      if (typeof row.name !== 'string') invalid();
-    }
-    if (table === 'weights' && !isObject(row.weights)) invalid();
-  }
-}
-
-function validatePreferences(value: unknown): asserts value is Preferences {
-  if (!isObject(value) || Object.keys(value).some(key => !PREFERENCE_KEYS.includes(key as typeof PREFERENCE_KEYS[number]))) invalid();
-  for (const [key, entry] of Object.entries(value)) {
-    if (typeof entry !== 'string' || entry.length > 1024 * 1024) invalid();
-    if (key === 'app_theme_mode' && !isAppTheme(entry)) invalid();
-    if (key === 'app_language' && !['en', 'zh-TW'].includes(entry as string)) invalid();
-    if (['app_edit_mode', 'app_voice_enabled', 'sm_pref_editor_adv'].includes(key) && !['true', 'false'].includes(entry as string)) invalid();
-    if (key === 'app_zoom_level' && (!(Number(entry) > 0) || !Number.isFinite(Number(entry)))) invalid();
-    if (key === 'sm_pref_advance_direction' && !['vertical', 'horizontal'].includes(entry as string)) invalid();
-    if (key === 'sm_pinned_ids' || key === 'sm_new_badge_ids') {
-      const ids: unknown = JSON.parse(entry as string);
-      if (!Array.isArray(ids) || !ids.every(text)) invalid();
-    }
-  }
-}
+function invalid(): never { throw new BackupError('invalid'); }
 
 /** Validate every document and asset before a caller may replace local data. */
 export async function validateOfflineBackup(blob: Blob, onProgress: Progress = () => {}): Promise<ValidatedBackup> {
@@ -114,7 +28,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     if (!isObject(raw) || raw.format !== 'BoardGameScorePad' || ![1, 2].includes(raw.version as number) || !number(raw.databaseVersion)
       || !number(raw.createdAt) || !isObject(raw.tables) || !isObject(raw.files) || !Array.isArray(raw.images)) invalid();
     location = '_System/settings_backup.json (preferences)';
-    validatePreferences(raw.preferences);
+    validateBackupPreferences(raw.preferences);
     location = MANIFEST.slice(ROOT.length);
     const manifest = raw as unknown as Manifest;
     if (Object.keys(files).length !== Object.keys(manifest.files).length + 1) invalid();
@@ -146,30 +60,24 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
         else invalid();
       }
       location = `table: ${table}`;
-      validateRows(table, rows, index => { location = `table: ${table} / row: ${index + 1}`; });
+      validateBackupRows(table, rows, index => { location = `table: ${table} / row: ${index + 1}`; });
       tables[table] = rows;
     }
     const images: LocalImage[] = [];
     const imageIds = new Set<string>();
     for (const entry of manifest.images) {
       location = 'images';
-      if (!isObject(entry) || !text(entry.id) || imageIds.has(entry.id) || !text(entry.relatedId)
-        || !['template', 'session'].includes(entry.relatedType) || !number(entry.createdAt)
-        || typeof entry.mimeType !== 'string' || !entry.mimeType.startsWith('image/')
-        || !text(entry.path) || !manifest.files[entry.path]
-        || (entry.contentId !== undefined && !text(entry.contentId))) invalid();
+      validateBackupImage(entry, manifest.files);
+      if (imageIds.has(entry.id)) invalid();
       imageIds.add(entry.id);
       const image: LocalImage = {
         id: entry.id, relatedId: entry.relatedId, relatedType: entry.relatedType, createdAt: entry.createdAt,
         mimeType: entry.mimeType, blob: new Blob([new Uint8Array(files[entry.path]).buffer], { type: entry.mimeType }),
         isSynced: false, ...(entry.contentId ? { contentId: entry.contentId } : {}),
       };
-      if (entry.rotationSource !== undefined) {
+      if (entry.rotationSource != null) {
         location = entry.path.slice(ROOT.length);
         const source = entry.rotationSource;
-        if (!isObject(source) || ![1, 2, 3].includes(source.quarterTurns as number)
-          || typeof source.mimeType !== 'string' || !source.mimeType.startsWith('image/')
-          || !text(source.path) || !manifest.files[source.path]) invalid();
         image.rotationSource = { quarterTurns: source.quarterTurns,
           blob: new Blob([new Uint8Array(files[source.path]).buffer], { type: source.mimeType }) };
       }

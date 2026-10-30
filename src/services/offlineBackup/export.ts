@@ -1,9 +1,10 @@
 import type { Zippable } from 'fflate';
 import { db } from '../../db';
 import { extractSessionContextWeights } from '../systemBackupMerge';
+import { validateBackupContent, validateBackupImage } from './contentValidation';
 import {
-  ROOT, MANIFEST, DATA_TABLES, PREFERENCE_KEYS, BackupError, jsonBytes, folderName, digest,
-  readBlob, pack, type Manifest, type Progress, type BackupTables, type Preferences, type Row,
+  ROOT, MANIFEST, DATA_TABLES, PREFERENCE_KEYS, BackupError, jsonBytes, folderName, archiveComponent, digest,
+  readBlob, pack, MAX_BACKUP_FILES, MAX_BACKUP_BYTES, type Manifest, type Progress, type BackupTables, type Preferences, type Row,
 } from './format';
 
 export async function exportOfflineBackup(
@@ -24,6 +25,7 @@ export async function exportOfflineBackup(
     const value = localStorage.getItem(key);
     if (value !== null) preferences[key] = value;
   }
+  validateBackupContent(snapshot.tables, preferences);
   const manifest: Manifest = {
     format: 'BoardGameScorePad', version: 2, databaseVersion: db.verno, createdAt: Date.now(),
     tables: {} as Manifest['tables'], images: [], preferences, files: {},
@@ -36,8 +38,18 @@ export async function exportOfflineBackup(
   const imagePaths = new Map<string, string>();
   const imageBytes = new Map<string, Uint8Array>();
   const missingPaths = new Map<string, Set<string>>();
+  let totalBytes = 0;
+  let fileCount = 1; // Reserve one entry for the manifest.
   const add = async (path: string, bytes: Uint8Array, photo = false) => {
-    if (Object.prototype.hasOwnProperty.call(archive, path)) return;
+    if (Object.prototype.hasOwnProperty.call(archive, path)) {
+      const existing = (archive[path] as [Uint8Array, unknown])[0];
+      if (existing !== bytes && (existing.length !== bytes.length || manifest.files[path].sha256 !== await digest(bytes))) {
+        throw new BackupError('invalid', path.slice(ROOT.length));
+      }
+      return;
+    }
+    totalBytes += bytes.length;
+    if (++fileCount > MAX_BACKUP_FILES || totalBytes > MAX_BACKUP_BYTES) throw new BackupError('unsupported');
     onProgress(path.slice(ROOT.length));
     archive[path] = [bytes, { level: photo ? 0 : 6 }];
     manifest.files[path] = { size: bytes.length, sha256: await digest(bytes) };
@@ -60,7 +72,7 @@ export async function exportOfflineBackup(
   };
   const addTemplateImage = async (template: Row, folder: string) => {
     if (typeof template.imageId === 'string' && template.imageId && !imagePaths.has(template.imageId)) {
-      await addImage(template.imageId, `${folder}/${encodeURIComponent(template.imageId)}.jpg`);
+      await addImage(template.imageId, `${folder}/${archiveComponent(template.imageId)}.jpg`);
     }
   };
   for (const table of DATA_TABLES) {
@@ -73,7 +85,7 @@ export async function exportOfflineBackup(
     }
     for (const row of snapshot.tables[table]) {
       const area = table === 'templates' ? '_Templates' : table === 'sessions' ? '_Active' : '_History';
-      const name = String(table === 'history' ? row.gameName : row.name);
+      const name = String((table === 'history' ? row.gameName : row.name) ?? 'Game');
       const folder = `${ROOT}${area}/${folderName(name, String(row.id))}`;
       const path = `${folder}/${table === 'templates' ? 'data.json' : 'session.json'}`;
       await add(path, jsonBytes(row));
@@ -82,7 +94,8 @@ export async function exportOfflineBackup(
       else {
         for (const id of row.photos as string[] || []) {
           const revision = imageById.get(id)?.contentId ?? (row.photoContentIds as Record<string, string> | undefined)?.[id];
-          await addImage(id, `${folder}/${encodeURIComponent(revision ? `${id}_${revision}` : id)}.jpg`);
+          const filename = archiveComponent(id) + (revision ? `_${archiveComponent(revision)}` : '');
+          await addImage(id, `${folder}/${filename}.jpg`);
         }
         if (table === 'history' && row.snapshotTemplate) await addTemplateImage(row.snapshotTemplate as Row, folder);
       }
@@ -91,15 +104,17 @@ export async function exportOfflineBackup(
   for (const image of snapshot.images) {
     if (image.relatedType === 'template' && snapshot.builtinIds.has(image.relatedId) && !imagePaths.has(image.id)) continue;
     if (!image.blob) throw new BackupError('invalid');
-    if (!imagePaths.has(image.id)) await addImage(image.id, `${ROOT}_System/Images/${encodeURIComponent(image.id)}.jpg`);
+    if (!imagePaths.has(image.id)) await addImage(image.id, `${ROOT}_System/Images/${archiveComponent(image.id)}.jpg`);
     const { blob: _blob, cloudId: _cloudId, isSynced: _synced, rotationSource, ...meta } = image;
     let source: Manifest['images'][number]['rotationSource'];
     if (rotationSource) {
-      const path = `${ROOT}_System/Images/${encodeURIComponent(image.id)}_original.jpg`;
+      const path = `${ROOT}_System/Images/${archiveComponent(image.id)}_original.jpg`;
       await add(path, await readBlob(rotationSource.blob), true);
       source = { path, mimeType: rotationSource.blob.type || image.mimeType, quarterTurns: rotationSource.quarterTurns };
     }
-    manifest.images.push({ ...meta, path: imagePaths.get(image.id)!, ...(source ? { rotationSource: source } : {}) });
+    const entry = { ...meta, path: imagePaths.get(image.id)!, ...(source ? { rotationSource: source } : {}) };
+    validateBackupImage(entry, manifest.files);
+    manifest.images.push(entry);
   }
   // Same settings document shape as Google Drive; additional local tables remain readable beside it.
   const { tables } = snapshot;
@@ -121,7 +136,9 @@ export async function exportOfflineBackup(
       images: [...missingPaths].map(([id, paths]) => ({ id, references: [...paths] })),
     }));
   }
-  archive[MANIFEST] = jsonBytes(manifest);
+  const manifestBytes = jsonBytes(manifest);
+  if (totalBytes + manifestBytes.length > MAX_BACKUP_BYTES) throw new BackupError('unsupported');
+  archive[MANIFEST] = manifestBytes;
   onProgress('ZIP');
   const bytes = await pack(archive);
   onMissingImages(manifest.missingImageIds || []);

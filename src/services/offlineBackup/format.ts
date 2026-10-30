@@ -4,6 +4,8 @@ export { BackupError } from './errors';
 
 export const ROOT = 'BoardGameScorePad/';
 export const MANIFEST = `${ROOT}_System/offline_manifest.json`;
+export const MAX_BACKUP_FILES = 100000;
+export const MAX_BACKUP_BYTES = 2 ** 31;
 export const DATA_TABLES = [
   'templates', 'sessions', 'history', 'templatePrefs', 'savedPlayers', 'savedLocations',
   'savedGames', 'bggGames', 'savedWeekdays', 'savedTimeSlots', 'savedPlayerCounts',
@@ -36,8 +38,11 @@ export const parseJson = (bytes: Uint8Array): unknown => JSON.parse(strFromU8(by
 export const isObject = (value: unknown): value is Row => !!value && typeof value === 'object' && !Array.isArray(value);
 export const safePath = (path: string) => path.startsWith(ROOT) && !/[\\\u0000]/.test(path)
   && path.split('/').every(part => !!part && part !== '.' && part !== '..');
+// Underscores separate identity/revision components; escape literal underscores
+// inside an ID so distinct records or photo revisions cannot share a ZIP path.
+export const archiveComponent = (value: string) => encodeURIComponent(value).replace(/_/g, '%5F');
 export const folderName = (name: string, id: string) =>
-  `${Array.from(name.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')).slice(0, 80).join('') || 'Game'}_${encodeURIComponent(id)}`;
+  `${Array.from(name.trim().replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')).slice(0, 80).join('') || 'Game'}_${archiveComponent(id)}`;
 
 export function readBlob(blob: Blob): Promise<Uint8Array> {
   if (blob.arrayBuffer) return blob.arrayBuffer().then(buffer => new Uint8Array(buffer));
@@ -68,7 +73,7 @@ export function unpack(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
     unzip(bytes, { filter(file) {
       if (file.name.endsWith('/')) return false;
       totalSize += file.originalSize;
-      if (!safePath(file.name) || names.has(file.name) || names.size >= 100000 || totalSize > 2 ** 31) invalid = true;
+      if (!safePath(file.name) || names.has(file.name) || names.size >= MAX_BACKUP_FILES || totalSize > MAX_BACKUP_BYTES) invalid = true;
       names.add(file.name);
       return !invalid;
     } }, (error, files) => error || invalid ? reject(new BackupError('invalid')) : resolve(files));

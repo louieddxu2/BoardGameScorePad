@@ -36,10 +36,8 @@ export async function importOfflineBackup(blob: Blob, onProgress: Progress = () 
       if (backup.tables.templates.some(row => builtinIds.has(row.id as string))) throw new BackupError('invalid');
       const builtinImages = await db.images.filter(image => image.relatedType === 'template' && builtinIds.has(image.relatedId)).toArray();
       const builtinImageIds = new Set(builtinImages.map(image => image.id));
-      const templateIds = new Set(backup.tables.templates.map(row => row.id));
-      if (backup.tables.sessions.some(row => !templateIds.has(row.templateId) && !builtinIds.has(row.templateId as string))) {
-        throw new BackupError('invalid');
-      }
+      // Preserve sessions whose original template was removed too: activation
+      // already supplies a virtual template for them (loadSessionActivation).
       // An exception (including quota, unique-index or preference-storage failures)
       // aborts all table clears and puts together, preserving the previous database.
       for (const name of [...DATA_TABLES, ...TRANSIENT_TABLES, 'images']) {
