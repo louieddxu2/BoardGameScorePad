@@ -201,6 +201,17 @@ const scoreParts = (session: GameSession | undefined, colId: string) => session?
   .map(player => player.scores[colId]?.parts);
 
 async function waitForScoreConvergence(colId: string, expected: number[][]) {
+  // Queuing an input does not await host processing or remote database writes.
+  // Settle those queues before starting the convergence assertion's timeout.
+  await act(async () => {
+    await fixtures.network!.flush();
+    await host!.whenIdle?.();
+  });
+  await act(async () => {
+    await fixtures.network!.flush();
+    await Promise.all([multiplayerSessionManager.get('exit-test-room')?.runtime?.whenIdle?.(),
+      ...headless.map(participant => participant.runtime?.whenIdle?.())]);
+  });
   await waitFor(() => {
     expect(scoreParts(host!.session.session, colId)).toEqual(expected);
     expect(scoreParts(multiplayerSessionManager.get('exit-test-room')?.session, colId)).toEqual(expected);
