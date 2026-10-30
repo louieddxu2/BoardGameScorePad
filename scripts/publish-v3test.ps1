@@ -69,6 +69,19 @@ try {
         throw "Same-day service-worker revision exceeded 99."
     }
 
+    # User-facing commits since the previous publish must come with a release-notes update.
+    $releaseNotesPath = "src/data/releaseNotes.ts"
+    $previousPublish = ((Get-GitOutput @("log", "-1", "--format=%H", "--fixed-strings",
+        "--grep=chore(pwa): bump service worker cache revision")) -join "").Trim()
+    if ($previousPublish) {
+        $commitSubjects = @(Get-GitOutput @("log", "--no-merges", "--format=%s", "$previousPublish..HEAD"))
+        $userFacing = @($commitSubjects | Where-Object { $_ -notmatch '^(test|docs|chore|ci|build)(\([^)]*\))?!?:' })
+        $notesChanged = @(Get-GitOutput @("diff", "--name-only", "$previousPublish..HEAD", "--", $releaseNotesPath))
+        if ($userFacing.Count -gt 0 -and $notesChanged.Count -eq 0) {
+            throw "Update $releaseNotesPath for these commits before publishing:`n$($userFacing -join "`n")"
+        }
+    }
+
     $nextCacheName = "boardgame-scorepad-cache-$today-$('{0:D2}' -f $nextRevision)"
     Write-Host "Next service-worker cache: $nextCacheName" -ForegroundColor Cyan
 

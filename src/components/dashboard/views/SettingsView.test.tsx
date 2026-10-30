@@ -187,3 +187,27 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   expect(exportButton).not.toBeDisabled();
   expect(screen.getByText(/^Readable local data exported/)).toHaveTextContent('Missing or damaged items and image references were recorded');
 });
+
+it('shows the latest release notes in the reader language and keeps earlier updates collapsed', async () => {
+  const { RELEASE_NOTES } = await import('../../../data/releaseNotes');
+  renderSettings();
+  const [latest, previous] = RELEASE_NOTES;
+  expect(screen.getByRole('heading', { name: 'About' })).toBeInTheDocument();
+  expect(screen.getByText(latest.date)).toBeInTheDocument();
+  expect(screen.getByText(latest.items[0].en)).toBeVisible();
+  expect(screen.queryByText(latest.items[0].zh)).toBeNull();
+  const earlier = screen.getByText('Earlier updates').closest('details')!;
+  expect(earlier).not.toHaveAttribute('open');
+  expect(earlier).toHaveTextContent(previous.items[0].en);
+});
+
+it('keeps release notes newest first with bilingual text', async () => {
+  const { RELEASE_NOTES } = await import('../../../data/releaseNotes');
+  const dates = RELEASE_NOTES.map(note => note.date);
+  expect(new Set(dates).size).toBe(dates.length);
+  expect([...dates].sort().reverse()).toEqual(dates);
+  for (const note of RELEASE_NOTES) {
+    expect(note.items.length).toBeGreaterThan(0);
+    for (const item of note.items) expect(item.zh.trim() && item.en.trim()).toBeTruthy();
+  }
+});

@@ -25,6 +25,7 @@
 - For an explicit publish request, use `npm run publish:v3test` instead of calling `git push` directly.
 - The publish command requires a clean `V3test` worktree, runs the same dependency audit as CI, type-check and core tests, updates the dated service-worker cache revision, commits only `public/sw.js`, and pushes `origin/V3test`.
 - If any precondition or verification fails, stop without publishing.
+- Before publishing, update `src/data/releaseNotes.ts` from the commits since the previous `chore(pwa): bump service worker cache revision`, and commit it. Write short user-facing zh-TW and en items (`new` / `improved` / `fixed`); skip tests, refactors and internal tooling; describe repeated fixes of the same problem once. Add them to the first entry and set its date to today; start a new first entry only after the previous one was merged to `main`. The publish script refuses user-facing commits without a release-notes change.
 
 # Project-Specific Testing Notes
 

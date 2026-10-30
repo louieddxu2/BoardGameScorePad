@@ -34,6 +34,8 @@ const translations = {
     error_storage: '無法完成備份。請確認裝置儲存空間與瀏覽器儲存權限後重試。',
     error_unsupported: '此備份版本或瀏覽器目前不支援，請更新後重試。',
     error_unknown: '操作失敗，請確認檔案與裝置儲存空間後重試。',
+    about: '關於', latest_update: '最新更新', earlier_updates: '較早的更新',
+    release_new: '新增', release_improved: '調整', release_fixed: '修復',
   },
   en: {
     settings: 'Settings', appearance: 'Appearance',
@@ -68,6 +70,8 @@ const translations = {
     error_storage: 'Backup could not complete. Check device storage and browser storage permissions, then try again.',
     error_unsupported: 'This backup version or browser is not supported. Update and try again.',
     error_unknown: 'The operation failed. Check the file and available device storage, then try again.',
+    about: 'About', latest_update: 'Latest update', earlier_updates: 'Earlier updates',
+    release_new: 'New', release_improved: 'Improved', release_fixed: 'Fixed',
   },
 };
 

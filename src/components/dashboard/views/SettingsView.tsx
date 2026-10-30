@@ -4,6 +4,7 @@ import { Download, Upload, Loader2, Cloud, CloudOff, ChevronRight, Database, Fil
 import type { AppTheme } from '../../../theme';
 import { useSettingsTranslation } from '../../../i18n/settings';
 import { SettingsPreferences } from './SettingsPreferences';
+import { SettingsAbout } from './SettingsAbout';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import { exportOfflineBackup } from '../../../services/offlineBackup/export';
@@ -148,6 +149,7 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel
         <ChevronRight size={16} className="text-txt-muted shrink-0" />
       </button>
     </div>
+    <SettingsAbout />
     <input ref={inputRef} type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden"
       aria-label={t('import_all')} onChange={event => {
         const file = event.target.files?.[0];
