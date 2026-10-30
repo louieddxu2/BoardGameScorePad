@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Upload, Loader2, Cloud, CloudOff, ChevronRight } from 'lucide-react';
+import { Download, Upload, Loader2, Cloud, CloudOff, ChevronRight, Database, FileJson } from 'lucide-react';
 import type { AppTheme } from '../../../theme';
 import { useSettingsTranslation } from '../../../i18n/settings';
 import { SettingsPreferences } from './SettingsPreferences';
@@ -11,10 +11,11 @@ import { importOfflineBackup } from '../../../services/offlineBackup/import';
 import type { OfflineBackupIssue } from '../../../types';
 
 export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel, onZoomChange,
-  isCloudConnected, isCloudSyncing, onOpenCloud }: {
+  isCloudConnected, isCloudSyncing, onOpenCloud, onOpenBgStats, onOpenBggImport }: {
   themeMode: AppTheme; onToggleTheme: () => void; onBusyChange: (busy: boolean) => void;
   zoomLevel: number; onZoomChange: (value: number) => void;
   isCloudConnected: boolean; isCloudSyncing: boolean; onOpenCloud: () => void;
+  onOpenBgStats: () => void; onOpenBggImport: () => void;
 }) {
   const t = useSettingsTranslation();
   const { confirm } = useConfirm();
@@ -129,6 +130,23 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel
           <span className="block text-sm text-txt-secondary mt-1">{t('import_description')}</span></span>
       </button>
       <p className="text-sm text-txt-muted px-1">{t('builtin_notice')}</p>
+    </div>
+    <div className="space-y-3">
+      <h3 className="text-sm font-medium text-txt-secondary">{t('external_data')}</h3>
+      <button type="button" disabled={!!operation} onClick={onOpenBggImport}
+        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
+        <Database size={22} className="text-txt-muted shrink-0" />
+        <span className="flex-1 min-w-0"><span className="block font-medium">{t('bgg_import')}</span>
+          <span className="block text-sm text-txt-secondary mt-1">{t('bgg_description')}</span></span>
+        <ChevronRight size={16} className="text-txt-muted shrink-0" />
+      </button>
+      <button type="button" disabled={!!operation} onClick={onOpenBgStats}
+        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
+        <FileJson size={22} className="text-txt-muted shrink-0" />
+        <span className="flex-1 min-w-0"><span className="block font-medium">{t('bgstats_transfer')}</span>
+          <span className="block text-sm text-txt-secondary mt-1">{t('bgstats_description')}</span></span>
+        <ChevronRight size={16} className="text-txt-muted shrink-0" />
+      </button>
     </div>
     <input ref={inputRef} type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden"
       aria-label={t('import_all')} onChange={event => {

@@ -237,7 +237,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
             }}
         >
             <div
-                className="modal-container w-full max-w-sm flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+                className="modal-container w-full max-w-sm max-h-full min-h-0 flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
             >
                 {importState === 'importing' || importState === 'analyzing' ? (
@@ -269,6 +269,14 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
                                 <p className="mt-2 text-xs opacity-70">
                                     {t('bgg_desc_details')}
                                 </p>
+                                <p className="mt-3 font-medium">{t('bgg_sources_title')}</p>
+                                <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
+                                    <li>{t('bgg_source_collection')}</li>
+                                    <li>{t('bgg_source_custom')}</li>
+                                    <li>{t('bgg_source_sheet')}</li>
+                                    <li>{t('bgg_source_url')}</li>
+                                </ul>
+                                <p className="mt-2 text-xs">{t('bgg_required_columns')}</p>
                             </div>
 
                             <div className="flex flex-col gap-3">

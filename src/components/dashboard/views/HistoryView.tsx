@@ -2,7 +2,7 @@
 import React from 'react';
 import { HistoryRecord } from '../../../types';
 import { HistorySummary } from '../../../utils/extractDataSummaries';
-import { Search, FileJson, Database } from 'lucide-react';
+import { Search } from 'lucide-react';
 import HistoryList from '../HistoryList';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useIntegrationTranslation } from '../../../i18n/integration';
@@ -13,8 +13,6 @@ interface HistoryViewProps {
     searchQuery: string;
     onDelete: (id: string) => void;
     onSelect: (record: HistoryRecord | HistorySummary) => void;
-    onOpenBgStats: () => void;
-    onOpenBggImport: () => void; // New Prop
 }
 
 const TruncationFooter: React.FC<{ displayed: number, total: number, label: string }> = ({ displayed, total, label }) => {
@@ -32,33 +30,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     totalCount,
     searchQuery,
     onDelete,
-    onSelect,
-    onOpenBgStats,
-    onOpenBggImport
+    onSelect
 }) => {
     const { t } = useDashboardTranslation();
     const { t: tIntegration } = useIntegrationTranslation();
 
     return (
         <>
-            <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar animate-in fade-in slide-in-from-top-1">
-                <button
-                    onClick={onOpenBgStats}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-alt hover:bg-surface-bg text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-all active:scale-95 whitespace-nowrap"
-                >
-                    <FileJson size={14} />
-                    {tIntegration('btn_bgstats_open')}
-                </button>
-
-                <button
-                    onClick={onOpenBggImport}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-surface-alt hover:bg-surface-bg text-brand-secondary font-bold text-xs rounded-xl border border-surface-border shadow-sm transition-all active:scale-95 whitespace-nowrap"
-                >
-                    <Database size={14} />
-                    {tIntegration('btn_bgg_open')}
-                </button>
-            </div>
-
             {searchQuery.trim().length > 0 && (
                 <div className="flex justify-end items-center modal-bg-recessed/50 p-2 rounded-xl border border-surface-border animate-in fade-in slide-in-from-top-1">
                     <div className="flex items-center gap-2 px-2">

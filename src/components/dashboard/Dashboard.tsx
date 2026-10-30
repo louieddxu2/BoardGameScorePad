@@ -411,7 +411,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           {viewMode === 'settings' || isBackupBusy ? (
             <SettingsView themeMode={themeMode} onToggleTheme={onToggleTheme} onBusyChange={setIsBackupBusy}
               zoomLevel={zoomLevel} onZoomChange={onZoomChange}
-              isCloudConnected={isConnected} isCloudSyncing={isSyncing} onOpenCloud={handleHeaderCloudClick} />
+              isCloudConnected={isConnected} isCloudSyncing={isSyncing} onOpenCloud={handleHeaderCloudClick}
+              onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
+              onOpenBggImport={() => modals.actions.setShowBggImportModal(true)} />
           ) : viewMode === 'history' ? (
             <HistoryView
               records={historyRecords}
@@ -419,8 +421,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               searchQuery={searchQuery}
               onDelete={dashboardActions.handleDeleteHistoryConfirmed}
               onSelect={onHistorySelect}
-              onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
-              onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
             />
           ) : (
             <LibraryView
