@@ -4,24 +4,23 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { SettingsView } from './SettingsView';
 import { LanguageContext } from '../../../i18n';
 import { BackupError } from '../../../services/offlineBackup/errors';
-import type { OfflineBackupReport } from '../../../types';
+import type { OfflineBackupResult } from '../../../services/offlineBackup/import';
 
-const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(), report: undefined as OfflineBackupReport | undefined }));
-vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => mocks.report }));
+const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn() }));
 vi.mock('../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: mocks.confirm }) }));
 vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: mocks.exportData }));
 vi.mock('../../../services/offlineBackup/import', () => ({ importOfflineBackup: mocks.importData }));
-afterEach(() => { mocks.report = undefined; vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
   <SettingsView themeMode="sage" onToggleTheme={vi.fn()} onBusyChange={busy} />
 </LanguageContext.Provider>);
 
 it('waits for import to commit and the completion acknowledgement before reloading', async () => {
-  let finishImport!: (report: OfflineBackupReport) => void;
+  let finishImport!: (result: OfflineBackupResult) => void;
   let acknowledge!: (value: boolean) => void;
   mocks.confirm.mockResolvedValueOnce(true).mockImplementationOnce(() => new Promise<boolean>(resolve => { acknowledge = resolve; }));
-  mocks.importData.mockImplementationOnce(() => new Promise<OfflineBackupReport>(resolve => { finishImport = resolve; }));
+  mocks.importData.mockImplementationOnce(() => new Promise<OfflineBackupResult>(resolve => { finishImport = resolve; }));
   const reload = vi.fn();
   vi.stubGlobal('window', new Proxy(window, { get(target, property) {
     return property === 'location' ? { reload } : Reflect.get(target, property, target);
@@ -35,7 +34,7 @@ it('waits for import to commit and the completion acknowledgement before reloadi
   expect(mocks.confirm).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('dialog', { name: 'Validating and importing' })).toBeInTheDocument();
   expect(reload).not.toHaveBeenCalled();
-  await act(async () => { finishImport({ id: 'latest', createdAt: 1, issues: [] }); });
+  await act(async () => { finishImport({ issues: [] }); });
   expect(mocks.confirm).toHaveBeenLastCalledWith({
     title: 'Import complete', message: 'All data imported. Press Confirm to reload the page and apply settings.',
     confirmText: 'Confirm', hideCancel: true,
@@ -49,17 +48,22 @@ it('waits for import to commit and the completion acknowledgement before reloadi
   expect(busy).toHaveBeenLastCalledWith(false);
 });
 
-it('shows persisted damage details and acknowledges a partial restore without claiming all data was imported', async () => {
-  mocks.report = { id: 'latest', createdAt: 1, issues: [{ path: '_History/game/photo.jpg', reason: 'missing' }] };
+it('shows damage details for the current import and clears them when settings is reopened', async () => {
+  const result: OfflineBackupResult = { issues: [{ path: '_History/game/photo.jpg', reason: 'missing' }] };
   mocks.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-  mocks.importData.mockResolvedValueOnce(mocks.report);
-  renderSettings();
-  expect(screen.getByText('Last import: missing or damaged items (1)')).toBeInTheDocument();
-  expect(screen.getByText(/_History\/game\/photo.jpg/)).toBeInTheDocument();
+  mocks.importData.mockResolvedValueOnce(result);
+  const view = renderSettings();
+  expect(screen.queryByText(/This import: missing or damaged items/)).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Import all data'), { target: { files: [new File(['zip'], 'backup.zip')] } });
   await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(2));
-  expect(mocks.confirm).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Usable data imported' }));
+  expect(mocks.confirm).toHaveBeenLastCalledWith(expect.objectContaining({
+    title: 'Usable data imported', message: expect.stringContaining('_History/game/photo.jpg'),
+  }));
   expect(screen.getByRole('status')).toHaveTextContent('Usable data imported');
+  expect(screen.getByText('This import: missing or damaged items (1)')).toBeInTheDocument();
+  view.unmount();
+  renderSettings();
+  expect(screen.queryByText(/This import: missing or damaged items/)).not.toBeInTheDocument();
 });
 
 it('asks for destructive replacement confirmation before importing and keeps cancelled data untouched', async () => {

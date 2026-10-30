@@ -90,7 +90,6 @@ describe('offline full-data backup', () => {
         const report = await importOfflineBackup(damaged);
         expect(report.issues, `${mode}: ${path}`).toContainEqual(expect.objectContaining({ path: path.slice(ROOT.length),
           reason: mode === 'missing' ? 'missing' : mode === 'json' ? 'invalid' : 'checksum' }));
-        expect(await db.backupReports.get('latest')).toEqual(report);
         if (path !== manifest.tables.history[1]) {
           expect(await db.history.get('healthy-history'), path).toMatchObject({ players: record.players, winnerIds: record.winnerIds });
         } else expect(await db.history.get('h1')).toMatchObject({ players: record.players });
@@ -103,7 +102,7 @@ describe('offline full-data backup', () => {
     }
     expect(checked).toBeGreaterThan(60);
     const reExported = await unpack(await readBlob(await exportOfflineBackup()));
-    expect(reExported[`${ROOT}_System/restore_report.json`]).toBeDefined();
+    expect(reExported[`${ROOT}_System/restore_report.json`]).toBeUndefined();
   }, 15000);
 
   it.each([32, 800000])('isolates a broken DEFLATE stream with %i bytes of input, including worker decoding', async sizeOfNote => {
@@ -399,7 +398,7 @@ describe('offline full-data backup', () => {
     expect(report.issues).toContainEqual({ path: 'image:missing-blob', reason: 'missing' });
   });
 
-  it('restores all other data when a declared photo is missing or corrupted and persists its report', async () => {
+  it('restores other data when a declared photo is missing or corrupted and returns temporary diagnostics', async () => {
     await seed();
     const archive = await exportOfflineBackup();
     for (const missing of [true, false]) {
@@ -416,22 +415,18 @@ describe('offline full-data backup', () => {
       expect(await db.history.get('h1')).toMatchObject({ gameName: record.gameName, players: record.players, photos: record.photos });
       expect(await db.images.get('photo')).toBeUndefined();
       expect(await db.images.count()).toBe(2);
-      expect(await db.backupReports.get('latest')).toEqual(report);
     }
   });
 
-  it('rolls back every table and the diagnostic report if a database write fails after earlier clears', async () => {
+  it('rolls back every table if a database write fails after earlier clears', async () => {
     await seed();
     const archive = await exportOfflineBackup();
-    const previous = { id: 'latest' as const, createdAt: 1, issues: [] };
-    await db.backupReports.put(previous);
-    vi.spyOn(db.backupReports, 'put').mockRejectedValueOnce(new Error('write failed'));
+    vi.spyOn(db.images, 'bulkAdd').mockRejectedValueOnce(new Error('write failed'));
     await expect(importOfflineBackup(archive)).rejects.toThrow('write failed');
     expect(await db.history.get('h1')).toEqual(record);
     expect(await db.templates.get(template.id)).toEqual(template);
     expect(await db.savedPlayers.toArray()).toMatchObject([{ id: 'p1' }]);
     expect(localStorage.getItem('app_theme_mode')).toBe('sage');
-    expect(await db.backupReports.get('latest')).toEqual(previous);
   });
 
   it('rolls back tables and preferences when localStorage fails during replacement', async () => {

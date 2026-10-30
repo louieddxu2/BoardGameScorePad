@@ -3,7 +3,6 @@ import Dexie, { Table } from 'dexie';
 import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord, MultiplayerDeviceRecord, MultiplayerSequenceRecord, MultiplayerOutboxRecord, MultiplayerPatchReceiptRecord, MultiplayerParticipantBindingRecord } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
-import type { OfflineBackupReport } from './types';
 
 export class ScorePadDatabase extends Dexie {
     templates!: Table<GameTemplate>;
@@ -31,7 +30,6 @@ export class ScorePadDatabase extends Dexie {
     analyticsLogs!: Table<AnalyticsLog>; // [v14] 統計處理記錄表
     weights!: Table<SystemWeightConfig>; // [v24] 系統權重設定表
     savedGameLifecycleContexts!: Table<SavedListItem>;
-    backupReports!: Table<OfflineBackupReport>;
 
     /** 
      * [Arch] 宣告式清理註冊表 
@@ -436,9 +434,6 @@ export class ScorePadDatabase extends Dexie {
             }));
             if (missing.length > 0) await table.bulkAdd(missing);
         });
-
-        // Keep the latest restore diagnostics across reloads, independently of user preferences.
-        (this as any).version(34).stores({ backupReports: 'id' });
     }
 }
 

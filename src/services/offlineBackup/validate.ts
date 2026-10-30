@@ -58,8 +58,8 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
       try { return jsonDocuments.has(path) ? jsonDocuments.get(path) : parseJson(files[path]); }
       catch { log.record(path.slice(ROOT.length), 'invalid', 'JSON'); return undefined; }
     };
-    for (const name of ['export_report.json', 'restore_report.json']) {
-      const prior = readJson(`${ROOT}_System/${name}`);
+    {
+      const prior = readJson(`${ROOT}_System/export_report.json`);
       if (isObject(prior) && Array.isArray(prior.issues)) {
         for (const issue of prior.issues) {
           if (isObject(issue) && text(issue.path) && (issue.reason === 'missing' || issue.reason === 'checksum' || issue.reason === 'invalid')

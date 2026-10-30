@@ -13,14 +13,13 @@ export async function exportOfflineBackup(
 ): Promise<Blob> {
   onProgress('_System/settings_backup.json');
   // One consistent snapshot; compression and Blob reads happen after the read transaction.
-  const snapshot = await db.transaction('r', [...DATA_TABLES.map(name => db.table(name)), db.images, db.builtins, db.backupReports], async () => {
+  const snapshot = await db.transaction('r', [...DATA_TABLES.map(name => db.table(name)), db.images, db.builtins], async () => {
     const tables = {} as BackupTables;
     for (const name of DATA_TABLES) tables[name] = await db.table(name).toArray();
     const builtinIds = new Set(await db.builtins.toCollection().primaryKeys());
     tables.templates = tables.templates.filter(row => !builtinIds.has(row.id as string));
     const images = await db.images.toArray();
-    const report = await db.backupReports.get('latest');
-    return { tables, builtinIds, images, report };
+    return { tables, builtinIds, images };
   });
   const preferences: Preferences = {};
   for (const key of PREFERENCE_KEYS) {
@@ -159,7 +158,6 @@ export async function exportOfflineBackup(
       images: [...missingPaths].map(([id, paths]) => ({ id, references: [...paths] })),
     }));
   }
-  if (snapshot.report?.issues.length) await add(`${ROOT}_System/restore_report.json`, jsonBytes(snapshot.report));
   if (exportLog.all().length) await add(`${ROOT}_System/export_report.json`, jsonBytes({ issues: exportLog.all() }));
   const manifestBytes = jsonBytes(manifest);
   if (totalBytes + manifestBytes.length > MAX_BACKUP_BYTES) throw new BackupError('unsupported');
