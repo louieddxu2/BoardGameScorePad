@@ -49,6 +49,8 @@ export function recoverPreferences(value: unknown, record: RecordIssue): Prefere
   const preferences: Preferences = {};
   if (!isObject(value)) { record('_System/settings_backup.json#preferences', 'invalid'); return preferences; }
   for (const [key, entry] of Object.entries(value)) {
+    // Retired direction preferences in older ZIPs are ignored, not restored.
+    if (key === 'sm_pref_advance_direction') continue;
     try {
       validateBackupPreferences({ [key]: entry });
       preferences[key as typeof PREFERENCE_KEYS[number]] = entry as string;

@@ -40,8 +40,9 @@ const session: GameSession = {
 
 const renderNavigation = (options: {
   editingCell?: { playerId: string; colId: string } | null;
-  advanceDirection?: 'horizontal' | 'vertical';
+  editingPlayerId?: string | null;
   editablePlayerIds?: string[];
+  canEditPlayers?: boolean;
 } = {}) => {
   const setEditingCell = vi.fn();
   const setEditingPlayerId = vi.fn();
@@ -49,14 +50,13 @@ const renderNavigation = (options: {
   const { result } = renderHook(() => useSessionNavigation({
     session,
     template,
-    editingCell: options.editingCell ?? { playerId: 'p1', colId: 'score-1' },
-    editingPlayerId: null,
-    advanceDirection: options.advanceDirection ?? 'horizontal',
+    editingCell: options.editingCell === undefined ? { playerId: 'p1', colId: 'score-1' } : options.editingCell,
+    editingPlayerId: options.editingPlayerId ?? null,
     setEditingCell,
     setEditingPlayerId,
     canEditScore: (playerId, column) => editablePlayerIds.has(playerId) && !!column && !column.isAuto && !column.isShared,
     canEditTotal: (playerId) => editablePlayerIds.has(playerId),
-    canEditPlayers: false,
+    canEditPlayers: options.canEditPlayers ?? false,
   }));
   return { result, setEditingCell, setEditingPlayerId };
 };
@@ -82,7 +82,7 @@ describe('useSessionNavigation multiplayer filtering', () => {
 
   it('keeps next-step navigation in the existing order while skipping auto columns', () => {
     const { result, setEditingCell } = renderNavigation({
-      advanceDirection: 'vertical',
+      editablePlayerIds: ['p1', 'p2'],
       editingCell: { playerId: 'p1', colId: 'score-1' },
     });
 
@@ -91,15 +91,31 @@ describe('useSessionNavigation multiplayer filtering', () => {
     expect(setEditingCell).toHaveBeenCalledWith({ playerId: 'p1', colId: 'score-2' });
   });
 
-  it('moves to the next claimed player when the current player has no later editable cell', () => {
+  it.each(['score-2', '__TOTAL__'])('moves from %s to the next claimed player after the current player is finished', (colId) => {
     const { result, setEditingCell } = renderNavigation({
-      advanceDirection: 'vertical',
       editablePlayerIds: ['p1', 'p2'],
-      editingCell: { playerId: 'p1', colId: 'score-2' },
+      editingCell: { playerId: 'p1', colId },
     });
 
     result.current.moveNext();
 
     expect(setEditingCell).toHaveBeenCalledWith({ playerId: 'p2', colId: 'score-1' });
+  });
+
+  it('moves from a player name into their grid, then keeps the existing player-end and final-total exits', () => {
+    const header = renderNavigation({ editingCell: null, editingPlayerId: 'p1', canEditPlayers: true });
+    header.result.current.moveNext();
+    expect(header.setEditingCell).toHaveBeenCalledWith({ playerId: 'p1', colId: 'score-1' });
+    expect(header.setEditingPlayerId).not.toHaveBeenCalled();
+    for (const colId of ['score-2', '__TOTAL__']) {
+      const end = renderNavigation({ editingCell: { playerId: 'p1', colId }, canEditPlayers: true });
+      end.result.current.moveNext();
+      expect(end.setEditingPlayerId).toHaveBeenCalledWith('p2');
+      expect(end.setEditingCell).not.toHaveBeenCalled();
+    }
+    const last = renderNavigation({ editingCell: { playerId: 'p3', colId: '__TOTAL__' }, canEditPlayers: true });
+    last.result.current.moveNext();
+    expect(last.setEditingCell).toHaveBeenCalledWith(null);
+    expect(last.setEditingPlayerId).toHaveBeenCalledWith(null);
   });
 });

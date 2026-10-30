@@ -16,7 +16,7 @@ export type Row = Record<string, unknown>;
 export type BackupTables = Record<DataTable, Row[]>;
 export const PREFERENCE_KEYS = [
   'app_theme_mode', 'app_language', 'app_zoom_level', 'app_edit_mode', 'app_voice_enabled',
-  'sm_pinned_ids', 'sm_new_badge_ids', 'sm_pref_advance_direction', 'sm_pref_standard_unit',
+  'sm_pinned_ids', 'sm_new_badge_ids', 'sm_pref_standard_unit',
   'sm_pref_product_unit_a', 'sm_pref_product_unit_b', 'sm_pref_editor_adv',
 ] as const;
 export type Preferences = Partial<Record<typeof PREFERENCE_KEYS[number], string>>;

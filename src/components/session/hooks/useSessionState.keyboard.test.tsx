@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { GameSession, GameTemplate } from '../../../types';
 import { useSessionState } from './useSessionState';
 
@@ -38,6 +38,20 @@ const setVisualViewportHeight = (height: number) => {
 };
 
 describe('useSessionState player-name keyboard dismissal', () => {
+  it('does not read the retired direction preference even when it contains horizontal', () => {
+    const originalRead = localStorage.getItem.bind(localStorage);
+    const read = vi.spyOn(localStorage, 'getItem').mockImplementation(key =>
+      key === 'sm_pref_advance_direction' ? 'horizontal' : originalRead(key));
+    try {
+      renderHook(() => useSessionState({
+        session, template, savedPlayers: [], onUpdateSession: () => undefined,
+        onUpdateTemplate: () => undefined, onUpdateSavedPlayer: () => undefined,
+        onExit: () => undefined, onResetScores: () => undefined,
+      }));
+      expect(read).not.toHaveBeenCalledWith('sm_pref_advance_direction');
+    } finally { read.mockRestore(); }
+  });
+
   it('leaves compact mode when the virtual keyboard is dismissed without input blur', () => {
     Object.defineProperty(document.documentElement, 'clientHeight', {
       configurable: true,

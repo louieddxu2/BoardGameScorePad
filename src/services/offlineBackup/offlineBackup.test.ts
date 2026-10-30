@@ -347,15 +347,17 @@ describe('offline full-data backup', () => {
     const preferences = {
       app_theme_mode: 'sage', app_language: 'en', app_zoom_level: '1.3', app_edit_mode: 'false', app_voice_enabled: 'true',
       sm_pinned_ids: JSON.stringify([template.id, 'builtin']), sm_new_badge_ids: '["builtin"]',
-      sm_pref_advance_direction: 'horizontal', sm_pref_standard_unit: '分', sm_pref_product_unit_a: '',
+      sm_pref_standard_unit: '分', sm_pref_product_unit_a: '',
       sm_pref_product_unit_b: '棟', sm_pref_editor_adv: 'true',
     };
     for (const key of PREFERENCE_KEYS) localStorage.setItem(key, preferences[key]);
+    localStorage.setItem('sm_pref_advance_direction', 'horizontal');
     const expectedTables = new Map(await Promise.all(DATA_TABLES.filter(name => !['templates', 'history', 'sessions'].includes(name))
       .map(async name => [name, await db.table(name).toArray()] as const)));
     await db.table('history').put({ ...record, id: 'simple-history', snapshotTemplate: undefined, photos: [] });
     const archive = await exportOfflineBackup();
     const files = await unpack(await readBlob(archive));
+    expect(parseJson(files[MANIFEST])).toHaveProperty('preferences', expect.not.objectContaining({ sm_pref_advance_direction: expect.anything() }));
     expect(Object.keys(files)).toContain(`${ROOT}_Templates/測試_遊戲_ab12cd34/data.json`);
     const historyFolder = `${ROOT}_History/測試_遊戲_h1`;
     expect(parseJson(files[`${historyFolder}/session.json`])).toEqual(record);
@@ -392,7 +394,11 @@ describe('offline full-data backup', () => {
     for (const [name, rows] of expectedTables) expect(await db.table(name).toArray(), name).toEqual(rows);
     for (const key of PREFERENCE_KEYS) expect(localStorage.getItem(key), key).toBe(preferences[key]);
     expect(localStorage.getItem('google_user_email')).toBe('private@example.test');
-    const legacy = await rewrite(archive, (_files, manifest) => { manifest.version = 1; manifest.databaseVersion = 33; });
+    const legacy = await rewrite(archive, (_files, manifest) => {
+      manifest.version = 1;
+      manifest.databaseVersion = 33;
+      Object.assign(manifest.preferences, { sm_pref_advance_direction: 'horizontal' });
+    });
     await expect(importOfflineBackup(legacy)).resolves.toMatchObject({ issues: [] });
   });
 

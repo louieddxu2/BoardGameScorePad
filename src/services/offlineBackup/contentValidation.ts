@@ -110,7 +110,6 @@ export function validateBackupPreferences(value: unknown): asserts value is Pref
     if (key === 'app_language' && !['en', 'zh-TW'].includes(entry as string)) invalid();
     if (['app_edit_mode', 'app_voice_enabled', 'sm_pref_editor_adv'].includes(key) && !['true', 'false'].includes(entry as string)) invalid();
     if (key === 'app_zoom_level' && (!(Number(entry) > 0) || !Number.isFinite(Number(entry)))) invalid();
-    if (key === 'sm_pref_advance_direction' && !['vertical', 'horizontal'].includes(entry as string)) invalid();
     if (key === 'sm_pinned_ids' || key === 'sm_new_badge_ids') {
       const ids: unknown = JSON.parse(entry as string);
       if (!Array.isArray(ids) || !ids.every(text)) invalid();

@@ -43,7 +43,7 @@ interface InputPanelProps {
 const InputPanel: React.FC<InputPanelProps> = (props) => {
     const { sessionState, eventHandlers, session, template, savedPlayers, allSavedPlayers, onUpdateSession, onUpdateSavedPlayer, onTakePhoto, onScreenshotRequest, isVoiceEnabled, onToggleVoice, bottomOffset, canEditScore = () => true, canEditTotal = () => true, canEditPlayers = true, mediaOnlyTools = false, onToolboxInputFocusChange, toolboxTopContent } = props;
     const { uiState, setUiState, panelHeight, isShortList } = sessionState;
-    const { editingCell, editingPlayerId, advanceDirection, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
+    const { editingCell, editingPlayerId, overwriteMode, isInputFocused, previewValue, isEditingTitle, isToolboxOpen } = uiState;
     const { t } = useSessionTranslation();
     const [activeFactorIdx, setActiveFactorIdx] = useState<0 | 1>(0);
     const [showSwipeHint, setShowSwipeHint] = useState(false);
@@ -179,15 +179,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
     const setPreview = (val: any) => {
         setUiState((p: any) => ({ ...p, previewValue: val }));
-    };
-
-    const handleDirectionToggle = () => {
-        setUiState((p: any) => {
-            const newDir = p.advanceDirection === 'horizontal' ? 'vertical' : 'horizontal';
-            // Persist preference
-            localStorage.setItem('sm_pref_advance_direction', newDir);
-            return { ...p, advanceDirection: newDir };
-        });
     };
 
     const handleClear = () => {
@@ -542,8 +533,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                     col={activeColumn}
                     isEditingPlayer={isEditingPlayerName}
                     onClear={handleClear}
-                    onDirectionToggle={handleDirectionToggle}
-                    direction={advanceDirection}
                     isTotalMode={isTotalMode}
                     isVoiceEnabled={isVoiceEnabled}
                     onToggleVoice={onToggleVoice}
@@ -553,7 +542,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             <div data-session-input-content="true" className="flex-1 min-h-0 bg-modal-bg relative">
                 {mainContentNode && !isPlaceholderMode && (
-                    <InputPanelLayout onNext={onNextAction} nextButtonDirection={advanceDirection} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
+                    <InputPanelLayout onNext={onNextAction} sidebarContent={sidebarContentNode} nextButtonContent={nextButtonContent} isCompact={isInputFocused}>
                         {mainContentNode}
                     </InputPanelLayout>
                 )}

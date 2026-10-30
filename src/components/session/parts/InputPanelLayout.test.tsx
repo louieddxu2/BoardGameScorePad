@@ -18,6 +18,7 @@ describe('InputPanelLayout', () => {
       const layout = container.querySelector('[data-input-panel-layout="true"]');
 
       expect(layout).toHaveClass('absolute', 'inset-0');
+      expect(layout?.querySelector('.lucide-arrow-down')).toBeInTheDocument();
     },
   );
 

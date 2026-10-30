@@ -58,7 +58,6 @@ export interface UIState {
 
   isToolboxOpen: boolean; // [New] Toolbox Sticky State
 
-  advanceDirection: 'horizontal' | 'vertical';
   overwriteMode: boolean;
   isInputFocused: boolean;
   tempPlayerName: string;
@@ -69,7 +68,6 @@ export interface UIState {
 export const useSessionState = (props: SessionViewProps) => {
   const [uiState, setUiState] = useState<UIState>(() => {
     const initialEditMode = typeof window !== 'undefined' ? localStorage.getItem('app_edit_mode') !== 'false' : true;
-    const savedDirection = (typeof window !== 'undefined' ? localStorage.getItem('sm_pref_advance_direction') : null) as 'horizontal' | 'vertical';
 
     return {
       editingCell: null,
@@ -89,7 +87,6 @@ export const useSessionState = (props: SessionViewProps) => {
 
       isTextureMapperOpen: false, // Default closed
       isToolboxOpen: false, // [New] Default closed
-      advanceDirection: savedDirection || 'vertical', // Default to vertical if no preference saved
       overwriteMode: true,
       isInputFocused: false,
       tempPlayerName: '',

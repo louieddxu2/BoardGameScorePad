@@ -12,13 +12,11 @@ const InputPanelHeader: React.FC<{
     col?: ScoreColumn;
     isEditingPlayer: boolean;
     onClear: () => void;
-    onDirectionToggle: () => void;
-    direction: 'horizontal' | 'vertical';
     isTotalMode?: boolean; // New prop
     isVoiceEnabled?: boolean;
     onToggleVoice?: () => void;
     showSwipeHint?: boolean;
-}> = ({ player, col, isEditingPlayer, onClear, onDirectionToggle, direction, isTotalMode, isVoiceEnabled, onToggleVoice, showSwipeHint }) => {
+}> = ({ player, col, isEditingPlayer, onClear, isTotalMode, isVoiceEnabled, onToggleVoice, showSwipeHint }) => {
 
     // Handle transparent color fallback
     const isTransparent = player.color === 'transparent';
@@ -137,19 +135,6 @@ const InputPanelHeader: React.FC<{
                         <span className="text-xs font-bold hidden xs:inline">{isTotalMode ? t('input_reset') : t('input_clear')}</span>
                     </button>
                 )}
-                {/* [Modified] Show direction toggle even in Total Mode */}
-                <button
-                    onMouseDown={(e) => e.preventDefault()} // Keep focus on input
-                    onClick={onDirectionToggle}
-                    className="bg-surface-alt hover:bg-surface-hover text-txt-secondary h-8 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition-colors shrink-0 border border-surface-border shadow-sm"
-                >
-                    <span className="text-status-success hidden xs:inline">{t('input_next')}</span>
-                    <div className="flex font-mono text-[10px] items-center">
-                        <span className={`transition-colors ${direction === 'vertical' ? 'text-status-success scale-125' : 'text-txt-muted'}`}>↓</span>
-                        <span className={`mx-0.5 opacity-20`}>/</span>
-                        <span className={`transition-colors ${direction === 'horizontal' ? 'text-status-success scale-125' : 'text-txt-muted'}`}>→</span>
-                    </div>
-                </button>
             </div>
         </div>
     );

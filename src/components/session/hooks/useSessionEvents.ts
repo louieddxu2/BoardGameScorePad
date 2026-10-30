@@ -54,7 +54,6 @@ export const useSessionEvents = (
     template,
     editingCell: uiState.editingCell,
     editingPlayerId: uiState.editingPlayerId,
-    advanceDirection: uiState.advanceDirection,
     setEditingCell: (cell) => setUiState(prev => ({
       ...prev,
       editingCell: cell,

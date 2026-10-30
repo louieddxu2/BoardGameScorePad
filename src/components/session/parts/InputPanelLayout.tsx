@@ -1,12 +1,11 @@
 import React from 'react';
-import { ArrowRight, ArrowDown } from 'lucide-react';
+import { ArrowDown } from 'lucide-react';
 
 interface InputPanelLayoutProps {
   children: React.ReactNode;
   sidebarContent?: React.ReactNode;
   onNext: () => void;
   nextButtonContent?: React.ReactNode;
-  nextButtonDirection?: 'horizontal' | 'vertical';
   isCompact?: boolean; // New prop for focused mode
 }
 
@@ -15,11 +14,8 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
   sidebarContent,
   onNext,
   nextButtonContent,
-  nextButtonDirection = 'horizontal',
   isCompact = false,
 }) => {
-
-  const ButtonIcon = nextButtonDirection === 'horizontal' ? ArrowRight : ArrowDown;
 
   // Unified button logic to maintain exact visual consistency
   const renderNextButton = (mode: 'compact' | 'grid') => (
@@ -41,7 +37,7 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
         }
         `}
     >
-      {nextButtonContent ? nextButtonContent : <ButtonIcon size={24} />}
+      {nextButtonContent ? nextButtonContent : <ArrowDown size={24} />}
     </button>
   );
 
@@ -65,7 +61,7 @@ const InputPanelLayout: React.FC<InputPanelLayoutProps> = ({
           onClick={onNext}
           className="col-start-4 row-start-2 bg-status-success hover:opacity-90 active:opacity-80 text-txt-on-color flex flex-col items-center justify-center shadow-ui-soft touch-manipulation transition-all active:scale-95 border-l border-b border-r border-[rgb(var(--c-input-border))] rounded-b-xl rounded-t-none h-[48px] w-full relative"
         >
-          {nextButtonContent ? nextButtonContent : <ButtonIcon size={24} />}
+          {nextButtonContent ? nextButtonContent : <ArrowDown size={24} />}
         </button>
       </div>
     );

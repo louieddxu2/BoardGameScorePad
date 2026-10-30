@@ -10,7 +10,7 @@ import { getContrastTextStyles } from '../../../utils/ui';
 it('renders valid live player-color tints without rewriting the saved player color', () => {
     const player: Player = { id: 'player', name: 'Ada', color: 'rgb(var(--c-p-emerald))', scores: {}, totalScore: 0 };
     const { container } = render(<LanguageProvider><InputPanelHeader
-        player={player} isEditingPlayer onClear={vi.fn()} onDirectionToggle={vi.fn()} direction="horizontal"
+        player={player} isEditingPlayer onClear={vi.fn()}
     /></LanguageProvider>);
     const header = container.firstElementChild as HTMLElement;
     expect(header.style.backgroundColor).toBe('rgb(var(--c-p-emerald) / var(--player-surface-tint-opacity))');
@@ -29,7 +29,7 @@ it('preserves selected name/context colors while keeping unspecified context lab
     try {
         const renderHeader = (color?: string) => <LanguageProvider><InputPanelHeader player={player} isEditingPlayer={false}
             col={{ id: 'harvest', name: 'Harvest', inputType: 'keypad', formula: 'a1', isScoring: true, color }}
-            onClear={vi.fn()} onDirectionToggle={vi.fn()} direction="horizontal" showSwipeHint />
+            onClear={vi.fn()} showSwipeHint />
         </LanguageProvider>;
         const { container, rerender } = render(renderHeader());
         for (const theme of ['dark', 'light', 'sage']) {
