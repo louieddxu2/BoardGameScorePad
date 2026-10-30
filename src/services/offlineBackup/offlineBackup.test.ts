@@ -255,7 +255,8 @@ describe('offline full-data backup', () => {
     expect(parseJson(files[MANIFEST])).toHaveProperty('missingImageIds', ['background']);
     expect(Object.keys(files)).toContain(`${ROOT}_System/missing_image_references.json`);
     expect(Object.keys(files)).toContain(`${ROOT}_History/測試_遊戲_h1/photo_r3.jpg`);
-    await importOfflineBackup(archive);
+    const report = await importOfflineBackup(archive);
+    expect(report.issues).toEqual([]);
     expect((await db.history.get('h1'))!.snapshotTemplate.imageId).toBe('background');
     expect((await db.history.get('h1'))!.photoContentIds).toEqual({ photo: 'r2' });
     expect((await db.images.get('photo'))!.contentId).toBe('r3');
@@ -380,27 +381,35 @@ describe('offline full-data backup', () => {
     await seed();
     await db.table('templates').update(template.id, { imageId: 42 });
     await db.table('history').update(record.id, { players: [{ ...player, totalScore: 'broken' }] });
-    await db.history.put({ ...record, id: 'healthy', photos: ['missing-blob'] });
+    await db.history.put({ ...record, id: 'healthy', photos: ['missing-blob', 'unreadable-source'] });
     await db.table('images').put({ id: 'missing-blob', relatedId: 'healthy', relatedType: 'session', createdAt: 1, mimeType: '' });
+    await db.table('images').put({ id: 'unreadable-source', relatedId: 'healthy', relatedType: 'session',
+      createdAt: 1, mimeType: 'image/jpeg', blob: {} });
     localStorage.setItem('sm_pinned_ids', '{broken');
     const warnings = vi.fn();
     const archive = await exportOfflineBackup(undefined, warnings);
     const files = await unpack(await readBlob(archive));
     expect(files[`${ROOT}_System/export_report.json`]).toBeDefined();
+    expect(parseJson(files[`${ROOT}_System/export_report.json`])).toMatchObject({ issues: expect.arrayContaining([
+      expect.objectContaining({ reason: 'invalid', detail: 'unreadable image' }),
+    ]) });
     expect(warnings.mock.calls[0][0].length).toBeGreaterThan(0);
     // Even a schema-damaged record is retained as readable JSON for manual recovery.
     expect(parseJson(files[`${ROOT}_History/測試_遊戲_h1/session.json`])).toMatchObject({ players: [{ totalScore: 'broken' }] });
     const report = await importOfflineBackup(archive);
     expect(await db.history.get('h1')).toBeUndefined();
-    expect(await db.history.get('healthy')).toMatchObject({ players: record.players, photos: ['missing-blob'] });
+    expect(await db.history.get('healthy')).toMatchObject({ players: record.players, photos: ['missing-blob', 'unreadable-source'] });
     expect(await db.images.get('missing-blob')).toBeUndefined();
     expect(report.issues).toContainEqual(expect.objectContaining({ reason: 'invalid', detail: 'players[0].totalScore' }));
-    expect(report.issues).toContainEqual({ path: 'image:missing-blob', reason: 'missing' });
+    expect(report.issues.some(issue => issue.path.includes('missing-blob'))).toBe(false);
+    expect(report.issues.some(issue => issue.path.includes('unreadable-source'))).toBe(false);
   });
 
   it('restores other data when a declared photo is missing or corrupted and returns temporary diagnostics', async () => {
     await seed();
     const archive = await exportOfflineBackup();
+    const index = parseJson((await unpack(await readBlob(archive)))[MANIFEST]) as Manifest;
+    const path = index.images.find(image => image.id === 'photo')!.path;
     for (const missing of [true, false]) {
       const damaged = await rewrite(archive, (files, manifest) => {
         const path = manifest.images.find(image => image.id === 'photo')!.path;
@@ -411,7 +420,7 @@ describe('offline full-data backup', () => {
         else files[path][0] ^= 1;
       });
       const report = await importOfflineBackup(damaged);
-      expect(report.issues).toContainEqual(expect.objectContaining({ reason: missing ? 'missing' : 'checksum' }));
+      expect(report.issues).toEqual([{ path: path.slice(ROOT.length), reason: missing ? 'missing' : 'checksum' }]);
       expect(await db.history.get('h1')).toMatchObject({ gameName: record.gameName, players: record.players, photos: record.photos });
       expect(await db.images.get('photo')).toBeUndefined();
       expect(await db.images.count()).toBe(2);
@@ -449,7 +458,14 @@ describe('offline full-data backup', () => {
     const restored = await validateOfflineBackup(localCopy);
     expect(restored.tables.history[0].photos).toEqual(['photo']);
     expect(restored.images.some(image => image.id === 'photo')).toBe(false);
-    await importOfflineBackup(localCopy);
+    expect(restored.issues).toEqual([]);
+    // Older ZIPs without the optional missing-ID marker still describe the
+    // files they contain; a dangling reference is not a lost archive entry.
+    const legacy = await rewrite(localCopy, (_files, manifest) => {
+      manifest.version = 1;
+      delete manifest.missingImageIds;
+    });
+    expect((await importOfflineBackup(legacy)).issues).toEqual([]);
     expect((await db.history.get('h1'))!.photos).toEqual(['photo']);
     await db.history.clear();
     const archive = await exportOfflineBackup();

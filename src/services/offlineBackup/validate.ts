@@ -4,7 +4,7 @@ import { createIssueLog, recoverTableRows, recoverPreferences } from './recovery
 import {
   MANIFEST, ROOT, DATA_TABLES, BackupError, isObject, safePath,
   parseJson, digest, unpack, readBlob, type BackupTables, type Manifest,
-  type Preferences, type Progress, type Row,
+  type Preferences, type Progress,
 } from './format';
 
 export interface ValidatedBackup {
@@ -58,17 +58,8 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
       try { return jsonDocuments.has(path) ? jsonDocuments.get(path) : parseJson(files[path]); }
       catch { log.record(path.slice(ROOT.length), 'invalid', 'JSON'); return undefined; }
     };
-    {
-      const prior = readJson(`${ROOT}_System/export_report.json`);
-      if (isObject(prior) && Array.isArray(prior.issues)) {
-        for (const issue of prior.issues) {
-          if (isObject(issue) && text(issue.path) && (issue.reason === 'missing' || issue.reason === 'checksum' || issue.reason === 'invalid')
-            && !usable.has(ROOT + issue.path)) {
-            log.record(issue.path, issue.reason as OfflineBackupIssue['reason'], typeof issue.detail === 'string' ? issue.detail : undefined);
-          }
-        }
-      }
-    }
+    // export_report.json and missing_image_references.json describe the source
+    // database. Their contents are not evidence of files lost during this import.
     const tables = {} as BackupTables;
     const usedPaths = new Set<string>();
     for (const table of DATA_TABLES) {
@@ -93,12 +84,10 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     }
     const images: LocalImage[] = [];
     const imageIds = new Set<string>();
-    const imagePaths = new Map<string, string>();
     const entries = Array.isArray(manifest.images) ? manifest.images : [];
     if (!Array.isArray(manifest.images)) log.record(`${MANIFEST.slice(ROOT.length)}#images`, 'invalid');
     for (const [index, entry] of entries.entries()) {
       const relative = isObject(entry) && text(entry.path) ? entry.path.slice(ROOT.length) : `images[${index}]`;
-      if (isObject(entry) && text(entry.id)) imagePaths.set(entry.id, relative);
       // A lost rotation original must not discard a usable current photo.
       const current = isObject(entry) ? { ...entry, rotationSource: undefined } : entry;
       try {
@@ -123,15 +112,8 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
       }
       images.push(image);
     }
-    const checkImage = (id: string) => {
-      if (!imageIds.has(id)) log.record(imagePaths.get(id) || `image:${id}`, 'missing');
-    };
-    const checkTemplate = (value: Row) => { if (text(value.imageId)) checkImage(value.imageId); };
-    tables.templates.forEach(checkTemplate);
-    for (const row of [...tables.history, ...tables.sessions]) {
-      for (const id of row.photos as string[] || []) checkImage(id);
-      if (isObject(row.snapshotTemplate)) checkTemplate(row.snapshotTemplate);
-    }
+    // Image/file entries above define the archive's promised contents. Keep
+    // dangling source references unchanged without inventing a missing ZIP file.
     return { tables, images, preferences, databaseVersion: manifest.databaseVersion, issues: log.all() };
   } catch (error) {
     if (error instanceof BackupError && error.code !== 'invalid') throw error;
