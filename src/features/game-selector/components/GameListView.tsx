@@ -18,7 +18,7 @@ export interface GameListViewProps {
     onOptionClick: (t: GameOption) => void;
     onPin: (t: GameOption) => void;
     onOpenBgStats?: () => void;
-    onOpenBggImport?: () => void;
+    onOpenGameCatalogImport?: () => void;
 }
 
 const BOTTOM_ROW_HEIGHT_CLASS = "h-[60px]";
@@ -34,7 +34,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
     onOptionClick,
     onPin,
     onOpenBgStats,
-    onOpenBggImport
+    onOpenGameCatalogImport
 }) => {
     const { t } = useIntegrationTranslation();
     const { t: tCloudLib } = useCloudLibraryTranslation();
@@ -49,7 +49,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
                 <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-txt-muted opacity-50 pb-10">
                     <Search size={32} />
                     <span className="text-xs mt-2">{t('selector_no_results')}</span>
-                    {showImportHint && onOpenBgStats && onOpenBggImport && (
+                    {showImportHint && onOpenBgStats && onOpenGameCatalogImport && (
                         <div className="flex flex-col items-center gap-2 mt-4 animate-in fade-in duration-300 pointer-events-auto">
                             <span className="text-[11px] text-txt-muted">{t('selector_import_hint')}</span>
                             <div className="flex flex-wrap justify-center gap-2 max-w-[90%]">
@@ -61,11 +61,11 @@ export const GameListView: React.FC<GameListViewProps> = ({
                                     {t('btn_bgstats_open')}
                                 </button>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); onOpenBggImport(); }}
+                                    onClick={(e) => { e.stopPropagation(); onOpenGameCatalogImport(); }}
                                     className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-brand-secondary bg-surface-alt hover:bg-surface-bg rounded-lg border border-surface-border transition-all active:scale-95 shadow-sm"
                                 >
                                     <Database size={12} />
-                                    {t('btn_bgg_open')}
+                                    {t('btn_catalog_open')}
                                 </button>
                             </div>
                         </div>
@@ -86,7 +86,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
                                 onPin={onPin}
                             />
                         ))}
-                        {showImportHint && onOpenBgStats && onOpenBggImport && (
+                        {showImportHint && onOpenBgStats && onOpenGameCatalogImport && (
                             <div className="shrink-0 px-3 py-2 mb-1 flex items-center gap-1.5 flex-wrap text-[11px] text-txt-muted animate-in fade-in duration-300">
                                 <span>{t('selector_import_hint')}</span>
                                 <button
@@ -97,7 +97,7 @@ export const GameListView: React.FC<GameListViewProps> = ({
                                 </button>
                                 <span>|</span>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); onOpenBggImport(); }}
+                                    onClick={(e) => { e.stopPropagation(); onOpenGameCatalogImport(); }}
                                     className="text-brand-secondary font-bold hover:underline"
                                 >
                                     BGG

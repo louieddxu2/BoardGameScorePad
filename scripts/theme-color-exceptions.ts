@@ -35,7 +35,7 @@ export const fixedColorExceptions: FixedColorException[] = [
     { file: 'src/components/session/modals/ScreenshotModal.tsx', tokens: /^--c-white$/, reason: 'Source-paper background for image-template exports.' },
     { file: 'src/components/session/parts/PlayerEditor.tsx', tokens: /^(?:text-black\/50|ring-white\/(?:10|30)|ring-black\/10|border-white\/20)$/, reason: 'Luminance-based preview labels and outlines on user color swatches.' },
     { file: 'src/components/analysis/MetaFriendlyView.tsx', tokens: /^border-white\/20$/, reason: 'Outline around stored custom-color swatches.' },
-    { file: 'src/features/bgg/components/BggImportModal.tsx', tokens: /^#(?:FF5100|FFFFFF)$/, reason: 'Official BGG logo artwork retains its brand colors.' },
+    { file: 'src/features/game-catalog/components/GameCatalogImportModal.tsx', tokens: /^#(?:FF5100|FFFFFF)$/, reason: 'Official BGG logo artwork retains its brand colors.' },
     { file: 'src/features/game-selector/components/GameOptionItem.tsx', tokens: /^(?:(?:bg|text|border|fill)-(?:amber-(?:400|500)|emerald-(?:400|500)|fuchsia-(?:400|500)|sky-500)(?:\/\d+)?|rgba\((?:245,158,11|16,185,129|217,70,239|14,165,233),0\.2\))$/, reason: 'Game metadata badges use established category colors, not theme surfaces.' },
     { file: 'src/utils/templateUtils.ts', tokens: /^(?:bg|border|text)-(?:violet|purple|fuchsia|sky|amber|red|indigo|emerald|cyan|slate)-500(?:\/(?:10|20))?$/, reason: 'Attribute-type badges retain their established categorical colors.' },
     { file: 'src/components/analysis/inspector/inspectors/LifecycleInspector.tsx', tokens: /^bg-white\/20$/, reason: 'Translucent highlight on a filled selection, not a theme surface.' },

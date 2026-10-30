@@ -2,26 +2,28 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { X, Upload, Loader2, Database, AlertTriangle, ArrowRight, Globe, Clock, DownloadCloud } from 'lucide-react';
 import { useToast } from '../../../hooks/useToast';
-import { bggImportService } from '../services/bggImportService';
+import { gameCatalogImportService } from '../services/gameCatalogImportService';
+import { GAME_CATALOG_IMPORT_SOURCES } from '../importSources';
 import { ImportAnalysisReport, ImportManualLinks } from '../../bgstats/types';
 import ImportStagingView from '../../bgstats/components/ImportStagingView';
 import { useIntegrationTranslation } from '../../../i18n/integration';
 import { useCommonTranslation } from '../../../i18n/common';
 
-interface BggImportModalProps {
+interface GameCatalogImportModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
 type ImportState = 'file_selection' | 'analyzing' | 'staging' | 'importing';
 
-// [Config] 預設的 Google Sheet 連結 (作為初始值或 fallback)
+// This Sheet delivers catalog data; it is not another supported export origin.
 const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1L_RGm03e07gZc8Di12Tnwk5hbd0BYKvyOng3WY4r3Zs/edit?usp=sharing";
 const URL_STORAGE_KEY = 'bgg_import_target_url';
 const COOLDOWN_KEY = 'bgg_url_import_last_success';
+// Retain these persisted keys when renaming the feature; no preference migration.
 const COOLDOWN_MINUTES = 5; // [Changed] Shortened to 5 minutes
 
-const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
+const GameCatalogImportModal: React.FC<GameCatalogImportModalProps> = ({ isOpen, onClose }) => {
     const { t } = useIntegrationTranslation();
     const { t: tCommon } = useCommonTranslation();
 
@@ -145,7 +147,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
             const text = decodeCSVBuffer(buffer);
 
             // 4. Analyze
-            const report = await bggImportService.analyzeData(text);
+            const report = await gameCatalogImportService.analyzeData(text);
             setAnalysisReport(report);
             setImportState('staging');
 
@@ -175,7 +177,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
                 const text = decodeCSVBuffer(buffer);
 
                 // 1. 分析 CSV 並產生報告
-                const report = await bggImportService.analyzeData(text);
+                const report = await gameCatalogImportService.analyzeData(text);
                 setAnalysisReport(report);
                 setImportState('staging');
             } catch (e) {
@@ -197,7 +199,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
         setImportState('importing');
         try {
             // 2. 執行匯入
-            const count = await bggImportService.importData(analysisReport.sourceData, links);
+            const count = await gameCatalogImportService.importData(analysisReport.sourceData, links);
             showToast({ message: t('bgg_msg_import_success', { count }), type: 'success' });
 
             // [Updated] Set cooldown ONLY if it was a URL import and it succeeded
@@ -253,7 +255,7 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
                         <div className="modal-bg-elevated p-4 border-b border-surface-border flex items-center justify-between flex-none">
                             <h3 className="text-lg font-bold text-txt-primary flex items-center gap-2">
                                 <Database size={20} className="text-brand-secondary" />
-                                {t('bgg_import_title')}
+                                {t('catalog_import_title')}
                             </h3>
                             <button onClick={onClose} className="text-txt-muted hover:text-txt-primary transition-colors">
                                 <X size={24} />
@@ -269,14 +271,11 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
                                 <p className="mt-2 text-xs opacity-70">
                                     {t('bgg_desc_details')}
                                 </p>
-                                <p className="mt-3 font-medium">{t('bgg_sources_title')}</p>
+                                <p className="mt-3 font-medium">{t('catalog_sources_title')}</p>
                                 <ul className="list-disc pl-5 mt-1 space-y-1 text-xs">
-                                    <li>{t('bgg_source_collection')}</li>
-                                    <li>{t('bgg_source_custom')}</li>
-                                    <li>{t('bgg_source_sheet')}</li>
-                                    <li>{t('bgg_source_url')}</li>
+                                    {GAME_CATALOG_IMPORT_SOURCES.map(source => <li key={source.id}>{t(source.descriptionKey)}</li>)}
                                 </ul>
-                                <p className="mt-2 text-xs">{t('bgg_required_columns')}</p>
+                                <p className="mt-2 text-xs">{t('catalog_bgstats_notice')}</p>
                             </div>
 
                             <div className="flex flex-col gap-3">
@@ -375,4 +374,4 @@ const BggImportModal: React.FC<BggImportModalProps> = ({ isOpen, onClose }) => {
     );
 };
 
-export default BggImportModal;
+export default GameCatalogImportModal;

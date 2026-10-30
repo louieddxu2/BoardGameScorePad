@@ -20,7 +20,15 @@ const t = (key: IntegrationTranslationKey, params?: Record<string, string | numb
     return text;
 };
 
-export const bggImportService = {
+/**
+ * Game-catalog CSV import: supported exports are BGG Collection and GeekGroup.
+ * See ../importSources.ts for the source contract. File uploads, CSV URLs and
+ * Google Sheets are delivery methods for that data, not additional sources.
+ * BG Stats JSON / play history is handled by bgStatsImportService separately.
+ * BgStatsGame / BgStatsExport below are reused as an internal staging model;
+ * that reuse does not make this service a BG Stats file importer.
+ */
+export const gameCatalogImportService = {
 
     /**
      * 解析 CSV 並將其轉換為 "偽" BGStats 格式以供分析器使用

@@ -8,7 +8,7 @@ import { BackupError } from '../../../services/offlineBackup/errors';
 import type { OfflineBackupResult } from '../../../services/offlineBackup/import';
 
 const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(),
-  openCloud: vi.fn(), openBgStats: vi.fn(), openBgg: vi.fn(), toggleTheme: vi.fn(), busy: vi.fn() }));
+  openCloud: vi.fn(), openBgStats: vi.fn(), openCatalog: vi.fn(), toggleTheme: vi.fn(), busy: vi.fn() }));
 vi.mock('../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: mocks.confirm }) }));
 vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: mocks.exportData }));
 vi.mock('../../../services/offlineBackup/import', () => ({ importOfflineBackup: mocks.importData }));
@@ -17,14 +17,14 @@ afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(
 const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
   <SettingsView themeMode="sage" onToggleTheme={vi.fn()} onBusyChange={busy}
     zoomLevel={1} onZoomChange={vi.fn()} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={vi.fn()}
-    onOpenBgStats={mocks.openBgStats} onOpenBggImport={mocks.openBgg} />
+    onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />
 </LanguageContext.Provider>);
 
 function SettingsWithLivePreferences() {
   const { zoomLevel, setZoomLevel } = useMobileZoom();
   return <SettingsView themeMode="sage" onToggleTheme={mocks.toggleTheme} onBusyChange={mocks.busy}
     zoomLevel={zoomLevel} onZoomChange={setZoomLevel} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={mocks.openCloud}
-    onOpenBgStats={mocks.openBgStats} onOpenBggImport={mocks.openBgg} />;
+    onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />;
 }
 
 it('uses the existing zoom and language owners and opens cloud management only when requested', () => {
@@ -54,10 +54,10 @@ it('uses the existing zoom and language owners and opens cloud management only w
     expect(mocks.openCloud).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Cloud backup/ }));
     expect(mocks.openCloud).toHaveBeenCalledTimes(1);
-    expect(mocks.openBgg).not.toHaveBeenCalled();
+    expect(mocks.openCatalog).not.toHaveBeenCalled();
     expect(mocks.openBgStats).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /Import BGG game data/ }));
-    expect(mocks.openBgg).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /Import game data/ }));
+    expect(mocks.openCatalog).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: /BG Stats import \/ export/ }));
     expect(mocks.openBgStats).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: /Appearance/ }));
@@ -174,7 +174,7 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   expect(screen.getByRole('slider', { name: 'Interface size' })).toBeDisabled();
   expect(screen.getByRole('combobox', { name: 'Language' })).toBeDisabled();
   expect(screen.getByRole('button', { name: /Cloud backup/ })).toBeDisabled();
-  expect(screen.getByRole('button', { name: /Import BGG game data/ })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /Import game data/ })).toBeDisabled();
   expect(screen.getByRole('button', { name: /BG Stats import \/ export/ })).toBeDisabled();
   expect(busy).toHaveBeenLastCalledWith(true);
   const blob = new Blob(['zip'], { type: 'application/zip' });

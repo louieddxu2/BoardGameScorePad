@@ -48,7 +48,7 @@ npm test
 | `src/hooks/useGoogleDrive.ts` | 2026-02-25 |
 | `src/components/dashboard/modals/SyncDashboard.tsx` | 2026-02-25 |
 | `src/components/history/modals/HistorySettingsModal.tsx` | 2026-02-25 |
-| `src/features/bgg/services/bggImportService.ts` | 2026-02-25 |
+| `src/features/game-catalog/services/gameCatalogImportService.ts` | 2026-02-25 |
 | `src/components/session/parts/ScoreInfoPanel.tsx` | 2026-02-26 |
 | `src/components/editor/TextureMapper.tsx` | 2026-02-26 |
 | `src/hooks/useAppData.ts` | 2026-02-26 |

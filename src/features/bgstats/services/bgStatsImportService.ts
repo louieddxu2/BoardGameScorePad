@@ -7,6 +7,9 @@ import { entityBatchProcessor } from './EntityBatchProcessor';
 import { loadBgStatsGameMatcher } from './bgStatsGameMatching';
 import { fillHistoryBggId, normalizeBggId } from './bgStatsBggData';
 
+/** Imports BG Stats JSON (games, players, locations and plays).
+ * BGG Collection / GeekGroup CSV game catalogs use gameCatalogImportService.
+ */
 class BgStatsImportService {
 
     public async analyzeData(data: BgStatsExport): Promise<ImportAnalysisReport> {

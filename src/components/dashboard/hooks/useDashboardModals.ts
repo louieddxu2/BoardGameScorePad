@@ -10,7 +10,7 @@ export const useDashboardModals = () => {
   const [cloudModalCategory, setCloudModalCategory] = useState<'templates' | 'sessions' | 'history'>('templates');
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showBgStatsModal, setShowBgStatsModal] = useState(false);
-  const [showBggImportModal, setShowBggImportModal] = useState(false); // New
+  const [showGameCatalogImportModal, setShowGameCatalogImportModal] = useState(false); // New
   const [showInspector, setShowInspector] = useState(false);
   const [showCloudLibraryModal, setShowCloudLibraryModal] = useState(false); // Cloud Library Modal State
 
@@ -19,7 +19,8 @@ export const useDashboardModals = () => {
   useModalBackHandler(showInspector, () => setShowInspector(false), 'inspector');
   useModalBackHandler(showDataModal, () => setShowDataModal(false), 'data-manager');
   useModalBackHandler(showBgStatsModal, () => setShowBgStatsModal(false), 'bg-stats');
-  useModalBackHandler(showBggImportModal, () => setShowBggImportModal(false), 'bgg-import'); // New
+  // Keep the existing history identifier when renaming the CSV catalog importer.
+  useModalBackHandler(showGameCatalogImportModal, () => setShowGameCatalogImportModal(false), 'bgg-import');
   useModalBackHandler(showCloudModal, () => setShowCloudModal(false), 'cloud-manager');
   useModalBackHandler(showCloudLibraryModal, () => setShowCloudLibraryModal(false), 'cloud-library'); // Cloud Library Back Handler
 
@@ -30,7 +31,7 @@ export const useDashboardModals = () => {
       cloudModalCategory,
       showInstallGuide,
       showBgStatsModal,
-      showBggImportModal, // New
+      showGameCatalogImportModal, // New
       showInspector,
       showCloudLibraryModal // Expose state
     },
@@ -40,7 +41,7 @@ export const useDashboardModals = () => {
       setCloudModalCategory,
       setShowInstallGuide,
       setShowBgStatsModal,
-      setShowBggImportModal, // New
+      setShowGameCatalogImportModal, // New
       setShowInspector,
       setShowCloudLibraryModal // Expose action
     }

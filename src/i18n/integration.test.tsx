@@ -18,7 +18,7 @@ describe('useIntegrationTranslation', () => {
 
     it('should return integration translations', () => {
         const { result } = renderWithProvider('zh-TW');
-        expect(result.current.t('bgg_import_title')).toBe('BGG 字典匯入');
+        expect(result.current.t('catalog_import_title')).toBe('遊戲資料匯入（BGG／GeekGroup）');
     });
 
     it('should handle parameter substitution', () => {
@@ -28,6 +28,6 @@ describe('useIntegrationTranslation', () => {
 
     it('should return English integration translations', () => {
         const { result } = renderWithProvider('en');
-        expect(result.current.t('bgg_import_title')).toBe('BGG Dictionary Import');
+        expect(result.current.t('catalog_import_title')).toBe('Game data import (BGG / GeekGroup)');
     });
 });

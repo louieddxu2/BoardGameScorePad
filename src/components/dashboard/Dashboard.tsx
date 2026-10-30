@@ -413,7 +413,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               zoomLevel={zoomLevel} onZoomChange={onZoomChange}
               isCloudConnected={isConnected} isCloudSyncing={isSyncing} onOpenCloud={handleHeaderCloudClick}
               onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
-              onOpenBggImport={() => modals.actions.setShowBggImportModal(true)} />
+              onOpenGameCatalogImport={() => modals.actions.setShowGameCatalogImportModal(true)} />
           ) : viewMode === 'history' ? (
             <HistoryView
               records={historyRecords}
@@ -487,7 +487,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           isSearching={searchQuery.trim().length > 0}
           searchQuery={searchQuery}
           onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
-          onOpenBggImport={() => modals.actions.setShowBggImportModal(true)}
+          onOpenGameCatalogImport={() => modals.actions.setShowGameCatalogImportModal(true)}
         />
       )}
 

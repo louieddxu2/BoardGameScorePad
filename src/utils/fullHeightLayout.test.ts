@@ -9,7 +9,7 @@ import historyPhotoGrid from '../components/dashboard/HistoryPhotoGridShareModal
 import historyReview from '../components/history/HistoryReviewView.tsx?raw';
 import importStaging from '../features/bgstats/components/ImportStagingView.tsx?raw';
 import bgStatsModal from '../features/bgstats/components/BgStatsModal.tsx?raw';
-import bggImportModal from '../features/bgg/components/BggImportModal.tsx?raw';
+import gameCatalogImportModal from '../features/game-catalog/components/GameCatalogImportModal.tsx?raw';
 import startPanel from '../features/game-selector/components/StartGamePanel.tsx?raw';
 
 const returnedRootClasses = (source: string, name: string) => {
@@ -49,7 +49,7 @@ describe('full-height layout contracts', () => {
     expect(historyStats).toContain('className={`absolute right-2 top-1/2');
     expect(historyPhotoGrid).toContain('className="absolute inset-0');
     expect(bgStatsModal).toContain('className="absolute inset-0 z-[60] bg-app-bg');
-    expect(bggImportModal).toContain('className="absolute inset-0 z-[60] bg-app-bg');
+    expect(gameCatalogImportModal).toContain('className="absolute inset-0 z-[60] bg-app-bg');
   });
 
   it('keeps full-screen photo and import actions inside iOS safe areas', () => {

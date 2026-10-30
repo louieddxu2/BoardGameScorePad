@@ -16,7 +16,7 @@ const EXTERNAL_MANAGED_MODALS = new Set([
   'SyncDashboard.tsx',         // 作為 CloudManager 的嵌入子組件
   'ShareMenu.tsx',             // 由 useSessionEvents.ts 統一在外部管理
   'ConfirmationModal.tsx',     // 通用對話框，通常由 Hook 或外部渲染
-  'BggImportModal.tsx',        // 由 useDashboardModals.ts 統一管理
+  'GameCatalogImportModal.tsx',        // 由 useDashboardModals.ts 統一管理
   'BgStatsModal.tsx',          // 由 useDashboardModals.ts 統一管理
   'PlayerEditor.tsx',          // Inline 玩家編輯器而非 Backdrop Modal
 ]);
