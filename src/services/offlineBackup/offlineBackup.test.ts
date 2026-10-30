@@ -72,7 +72,7 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('offline full-data backup', () => {
-  it('retains every photo across eight game albums from ZIP bytes through a fresh database to album URLs', async () => {
+  it('restores eight albums through ZIP, database and album URLs even when a middle photo fails', async () => {
     const expected = new Map<string, string>();
     const games: HistoryRecord[] = [];
     const blobs = new Map<string, Blob>();
@@ -109,21 +109,34 @@ describe('offline full-data backup', () => {
     const manifest = parseJson(files[MANIFEST]) as Manifest;
     expect(manifest.images).toHaveLength(expected.size);
     for (const image of manifest.images) expect(await digest(files[image.path]), image.id).toBe(expected.get(image.id));
-    for (const table of DATA_TABLES) await db.table(table).clear();
-    await db.images.clear();
-    expect((await importOfflineBackup(archive)).issues).toEqual([]);
-    expect(await db.history.count()).toBe(8);
-    expect(await db.images.count()).toBe(expected.size);
-    for (const entry of games) {
-      const restored = (await db.history.get(entry.id))!;
-      expect(restored.photos).toEqual(entry.photos);
-      const { result, unmount } = renderHook(() => usePhotoImages(restored.photos!, restored.photoContentIds));
-      try {
-        await waitFor(() => expect(result.current.images.map(image => image.id)).toEqual([...entry.photos!].reverse()));
-        for (const image of result.current.images) {
-          expect(await digest(await readBlob(blobs.get(image.url)!)), image.id).toBe(expected.get(image.id));
-        }
-      } finally { unmount(); }
+    const middle = manifest.images[12];
+    for (const failure of ['none', 'missing', 'checksum', 'metadata']) {
+      const input = failure === 'none' ? archive : await rewrite(archive, (contents, index) => {
+        if (failure === 'missing') delete contents[middle.path];
+        else if (failure === 'checksum') contents[middle.path][0] ^= 1;
+        else Object.assign(index.images.find(image => image.id === middle.id)!, { relatedType: 'invalid' });
+      });
+      for (const table of DATA_TABLES) await db.table(table).clear();
+      await db.images.clear();
+      const report = await importOfflineBackup(input);
+      if (failure === 'none') expect(report.issues).toEqual([]);
+      else expect(report.issues).toEqual([expect.objectContaining({ path: middle.path.slice(ROOT.length),
+        reason: failure === 'metadata' ? 'invalid' : failure })]);
+      expect(await db.history.count(), failure).toBe(8);
+      expect(await db.images.count(), failure).toBe(expected.size - (failure === 'none' ? 0 : 1));
+      for (const entry of games) {
+        const restored = (await db.history.get(entry.id))!;
+        expect(restored.photos).toEqual(entry.photos);
+        const wanted = [...entry.photos!].reverse().filter(id => failure === 'none' || id !== middle.id);
+        const { result, unmount } = renderHook(() => usePhotoImages(restored.photos!, restored.photoContentIds));
+        try {
+          await waitFor(() => expect(result.current.images.map(image => image.id), failure).toEqual(wanted));
+          expect(result.current.loading).toBe(false);
+          for (const image of result.current.images) {
+            expect(await digest(await readBlob(blobs.get(image.url)!)), `${failure}: ${image.id}`).toBe(expected.get(image.id));
+          }
+        } finally { unmount(); }
+      }
     }
   });
 
@@ -199,6 +212,8 @@ describe('offline full-data backup', () => {
     expect(await db.history.get('healthy-history')).toMatchObject({ players: record.players });
     expect(await db.templates.get(template.id)).toBeUndefined();
     expect(await db.savedPlayers.get('p1')).toBeDefined();
+    // This photo follows the broken JSON entries in ZIP order.
+    expect(await (await db.images.get('photo'))!.blob.text()).toBe('rotated-photo');
   }, 10000);
 
   it('isolates simultaneous missing files and malformed or duplicate list rows while keeping healthy rows', async () => {

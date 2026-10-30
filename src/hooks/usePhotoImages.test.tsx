@@ -23,14 +23,29 @@ beforeEach(() => {
 });
 
 describe('photo URL ownership', () => {
-  it('finishes loading and keeps healthy photos usable when a restored photo file is missing', async () => {
+  it('continues to the next photo after a missing file, database rejection or URL creation failure', async () => {
     const ids = ['old', 'missing', 'new'];
-    vi.mocked(imageService.getImage).mockImplementation(async id =>
-      id === 'missing' ? undefined : { id, blob: originals.get(id)! } as LocalImage);
-    const { result } = renderHook(() => usePhotoImages(ids));
-    await waitFor(() => expect(result.current.images.map(image => image.id)).toEqual(['new', 'old']));
-    expect(result.current.loading).toBe(false);
-    expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
+    const badBlob = new Blob(['unreadable']);
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      for (const failure of ['missing', 'database', 'URL']) {
+        vi.mocked(imageService.getImage).mockClear().mockImplementation(async id => {
+          if (id === 'missing' && failure === 'database') throw new Error('Read failed');
+          if (id === 'missing' && failure === 'missing') return undefined;
+          return { id, blob: id === 'missing' ? badBlob : originals.get(id)! } as LocalImage;
+        });
+        vi.mocked(URL.createObjectURL).mockClear().mockImplementation(blob => {
+          if (blob === badBlob) throw new Error('URL creation failed');
+          return `blob:healthy-${vi.mocked(URL.createObjectURL).mock.calls.length}`;
+        });
+        const { result, unmount } = renderHook(() => usePhotoImages(ids));
+        try {
+          await waitFor(() => expect(result.current.images.map(image => image.id), failure).toEqual(['new', 'old']));
+          expect(result.current.loading).toBe(false);
+          expect(vi.mocked(imageService.getImage).mock.calls.map(([id]) => id)).toEqual(['new', 'missing', 'old']);
+        } finally { unmount(); }
+      }
+    } finally { errors.mockRestore(); }
   });
 
   it('cycles direction from one original, keeps order/IDs, avoids rereads and releases every URL once', async () => {
