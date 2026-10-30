@@ -9,6 +9,8 @@ import { migrateTemplate } from '../../utils/dataMigration';
 import { getRecordTemplate } from '../../utils/historyUtils';
 import { loadSessionActivation } from '../../hooks/sessionActivation';
 import { imageService } from '../imageService';
+import { renderHook, waitFor } from '@testing-library/react';
+import { usePhotoImages } from '../../hooks/usePhotoImages';
 
 vi.mock('../../db', async () => {
   const { default: Dexie } = await import('dexie');
@@ -70,6 +72,61 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe('offline full-data backup', () => {
+  it('retains every photo across eight game albums from ZIP bytes through a fresh database to album URLs', async () => {
+    const expected = new Map<string, string>();
+    const games: HistoryRecord[] = [];
+    const blobs = new Map<string, Blob>();
+    vi.stubGlobal('URL', class extends URL {
+      static createObjectURL(blob: Blob) {
+        const url = `blob:restored-${blobs.size}`;
+        blobs.set(url, blob);
+        return url;
+      }
+      static revokeObjectURL() {}
+    });
+    for (let game = 0; game < 8; game++) {
+      const board = { ...template, id: `game-${game}`, name: `遊戲 ${game}`, imageId: undefined, cloudImageId: undefined };
+      if (game % 2 === 0) await db.builtins.put(board);
+      else await db.templates.put(board);
+      const entry: HistoryRecord = { ...record, id: `history-${game}`, gameName: board.name, templateId: board.id,
+        snapshotTemplate: board, photos: [], photoContentIds: {} };
+      for (let photo = 0; photo < 3; photo++) {
+        const id = crypto.randomUUID();
+        const bytes = new Uint8Array([512, 327681, 524288][photo]);
+        for (let offset = 0; offset < bytes.length; offset++) bytes[offset] = (offset + game * 3 + photo) % 256;
+        const contentId = photo === 1 ? crypto.randomUUID() : undefined;
+        const mimeType = ['image/jpeg', '', 'application/octet-stream'][photo];
+        await imageService.saveImage(new Blob([bytes.buffer], { type: mimeType }), entry.id, 'session', id, contentId);
+        entry.photos!.push(id);
+        if (contentId) entry.photoContentIds![id] = contentId;
+        expected.set(id, await digest(bytes));
+      }
+      games.push(entry);
+      await db.history.put(entry);
+    }
+    const archive = await exportOfflineBackup();
+    const files = await unpack(await readBlob(archive));
+    const manifest = parseJson(files[MANIFEST]) as Manifest;
+    expect(manifest.images).toHaveLength(expected.size);
+    for (const image of manifest.images) expect(await digest(files[image.path]), image.id).toBe(expected.get(image.id));
+    for (const table of DATA_TABLES) await db.table(table).clear();
+    await db.images.clear();
+    expect((await importOfflineBackup(archive)).issues).toEqual([]);
+    expect(await db.history.count()).toBe(8);
+    expect(await db.images.count()).toBe(expected.size);
+    for (const entry of games) {
+      const restored = (await db.history.get(entry.id))!;
+      expect(restored.photos).toEqual(entry.photos);
+      const { result, unmount } = renderHook(() => usePhotoImages(restored.photos!, restored.photoContentIds));
+      try {
+        await waitFor(() => expect(result.current.images.map(image => image.id)).toEqual([...entry.photos!].reverse()));
+        for (const image of result.current.images) {
+          expect(await digest(await readBlob(blobs.get(image.url)!)), image.id).toBe(expected.get(image.id));
+        }
+      } finally { unmount(); }
+    }
+  });
+
   it('recovers usable records when any declared file is missing, truncated, changed or invalid JSON', async () => {
     await seed();
     await db.history.put({ ...record, id: 'healthy-history', photos: [] });
