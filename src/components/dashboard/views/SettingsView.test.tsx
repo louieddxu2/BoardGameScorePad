@@ -1,18 +1,25 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SettingsView } from './SettingsView';
 import { LanguageContext, LanguageProvider } from '../../../i18n';
 import { useMobileZoom } from '../../../hooks/useMobileZoom';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import type { OfflineBackupResult } from '../../../services/offlineBackup/import';
 
-const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(),
+const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(), readData: vi.fn(),
   openCloud: vi.fn(), openBgStats: vi.fn(), openCatalog: vi.fn(), selectTheme: vi.fn(), busy: vi.fn() }));
 vi.mock('../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: mocks.confirm }) }));
 vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: mocks.exportData }));
-vi.mock('../../../services/offlineBackup/import', () => ({ importOfflineBackup: mocks.importData }));
-afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+vi.mock('../../../services/offlineBackup/import', () => ({ applyOfflineBackup: mocks.importData }));
+vi.mock('../../../services/offlineBackup/validate', () => ({ validateOfflineBackup: mocks.readData }));
+vi.mock('../../../services/offlineBackup/preview', () => ({
+  summarizeBackup: () => ({ templates: 2, history: 1, sessions: 0, images: 3 }),
+  summarizeDevice: async () => ({ templates: 5, history: 9, sessions: 1, images: 4 }),
+}));
+const backup = { createdAt: new Date(2026, 9, 28, 21, 30).getTime(), issues: [] };
+beforeEach(() => { mocks.readData.mockResolvedValue(backup); });
+afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
   <SettingsView themeMode="sage" onSelectTheme={vi.fn()} onBusyChange={busy}
@@ -135,9 +142,8 @@ it('shows damage details for the current import and clears them when settings is
   expect(screen.queryByText(/This import: missing or damaged items/)).not.toBeInTheDocument();
 });
 
-it('asks for destructive replacement confirmation before importing and keeps cancelled data untouched', async () => {
-  mocks.confirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-  mocks.importData.mockRejectedValue(new BackupError('invalid', 'table: history'));
+it('previews the chosen backup before replacing data and rejects invalid files before asking', async () => {
+  mocks.confirm.mockResolvedValueOnce(false);
   renderSettings();
   const file = new File(['invalid'], 'backup.zip', { type: 'application/zip' });
   const input = screen.getByLabelText('Restore from backup');
@@ -147,16 +153,22 @@ it('asks for destructive replacement confirmation before importing and keeps can
     isDangerous: true, confirmText: 'Replace and import',
     message: expect.stringContaining('Built-in scoreboards are preserved'),
   }));
+  expect(mocks.confirm.mock.calls[0][0].message).toContain([
+    'File: backup.zip', 'Backed up: 2026-10-28 21:30',
+    'Backup: Scoreboards 2 · Records 1 · Active 0 · Images 3',
+    'This device: Scoreboards 5 · Records 9 · Active 1 · Images 4',
+  ].join('\n'));
   expect(mocks.importData).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: /Restore from backup/ }))
-    .toHaveAccessibleDescription('Replaces all data on this device. You will confirm after choosing a file.');
+    .toHaveAccessibleDescription('Replaces all data on this device');
+  mocks.readData.mockRejectedValueOnce(new BackupError('invalid', 'table: history'));
   fireEvent.change(input, { target: { files: [file] } });
   await screen.findByRole('alert');
-  expect(mocks.importData).toHaveBeenCalledTimes(1);
-  expect(mocks.importData).toHaveBeenCalledWith(file, expect.any(Function));
+  expect(mocks.readData).toHaveBeenLastCalledWith(file, expect.any(Function));
+  expect(mocks.importData).not.toHaveBeenCalled();
   expect(screen.getByRole('alert')).toHaveTextContent('Existing data has not been replaced');
   expect(screen.getByRole('alert')).toHaveTextContent('Check location: table: history');
-  expect(mocks.confirm).toHaveBeenCalledTimes(2);
+  expect(mocks.confirm).toHaveBeenCalledTimes(1);
 });
 
 it('locks the controls during export and downloads a ZIP with the backup filename', async () => {

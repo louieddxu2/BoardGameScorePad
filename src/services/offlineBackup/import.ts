@@ -1,6 +1,6 @@
 import { db } from '../../db';
 import { DATA_TABLES, PREFERENCE_KEYS, BackupError, type Preferences, type Row, type Progress } from './format';
-import { validateOfflineBackup } from './validate';
+import { validateOfflineBackup, type ValidatedBackup } from './validate';
 import type { OfflineBackupIssue } from '../../types';
 
 export interface OfflineBackupResult {
@@ -24,6 +24,12 @@ function detachCloud(row: Row): Row {
 /** Full replacement, deliberately separate from the cloud restore/merge operation. */
 export async function importOfflineBackup(blob: Blob, onProgress: Progress = () => {}): Promise<OfflineBackupResult> {
   const backup = await validateOfflineBackup(blob, onProgress);
+  onProgress('');
+  return applyOfflineBackup(backup);
+}
+
+/** Writes a backup that was already validated, e.g. after the user reviewed its summary. */
+export async function applyOfflineBackup(backup: ValidatedBackup): Promise<OfflineBackupResult> {
   const result: OfflineBackupResult = { issues: backup.issues };
   if (backup.databaseVersion > db.verno) throw new BackupError('unsupported');
   const previous: Preferences = {};
@@ -33,7 +39,6 @@ export async function importOfflineBackup(blob: Blob, onProgress: Progress = () 
   }
   let preferencesTouched = false;
   try {
-    onProgress('');
     await db.transaction('rw', [
       ...DATA_TABLES.map(name => db.table(name)), ...TRANSIENT_TABLES.map(name => db.table(name)), db.images, db.builtins,
     ], async () => {

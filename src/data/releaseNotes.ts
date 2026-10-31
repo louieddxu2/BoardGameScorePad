@@ -31,6 +31,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Settings now has an About section with the update history.' },
       { kind: 'improved', zh: '設定頁改為精簡分組：色系與語言直接點選，匯出與還原並排並顯示上次匯出日期，「關於」顯示目前版本。',
         en: 'Settings is now compact and grouped: tap a theme or language directly, export and restore sit side by side with the last export date, and About shows the installed version.' },
+      { kind: 'improved', zh: '從備份還原前，先顯示備份時間與內容數量，並和此裝置目前的資料對照。',
+        en: 'Before restoring, a preview shows when the backup was made and what it holds next to this device\'s current data.' },
       { kind: 'improved', zh: '輸入分數後一律移到下一列，不再需要設定方向。',
         en: 'Score entry now always advances downward; the direction preference was removed.' },
       { kind: 'improved', zh: '匯入入口分開「BGG／GeekGroup」與「BG Stats」。',

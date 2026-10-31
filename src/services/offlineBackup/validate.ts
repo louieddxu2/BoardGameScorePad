@@ -12,6 +12,8 @@ export interface ValidatedBackup {
   images: LocalImage[];
   preferences: Preferences;
   databaseVersion: number;
+  /** When the backup was exported (manifest time). */
+  createdAt: number;
   issues: OfflineBackupIssue[];
 }
 function invalid(): never { throw new BackupError('invalid'); }
@@ -114,7 +116,7 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     }
     // Image/file entries above define the archive's promised contents. Keep
     // dangling source references unchanged without inventing a missing ZIP file.
-    return { tables, images, preferences, databaseVersion: manifest.databaseVersion, issues: log.all() };
+    return { tables, images, preferences, databaseVersion: manifest.databaseVersion, createdAt: manifest.createdAt, issues: log.all() };
   } catch (error) {
     if (error instanceof BackupError && error.code !== 'invalid') throw error;
     throw new BackupError('invalid', location.slice(0, 240));

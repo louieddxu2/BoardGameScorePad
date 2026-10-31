@@ -537,6 +537,7 @@ describe('offline full-data backup', () => {
     expect(restored.tables.history[0].photos).toEqual(['photo']);
     expect(restored.images.some(image => image.id === 'photo')).toBe(false);
     expect(restored.issues).toEqual([]);
+    expect(restored.createdAt).toBeGreaterThan(0);
     // Older ZIPs without the optional missing-ID marker still describe the
     // files they contain; a dangling reference is not a lost archive entry.
     const legacy = await rewrite(localCopy, (_files, manifest) => {

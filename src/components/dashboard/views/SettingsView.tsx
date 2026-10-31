@@ -9,10 +9,15 @@ import { NavRow, SettingsGroup } from './SettingsRows';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import { exportOfflineBackup } from '../../../services/offlineBackup/export';
-import { importOfflineBackup } from '../../../services/offlineBackup/import';
+import { applyOfflineBackup } from '../../../services/offlineBackup/import';
+import { validateOfflineBackup } from '../../../services/offlineBackup/validate';
+import { summarizeBackup, summarizeDevice, type BackupSummary } from '../../../services/offlineBackup/preview';
 import type { OfflineBackupIssue } from '../../../types';
 
 const LAST_EXPORT_KEY = 'settings_last_export_at';
+
+const pad = (value: number) => String(value).padStart(2, '0');
+const formatDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
 function readLastExport() {
   try { return localStorage.getItem(LAST_EXPORT_KEY); } catch { return null; }
@@ -30,7 +35,7 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
   const inputRef = useRef<HTMLInputElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
-  const [operation, setOperation] = useState<'exporting' | 'importing' | null>(null);
+  const [operation, setOperation] = useState<'exporting' | 'reading' | 'importing' | null>(null);
   const [filename, setFilename] = useState('');
   const [feedback, setFeedback] = useState<{ text: string; error: boolean; warning?: boolean } | null>(null);
   const [importIssues, setImportIssues] = useState<OfflineBackupIssue[]>([]);
@@ -50,14 +55,9 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
     if (busyRef.current) return;
     busyRef.current = true;
     setFeedback(null);
-    if (file && !await confirm({ title: t('confirm_title'), message: t('confirm_message'),
-      confirmText: t('confirm_import'), cancelText: t('cancel'), isDangerous: true })) {
-      busyRef.current = false;
-      return;
-    }
     onBusyChange(true);
     setImportIssues([]);
-    setOperation(mode);
+    setOperation(mode === 'importing' ? 'reading' : mode);
     setFilename('');
     try {
       if (mode === 'exporting') {
@@ -66,8 +66,7 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        const now = new Date();
-        const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+        const date = formatDate(new Date());
         link.download = `BoardGameScorePad-${date}.zip`;
         document.body.appendChild(link);
         link.click();
@@ -77,7 +76,27 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
         try { localStorage.setItem(LAST_EXPORT_KEY, date); } catch { /* The reminder is optional. */ }
         setFeedback({ text: t(hasMissingReferences ? 'export_success_with_missing_refs' : 'export_success'), error: false });
       } else if (file) {
-        const report = await importOfflineBackup(file, setFilename);
+        // Validate and summarize first; nothing is written until the user accepts this preview.
+        const backup = await validateOfflineBackup(file, setFilename);
+        const device = await summarizeDevice();
+        setOperation(null);
+        const created = new Date(backup.createdAt);
+        const counts = (summary: BackupSummary) => [
+          `${t('count_templates')} ${summary.templates}`, `${t('count_history')} ${summary.history}`,
+          `${t('count_sessions')} ${summary.sessions}`, `${t('count_images')} ${summary.images}`,
+        ].join(' · ');
+        const preview = [
+          `${t('preview_file')}${file.name}`,
+          `${t('preview_created')}${formatDate(created)} ${pad(created.getHours())}:${pad(created.getMinutes())}`,
+          `${t('preview_backup')}${counts(summarizeBackup(backup))}`,
+          `${t('preview_device')}${counts(device)}`,
+          ...(backup.issues.length ? [t('preview_issues').replace('{count}', String(backup.issues.length))] : []),
+        ].join('\n');
+        if (!await confirm({ title: t('confirm_title'), message: `${preview}\n\n${t('confirm_message')}`,
+          confirmText: t('confirm_import'), cancelText: t('cancel'), isDangerous: true })) return;
+        setOperation('importing');
+        setFilename('');
+        const report = await applyOfflineBackup(backup);
         const partial = report.issues.length > 0;
         setImportIssues(report.issues);
         setFeedback({ text: t(partial ? 'import_partial' : 'import_success'), error: false, warning: partial });
