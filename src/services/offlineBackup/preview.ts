@@ -1,25 +1,24 @@
 import { db } from '../../db';
 import type { ValidatedBackup } from './validate';
 
-/** The counts a user needs to judge whether a backup is the one to restore. */
-export interface BackupSummary {
-  templates: number;
-  history: number;
-  sessions: number;
-  images: number;
+/** Recent game records let a user recognise which backup this is and whether it is older than the device. */
+export interface RecordPreview {
+  total: number;
+  recent: { name: string; endTime: number }[];
 }
 
-export const summarizeBackup = (backup: ValidatedBackup): BackupSummary => ({
-  templates: backup.tables.templates.length, history: backup.tables.history.length,
-  sessions: backup.tables.sessions.length, images: backup.images.length,
-});
+export function previewBackupRecords(backup: ValidatedBackup, limit = 3): RecordPreview {
+  const recent = backup.tables.history
+    .filter(row => typeof row.gameName === 'string' && typeof row.endTime === 'number')
+    .map(row => ({ name: row.gameName as string, endTime: row.endTime as number }))
+    .sort((a, b) => b.endTime - a.endTime)
+    .slice(0, limit);
+  return { total: backup.tables.history.length, recent };
+}
 
-/** Same scope as a backup: built-in scoreboards and their images are excluded. */
-export async function summarizeDevice(): Promise<BackupSummary> {
-  const builtinIds = new Set(await db.builtins.toCollection().primaryKeys());
-  const [templates, history, sessions, images] = await Promise.all([
-    db.templates.count(), db.history.count(), db.sessions.count(),
-    db.images.filter(image => !(image.relatedType === 'template' && builtinIds.has(image.relatedId))).count(),
+export async function previewDeviceRecords(limit = 1): Promise<RecordPreview> {
+  const [total, rows] = await Promise.all([
+    db.history.count(), db.history.orderBy('endTime').reverse().limit(limit).toArray(),
   ]);
-  return { templates, history, sessions, images };
+  return { total, recent: rows.map(row => ({ name: row.gameName, endTime: row.endTime })) };
 }

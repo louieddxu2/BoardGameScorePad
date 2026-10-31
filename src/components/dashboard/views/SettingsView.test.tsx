@@ -14,8 +14,11 @@ vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: 
 vi.mock('../../../services/offlineBackup/import', () => ({ applyOfflineBackup: mocks.importData }));
 vi.mock('../../../services/offlineBackup/validate', () => ({ validateOfflineBackup: mocks.readData }));
 vi.mock('../../../services/offlineBackup/preview', () => ({
-  summarizeBackup: () => ({ templates: 2, history: 1, sessions: 0, images: 3 }),
-  summarizeDevice: async () => ({ templates: 5, history: 9, sessions: 1, images: 4 }),
+  previewBackupRecords: () => ({ total: 12, recent: [
+    { name: 'Carcassonne', endTime: new Date(2026, 9, 28, 20).getTime() },
+    { name: 'Splendor', endTime: new Date(2026, 9, 27, 20).getTime() },
+  ] }),
+  previewDeviceRecords: async () => ({ total: 0, recent: [] }),
 }));
 const backup = { createdAt: new Date(2026, 9, 28, 21, 30).getTime(), issues: [] };
 beforeEach(() => { mocks.readData.mockResolvedValue(backup); });
@@ -154,9 +157,9 @@ it('previews the chosen backup before replacing data and rejects invalid files b
     message: expect.stringContaining('Built-in scoreboards are preserved'),
   }));
   expect(mocks.confirm.mock.calls[0][0].message).toContain([
-    'File: backup.zip', 'Backed up: 2026-10-28 21:30',
-    'Backup: Scoreboards 2 · Records 1 · Active 0 · Images 3',
-    'This device: Scoreboards 5 · Records 9 · Active 1 · Images 4',
+    'File: backup.zip', 'Backed up: 2026-10-28 21:30', '',
+    'Latest records in this backup (12 total):', '・2026-10-28 Carcassonne', '・2026-10-27 Splendor', '',
+    'Latest record on this device (0 total):', '・No game records',
   ].join('\n'));
   expect(mocks.importData).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: /Restore from backup/ }))

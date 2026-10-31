@@ -11,7 +11,7 @@ import { BackupError } from '../../../services/offlineBackup/errors';
 import { exportOfflineBackup } from '../../../services/offlineBackup/export';
 import { applyOfflineBackup } from '../../../services/offlineBackup/import';
 import { validateOfflineBackup } from '../../../services/offlineBackup/validate';
-import { summarizeBackup, summarizeDevice, type BackupSummary } from '../../../services/offlineBackup/preview';
+import { previewBackupRecords, previewDeviceRecords, type RecordPreview } from '../../../services/offlineBackup/preview';
 import type { OfflineBackupIssue } from '../../../types';
 
 const LAST_EXPORT_KEY = 'settings_last_export_at';
@@ -76,21 +76,22 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
         try { localStorage.setItem(LAST_EXPORT_KEY, date); } catch { /* The reminder is optional. */ }
         setFeedback({ text: t(hasMissingReferences ? 'export_success_with_missing_refs' : 'export_success'), error: false });
       } else if (file) {
-        // Validate and summarize first; nothing is written until the user accepts this preview.
+        // Validate and preview first; nothing is written until the user accepts.
         const backup = await validateOfflineBackup(file, setFilename);
-        const device = await summarizeDevice();
+        const device = await previewDeviceRecords();
         setOperation(null);
         const created = new Date(backup.createdAt);
-        const counts = (summary: BackupSummary) => [
-          `${t('count_templates')} ${summary.templates}`, `${t('count_history')} ${summary.history}`,
-          `${t('count_sessions')} ${summary.sessions}`, `${t('count_images')} ${summary.images}`,
-        ].join(' · ');
+        const records = (heading: 'preview_backup' | 'preview_device', preview: RecordPreview) => [
+          t(heading).replace('{count}', String(preview.total)),
+          ...(preview.recent.length ? preview.recent.map(record => `・${formatDate(new Date(record.endTime))} ${record.name}`)
+            : [`・${t('preview_no_records')}`]),
+        ];
         const preview = [
           `${t('preview_file')}${file.name}`,
           `${t('preview_created')}${formatDate(created)} ${pad(created.getHours())}:${pad(created.getMinutes())}`,
-          `${t('preview_backup')}${counts(summarizeBackup(backup))}`,
-          `${t('preview_device')}${counts(device)}`,
-          ...(backup.issues.length ? [t('preview_issues').replace('{count}', String(backup.issues.length))] : []),
+          '', ...records('preview_backup', previewBackupRecords(backup)),
+          '', ...records('preview_device', device),
+          ...(backup.issues.length ? ['', t('preview_issues').replace('{count}', String(backup.issues.length))] : []),
         ].join('\n');
         if (!await confirm({ title: t('confirm_title'), message: `${preview}\n\n${t('confirm_message')}`,
           confirmText: t('confirm_import'), cancelText: t('cancel'), isDangerous: true })) return;
