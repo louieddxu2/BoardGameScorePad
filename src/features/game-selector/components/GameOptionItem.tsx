@@ -44,8 +44,6 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
         } else {
             supportedPlayersStr = `${option.minPlayers}${t('selector_unit_player')}`;
         }
-    } else if (option.defaultPlayerCount) {
-        supportedPlayersStr = `${option.defaultPlayerCount}${t('selector_unit_player')}`;
     }
 
     const complexityVal = option.complexity && option.complexity > 0 ? Number(option.complexity).toFixed(1) : null;
