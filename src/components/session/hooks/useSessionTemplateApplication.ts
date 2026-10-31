@@ -3,7 +3,6 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { GameSession, GameTemplate } from '../../../types';
 import type { useToast } from '../../../hooks/useToast';
 import type { useSessionTranslation } from '../../../i18n/session';
-import { db } from '../../../db';
 import { markPendingAiShare } from '../../../utils/pendingAiShare';
 
 interface SessionTemplateApplicationOptions {
@@ -73,20 +72,7 @@ export const useSessionTemplateApplication = ({
     await handleTemplateUpdate(updatedTemplate);
     await handleSessionUpdate(updatedSession);
 
-    // 5. 標記偏好，記錄此範本以防止重覆推薦
-    try {
-      void db.templatePrefs.put({
-        templateId: updatedTemplate.id,
-        lastPlayerCount: session.players.length,
-        updatedAt: Date.now()
-      }).catch(e => {
-        console.error("Failed to record prefs", e);
-      });
-    } catch (e) {
-      console.error("Failed to record prefs", e);
-    }
-
-    // 6. 關閉彈窗並彈出提示
+    // 5. 關閉彈窗並彈出提示
     setIsOnlineSearchOpen(false);
     showToast({ message: tSession('toast_apply_template_success'), type: 'success' });
   }, [handleSessionUpdate, handleTemplateUpdate, session, template, showToast, tSession, setIsOnlineSearchOpen]);

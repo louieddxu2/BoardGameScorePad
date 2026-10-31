@@ -135,6 +135,7 @@ export type ScoringRule = 'HIGHEST_WINS' | 'LOWEST_WINS' | 'COOP' | 'COMPETITIVE
 // [New Interface] Separate preferences from template definition
 export interface TemplatePreference {
   templateId: string;
+  /** 最近一次成功加入歷史紀錄時的實際玩家人數。 */
   lastPlayerCount?: number;
   defaultScoringRule?: ScoringRule;
   updatedAt?: number;

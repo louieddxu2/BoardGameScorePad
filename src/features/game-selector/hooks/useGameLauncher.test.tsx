@@ -39,5 +39,27 @@ describe('useGameLauncher loading-state identity', () => {
     });
     expect(onTemplateSave).not.toHaveBeenCalled();
     expect(onGameStart).toHaveBeenCalledWith(board, 4, '', undefined, undefined);
+    expect(db.templatePrefs.put).not.toHaveBeenCalled();
+  });
+
+  it('starts a new simple board without persisting an unfinished player count', async () => {
+    const option: GameOption = {
+      uid: 'saved-game', savedGameId: 'saved-game', displayName: 'Simple Game',
+      lastUsed: 5000, usageCount: 1, isPinned: false,
+      defaultPlayerCount: 4, defaultScoringRule: 'HIGHEST_WINS', _searchTokens: ['Simple Game'],
+    };
+    const onTemplateSave = vi.fn();
+    const onGameStart = vi.fn();
+    const putPreference = vi.spyOn(db.templatePrefs, 'put');
+    const { result } = renderHook(() => useGameLauncher({
+      allVisibleTemplates: [], onGetFullTemplate: vi.fn(async () => null), onTemplateSave, onGameStart,
+    }));
+
+    await act(async () => { await result.current.handlePanelStart(option, 2, ''); });
+
+    const created = onTemplateSave.mock.calls[0][0] as GameTemplate;
+    expect(created).not.toHaveProperty('lastPlayerCount');
+    expect(onGameStart).toHaveBeenCalledWith(created, 2, '', undefined, undefined);
+    expect(putPreference).not.toHaveBeenCalled();
   });
 });

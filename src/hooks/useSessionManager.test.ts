@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useSessionManager } from './useSessionManager';
 import type { GameTemplate, GameSession, HistoryRecord } from '../types';
 import * as scoring from '../utils/scoring';
@@ -13,10 +13,12 @@ const hoisted = vi.hoisted(() => {
   const templatePrefStore = new Map<string, any>();
 
   const dbMock = {
-    transaction: vi.fn(async (_mode: string, _historyTable: unknown, _sessionsTable: unknown, callback: () => Promise<void>) => {
+    transaction: vi.fn(async (_mode: string, ...tablesAndCallback: unknown[]) => {
+      const callback = tablesAndCallback[tablesAndCallback.length - 1] as () => Promise<void>;
       await callback();
     }),
     templatePrefs: {
+      get: vi.fn(async (id: string) => templatePrefStore.get(id)),
       put: vi.fn(async (pref: any) => {
         templatePrefStore.set(pref.templateId, pref);
       }),
@@ -121,6 +123,8 @@ vi.mock('../features/recommendation/SessionPlayerInitializer', () => ({
 }));
 
 describe('useSessionManager', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
   beforeEach(() => {
     hoisted.sessionStore.clear();
     hoisted.historyStore.clear();
@@ -137,7 +141,7 @@ describe('useSessionManager', () => {
     });
   });
 
-  it('persists session flow from start/update/save-to-history and clears runtime state', async () => {
+  it('records the final player count only when saving to history and clears runtime state', async () => {
     const template: GameTemplate = {
       id: 'tpl_1',
       name: 'Test Game',
@@ -151,7 +155,11 @@ describe('useSessionManager', () => {
         },
       ],
       createdAt: Date.now(),
+      lastPlayerCount: 3,
     };
+    hoisted.templatePrefStore.set(template.id, {
+      templateId: template.id, lastPlayerCount: 3, defaultScoringRule: 'LOWEST_WINS', updatedAt: 1,
+    });
 
     const getTemplate = vi.fn(async (id: string) => (id === template.id ? template : null));
 
@@ -166,12 +174,15 @@ describe('useSessionManager', () => {
 
     let sessionId: string | null = null;
     await act(async () => {
-      sessionId = await result.current.startSession(template, 2, { scoringRule: 'HIGHEST_WINS' });
+      sessionId = await result.current.startSession(template, 4, { scoringRule: 'HIGHEST_WINS' });
     });
 
     expect(sessionId).toBeTruthy();
-    expect(result.current.currentSession?.players).toHaveLength(2);
-    expect(hoisted.templatePrefStore.get(template.id)?.lastPlayerCount).toBe(2);
+    expect(result.current.currentSession?.players).toHaveLength(4);
+    expect(result.current.activeTemplate?.lastPlayerCount).toBe(3);
+    expect(hoisted.templatePrefStore.get(template.id)).toMatchObject({
+      lastPlayerCount: 3, defaultScoringRule: 'HIGHEST_WINS',
+    });
 
     const started = result.current.currentSession!;
     const updatedSession: GameSession = {
@@ -179,7 +190,7 @@ describe('useSessionManager', () => {
       photos: ['photo-1'],
       photoContentIds: { 'photo-1': 'revision-1' },
       photoCloudIds: { 'photo-1@revision-1': 'cloud-photo-1' },
-      players: started.players.map((p, i) =>
+      players: started.players.slice(0, 2).map((p, i) =>
         i === 0
           ? { ...p, scores: { score: { parts: [10] } } }
           : p
@@ -192,6 +203,7 @@ describe('useSessionManager', () => {
 
     expect(result.current.currentSession?.players.map(player => player.totalScore)).toEqual([10, 0]);
     expect(result.current.currentSession?.winnerIds).toEqual([started.players[0].id]);
+    expect(hoisted.templatePrefStore.get(template.id)?.lastPlayerCount).toBe(3);
 
     await act(async () => {
       await result.current.saveToHistory('Office');
@@ -203,6 +215,7 @@ describe('useSessionManager', () => {
       'rw',
       hoisted.dbMock.history,
       hoisted.dbMock.sessions,
+      hoisted.dbMock.templatePrefs,
       expect.any(Function),
     );
     expect(hoisted.historyStore.has(sessionId!)).toBe(true);
@@ -213,11 +226,38 @@ describe('useSessionManager', () => {
     expect(saved.photoContentIds).toEqual({ 'photo-1': 'revision-1' });
     expect(saved.photoCloudIds).toEqual({ 'photo-1@revision-1': 'cloud-photo-1' });
     expect(saved.players[0].scores.score.parts[0]).toBe(10);
+    expect(saved.snapshotTemplate?.lastPlayerCount).toBe(2);
+    expect(hoisted.templatePrefStore.get(template.id)).toMatchObject({
+      lastPlayerCount: 2, defaultScoringRule: 'HIGHEST_WINS', updatedAt: saved.endTime,
+    });
     expect(hoisted.processGameEndMock).toHaveBeenCalledTimes(1);
     expect(hoisted.cleanupDisposableTemplateMock).toHaveBeenCalledTimes(1);
 
     expect(result.current.currentSession).toBeNull();
     expect(result.current.activeTemplate).toBeNull();
+  });
+
+  it('keeps the previous player count and active session if saving history fails', async () => {
+    const template: GameTemplate = {
+      id: 'tpl_failed_history', name: 'Failed History', createdAt: 1,
+      columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }],
+    };
+    hoisted.templatePrefStore.set(template.id, { templateId: template.id, lastPlayerCount: 3 });
+    const { result } = renderHook(() => useSessionManager({
+      getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+    await act(async () => { await result.current.startSession(template, 2); });
+    const session = result.current.currentSession!;
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    hoisted.dbMock.history.put.mockRejectedValueOnce(new Error('history storage failed'));
+
+    await act(async () => { await result.current.saveToHistory(); });
+
+    expect(hoisted.templatePrefStore.get(template.id)?.lastPlayerCount).toBe(3);
+    expect(hoisted.historyStore.has(session.id)).toBe(false);
+    expect(hoisted.dbMock.sessions.delete).not.toHaveBeenCalled();
+    expect(result.current.currentSession).toBe(session);
+    expect(hoisted.showToastMock).toHaveBeenCalledWith({ message: 'msg_session_save_failed', type: 'error' });
   });
 
   it('keeps a pinned simple template when saving a game to history', async () => {
@@ -241,12 +281,33 @@ describe('useSessionManager', () => {
     await act(async () => {
       sessionId = await result.current.startSession(template, 2);
     });
+    expect(hoisted.templatePrefStore.get(template.id)?.lastPlayerCount).toBeUndefined();
     await act(async () => { await result.current.saveToHistory(); });
 
+    expect(hoisted.templatePrefStore.get(template.id)?.lastPlayerCount).toBe(2);
     expect(hoisted.cleanupDisposableTemplateMock).toHaveBeenCalledWith(template.id, [template.id]);
     expect(hoisted.historyStore.get(sessionId!)?.snapshotTemplate).toEqual(
       expect.objectContaining({ id: template.id })
     );
+  });
+
+  it('keeps the previous player count when exiting an unfinished game', async () => {
+    const template: GameTemplate = {
+      id: 'tpl_unfinished', name: 'Unfinished', createdAt: 1,
+      columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }],
+    };
+    hoisted.templatePrefStore.set(template.id, { templateId: template.id, lastPlayerCount: 3 });
+    const { result } = renderHook(() => useSessionManager({
+      getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+    await act(async () => { await result.current.startSession(template, 2, { location: 'Office' }); });
+    const sessionId = result.current.currentSession!.id;
+
+    await act(async () => { await result.current.exitSession(); });
+
+    expect(hoisted.sessionStore.get(sessionId)?.players).toHaveLength(2);
+    expect(hoisted.historyStore.size).toBe(0);
+    expect(hoisted.templatePrefStore.get(template.id)?.lastPlayerCount).toBe(3);
   });
 
   it('does not restore an active session from a pending autosave after saving history', async () => {
@@ -319,8 +380,10 @@ describe('useSessionManager', () => {
     vi.useFakeTimers();
     try {
       const template: GameTemplate = {
-        id: 'tpl_discard', name: 'Discard', columns: [], createdAt: Date.now(),
+        id: 'tpl_discard', name: 'Discard', createdAt: Date.now(),
+        columns: [{ id: 'score', name: 'Score', formula: 'a1', inputType: 'keypad', isScoring: true }],
       };
+      hoisted.templatePrefStore.set(template.id, { templateId: template.id, lastPlayerCount: 3 });
       const { result } = renderHook(() => useSessionManager({ getTemplate: async () => template, activeSessions: [], isCloudEnabled: () => false, pinnedIds: [] }));
 
       let sessionId: string | null = null;
@@ -332,6 +395,7 @@ describe('useSessionManager', () => {
 
       expect(hoisted.dbMock.sessions.delete).toHaveBeenCalledWith(sessionId);
       expect(hoisted.sessionStore.has(sessionId!)).toBe(false);
+      expect(hoisted.templatePrefStore.get(template.id)?.lastPlayerCount).toBe(3);
       expect(result.current.currentSession).toBeNull();
       expect(result.current.activeTemplate).toBeNull();
     } finally {

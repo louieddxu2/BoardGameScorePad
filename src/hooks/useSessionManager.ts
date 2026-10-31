@@ -119,11 +119,14 @@ export const useSessionManager = ({
         setSessionPlayerCount(playerCount);
         const scoringRule = options?.scoringRule || 'HIGHEST_WINS';
         try {
-            await db.templatePrefs.put({
-                templateId: partialTemplate.id,
-                lastPlayerCount: playerCount,
-                defaultScoringRule: scoringRule,
-                updatedAt: Date.now()
+            await db.transaction('rw', db.templatePrefs, async () => {
+                const preference = await db.templatePrefs.get(partialTemplate.id);
+                await db.templatePrefs.put({
+                    ...preference,
+                    templateId: partialTemplate.id,
+                    defaultScoringRule: scoringRule,
+                    updatedAt: Date.now()
+                });
             });
         } catch (e) { console.warn("Failed to save preferences", e); }
 
@@ -135,7 +138,6 @@ export const useSessionManager = ({
             return null;
         }
         const migratedTemplate = migrateTemplate(fullTemplate);
-        migratedTemplate.lastPlayerCount = playerCount;
         migratedTemplate.defaultScoringRule = scoringRule;
 
         const hasTexture = !!migratedTemplate.globalVisuals || !!migratedTemplate.hasImage;
@@ -430,7 +432,7 @@ export const useSessionManager = ({
 
             const snapshotTemplate = isDisposableTemplate(activeTemplate, pinnedIds)
                 ? undefined
-                : JSON.parse(JSON.stringify(activeTemplate));
+                : JSON.parse(JSON.stringify({ ...activeTemplate, lastPlayerCount: currentSession.players.length }));
 
             const now = Date.now();
             const record: HistoryRecord = {
@@ -456,8 +458,15 @@ export const useSessionManager = ({
                 scoringRule: rule
             };
 
-            await db.transaction('rw', db.history, db.sessions, async () => {
+            await db.transaction('rw', db.history, db.sessions, db.templatePrefs, async () => {
                 await db.history.put(record);
+                const preference = await db.templatePrefs.get(activeTemplate.id);
+                await db.templatePrefs.put({
+                    ...preference,
+                    templateId: activeTemplate.id,
+                    lastPlayerCount: record.players.length,
+                    updatedAt: now
+                });
                 await db.sessions.delete(currentSession.id);
             });
             notifySessionDeleted(currentSession.id);

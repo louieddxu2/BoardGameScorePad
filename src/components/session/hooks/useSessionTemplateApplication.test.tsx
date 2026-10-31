@@ -33,7 +33,7 @@ describe('useSessionTemplateApplication', () => {
   beforeEach(() => { putPreference.mockReset().mockResolvedValue(undefined); });
   afterEach(() => { consumePendingAiShare('application-template'); vi.restoreAllMocks(); });
 
-  it('waits for the community template save before clearing inputs and recording the preference', async () => {
+  it('waits for the community template save before clearing inputs without changing the completed player count', async () => {
     const options = makeOptions();
     const payload: Partial<GameTemplate> = {
       id: 'remote-id', name: 'Remote', columns: [{ ...options.template.columns[0], id: 'new' }],
@@ -56,7 +56,7 @@ describe('useSessionTemplateApplication', () => {
       ...options.session, scoringRule: 'LOWEST_WINS', winnerIds: [],
       players: [{ ...options.session.players[0], scores: {} }],
     });
-    expect(putPreference).toHaveBeenCalledExactlyOnceWith({ templateId: options.template.id, lastPlayerCount: 1, updatedAt: expect.any(Number) });
+    expect(putPreference).not.toHaveBeenCalled();
     expect(options.setIsOnlineSearchOpen).toHaveBeenCalledExactlyOnceWith(false);
     expect(options.setIsAiPromptOpen).not.toHaveBeenCalled();
     expect(options.showToast).toHaveBeenCalledExactlyOnceWith({ message: 'toast_apply_template_success', type: 'success' });
@@ -108,19 +108,4 @@ describe('useSessionTemplateApplication', () => {
     expect(options.session.players[0].scores.old.parts).toEqual([9]);
   });
 
-  it('does not wait for preference persistence, but handles its asynchronous failure', async () => {
-    const options = makeOptions();
-    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    let failPreference!: (error: Error) => void;
-    putPreference.mockImplementationOnce(() => new Promise((_resolve, reject) => { failPreference = reject; }));
-    const { result } = renderHook(() => useSessionTemplateApplication(options));
-    await act(async () => { await result.current.handleApplyTemplate({ payload: { columns: options.template.columns } }); });
-    expect(options.setIsOnlineSearchOpen).toHaveBeenCalledExactlyOnceWith(false);
-    expect(options.showToast).toHaveBeenCalledExactlyOnceWith({ message: 'toast_apply_template_success', type: 'success' });
-
-    const error = new Error('preference storage failed');
-    await act(async () => { failPreference(error); await Promise.resolve(); });
-    expect(logged).toHaveBeenCalledExactlyOnceWith('Failed to record prefs', error);
-    expect(options.onUpdateSession).toHaveBeenCalledTimes(1);
-  });
 });

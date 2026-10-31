@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { GameTemplate, ScoringRule, ScoreColumn } from '../../../types';
 import { GameOption } from '../types';
 import { useToast } from '../../../hooks/useToast';
-import { db } from '../../../db';
 import { generateId } from '../../../utils/idGenerator';
 import { useAppTranslation } from '../../../i18n/app';
 import { createTemplateFromOption } from '../../../utils/templateUtils';
@@ -73,9 +72,7 @@ export const useGameLauncher = ({
         resolvedPendingTemplate = true;
       } else {
         // 建立新模板
-        templateToStart = createTemplateFromOption(option, {
-          lastPlayerCount: playerCount
-        });
+        templateToStart = createTemplateFromOption(option);
 
         // 如果有 AI 注入的欄位，在此時填入
         if (injectedColumns && injectedColumns.length > 0) {
@@ -93,17 +90,7 @@ export const useGameLauncher = ({
     }
 
     try {
-      // 2. 紀錄偏好
-      await db.templatePrefs.put({
-        templateId: templateToStart.id,
-        lastPlayerCount: playerCount,
-        updatedAt: Date.now()
-      });
-
-      // 3. 啟動遊戲
-      onGameStart(templateToStart, playerCount, location, locationId, extra);
-    } catch (e) {
-      console.error("Failed to start game", e);
+      // 2. 啟動遊戲
       onGameStart(templateToStart, playerCount, location, locationId, extra);
     } finally {
       // 清空暫存狀態
