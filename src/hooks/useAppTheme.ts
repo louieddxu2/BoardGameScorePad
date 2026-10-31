@@ -23,10 +23,16 @@ export function useAppTheme(markSystemDirty: () => void) {
         markSystemDirty();
     };
 
+    const setTheme = (theme: AppTheme) => {
+        if (theme === currentTheme.current) return;
+        selectTheme(theme);
+        markSystemDirty();
+    };
+
     // Unknown values from a newer/invalid backup must not erase the current choice.
     const restoreTheme = (value: unknown) => {
         if (isAppTheme(value)) selectTheme(value);
     };
 
-    return { themeMode, toggleTheme, restoreTheme };
+    return { themeMode, toggleTheme, setTheme, restoreTheme };
 }

@@ -141,6 +141,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
           setSearchQuery={appData.setSearchQuery}
           themeMode={appData.themeMode}
           onToggleTheme={appData.toggleTheme}
+          onSelectTheme={appData.setTheme}
           zoomLevel={zoomLevel}
           onZoomChange={onZoomChange}
           onTemplateSelect={actions.initSetup}

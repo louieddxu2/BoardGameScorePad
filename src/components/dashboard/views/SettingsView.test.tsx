@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { SettingsView } from './SettingsView';
 import { LanguageContext, LanguageProvider } from '../../../i18n';
@@ -8,21 +8,21 @@ import { BackupError } from '../../../services/offlineBackup/errors';
 import type { OfflineBackupResult } from '../../../services/offlineBackup/import';
 
 const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(),
-  openCloud: vi.fn(), openBgStats: vi.fn(), openCatalog: vi.fn(), toggleTheme: vi.fn(), busy: vi.fn() }));
+  openCloud: vi.fn(), openBgStats: vi.fn(), openCatalog: vi.fn(), selectTheme: vi.fn(), busy: vi.fn() }));
 vi.mock('../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: mocks.confirm }) }));
 vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: mocks.exportData }));
 vi.mock('../../../services/offlineBackup/import', () => ({ importOfflineBackup: mocks.importData }));
 afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
-  <SettingsView themeMode="sage" onToggleTheme={vi.fn()} onBusyChange={busy}
+  <SettingsView themeMode="sage" onSelectTheme={vi.fn()} onBusyChange={busy}
     zoomLevel={1} onZoomChange={vi.fn()} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={vi.fn()}
     onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />
 </LanguageContext.Provider>);
 
 function SettingsWithLivePreferences() {
   const { zoomLevel, setZoomLevel } = useMobileZoom();
-  return <SettingsView themeMode="sage" onToggleTheme={mocks.toggleTheme} onBusyChange={mocks.busy}
+  return <SettingsView themeMode="sage" onSelectTheme={mocks.selectTheme} onBusyChange={mocks.busy}
     zoomLevel={zoomLevel} onZoomChange={setZoomLevel} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={mocks.openCloud}
     onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />;
 }
@@ -51,20 +51,26 @@ it('uses the existing zoom and language owners and opens cloud management only w
     fireEvent.click(screen.getByRole('button', { name: 'Reset to 100%' }));
     expect(slider).toHaveValue('100');
     expect(localStorage.getItem('app_zoom_level')).toBe('1');
+    expect(screen.queryByRole('button', { name: 'Reset to 100%' })).toBeNull();
     expect(mocks.openCloud).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Cloud backup/ }));
     expect(mocks.openCloud).toHaveBeenCalledTimes(1);
     expect(mocks.openCatalog).not.toHaveBeenCalled();
     expect(mocks.openBgStats).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /Import game data/ }));
+    fireEvent.click(screen.getByRole('button', { name: /BGG \/ GeekGroup game data/ }));
     expect(mocks.openCatalog).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: /BG Stats import \/ export/ }));
     expect(mocks.openBgStats).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: /Appearance/ }));
-    expect(mocks.toggleTheme).toHaveBeenCalledTimes(1);
-    fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), { target: { value: 'zh-TW' } });
+    const themes = screen.getByRole('radiogroup', { name: 'Appearance' });
+    expect(within(themes).getByRole('radio', { name: 'Sage' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(within(themes).getByRole('radio', { name: 'Sage' }));
+    expect(mocks.selectTheme).not.toHaveBeenCalled();
+    fireEvent.click(within(themes).getByRole('radio', { name: 'Warm paper' }));
+    expect(mocks.selectTheme).toHaveBeenCalledWith('light');
+    fireEvent.click(screen.getByRole('radio', { name: '繁體中文' }));
     expect(localStorage.getItem('app_language')).toBe('zh-TW');
-    expect(screen.getByRole('combobox', { name: '語言' })).toHaveValue('zh-TW');
+    expect(within(screen.getByRole('radiogroup', { name: '語言' })).getByRole('radio', { name: '繁體中文' }))
+      .toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('button', { name: /雲端備份/ })).toBeInTheDocument();
   } finally {
     view.unmount();
@@ -90,7 +96,7 @@ it('waits for import to commit and the completion acknowledgement before reloadi
   } }));
   const busy = vi.fn();
   renderSettings(busy);
-  fireEvent.change(screen.getByLabelText('Import all data'), {
+  fireEvent.change(screen.getByLabelText('Restore from backup'), {
     target: { files: [new File(['zip'], 'backup.zip', { type: 'application/zip' })] },
   });
   await waitFor(() => expect(mocks.importData).toHaveBeenCalledTimes(1));
@@ -117,7 +123,7 @@ it('shows damage details for the current import and clears them when settings is
   mocks.importData.mockResolvedValueOnce(result);
   const view = renderSettings();
   expect(screen.queryByText(/This import: missing or damaged items/)).not.toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText('Import all data'), { target: { files: [new File(['zip'], 'backup.zip')] } });
+  fireEvent.change(screen.getByLabelText('Restore from backup'), { target: { files: [new File(['zip'], 'backup.zip')] } });
   await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(2));
   expect(mocks.confirm).toHaveBeenLastCalledWith(expect.objectContaining({
     title: 'Usable data imported', message: expect.stringContaining('_History/game/photo.jpg'),
@@ -134,7 +140,7 @@ it('asks for destructive replacement confirmation before importing and keeps can
   mocks.importData.mockRejectedValue(new BackupError('invalid', 'table: history'));
   renderSettings();
   const file = new File(['invalid'], 'backup.zip', { type: 'application/zip' });
-  const input = screen.getByLabelText('Import all data');
+  const input = screen.getByLabelText('Restore from backup');
   fireEvent.change(input, { target: { files: [file] } });
   await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(1));
   expect(mocks.confirm).toHaveBeenLastCalledWith(expect.objectContaining({
@@ -161,8 +167,10 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   const createUrl = vi.fn(() => 'blob:backup');
   Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createUrl });
   const busy = vi.fn();
+  localStorage.removeItem('settings_last_export_at');
   renderSettings(busy);
-  const exportButton = screen.getByRole('button', { name: /Export all data/ });
+  expect(screen.getByText('No backup exported on this device yet')).toBeInTheDocument();
+  const exportButton = screen.getByRole('button', { name: /Export backup/ });
   fireEvent.click(exportButton);
   const progress = screen.getByRole('dialog', { name: 'Exporting' });
   expect(progress.parentElement).toBe(document.body);
@@ -170,11 +178,12 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
   expect(progress.dispatchEvent(tab)).toBe(false);
   expect(exportButton).toBeDisabled();
-  expect(screen.getByRole('button', { name: /Import all data/ })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /Restore from backup/ })).toBeDisabled();
   expect(screen.getByRole('slider', { name: 'Interface size' })).toBeDisabled();
-  expect(screen.getByRole('combobox', { name: 'Language' })).toBeDisabled();
+  expect(screen.getByRole('radio', { name: 'English' })).toBeDisabled();
+  expect(screen.getByRole('radio', { name: 'Sage' })).toBeDisabled();
   expect(screen.getByRole('button', { name: /Cloud backup/ })).toBeDisabled();
-  expect(screen.getByRole('button', { name: /Import game data/ })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /BGG \/ GeekGroup game data/ })).toBeDisabled();
   expect(screen.getByRole('button', { name: /BG Stats import \/ export/ })).toBeDisabled();
   expect(busy).toHaveBeenLastCalledWith(true);
   const blob = new Blob(['zip'], { type: 'application/zip' });
@@ -186,6 +195,9 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   expect(busy).toHaveBeenLastCalledWith(false);
   expect(exportButton).not.toBeDisabled();
   expect(screen.getByText(/^Readable local data exported/)).toHaveTextContent('Missing or damaged items and image references were recorded');
+  expect(screen.getByText(/^Last export: \d{4}-\d{2}-\d{2}$/)).toBeInTheDocument();
+  expect(localStorage.getItem('settings_last_export_at')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  localStorage.removeItem('settings_last_export_at');
 });
 
 it('shows the latest release notes in the reader language and keeps earlier updates collapsed', async () => {
@@ -199,6 +211,12 @@ it('shows the latest release notes in the reader language and keeps earlier upda
   const earlier = screen.getByText('Earlier updates').closest('details')!;
   expect(earlier).not.toHaveAttribute('open');
   expect(earlier).toHaveTextContent(previous.items[0].en);
+});
+
+it('shows the installed service worker revision next to the About heading', async () => {
+  vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue(['other-cache', 'boardgame-scorepad-cache-2026-10-31-02']) });
+  renderSettings();
+  expect(await screen.findByText('Version 2026-10-31-02')).toBeInTheDocument();
 });
 
 it('keeps release notes newest first with bilingual text', async () => {

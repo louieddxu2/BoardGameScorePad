@@ -76,7 +76,7 @@ export const useAppData = () => {
     });
 
     // --- 3. LocalStorage Settings & Global Actions ---
-    const { themeMode, toggleTheme, restoreTheme } = useAppTheme(markSystemDirty);
+    const { themeMode, toggleTheme, setTheme, restoreTheme } = useAppTheme(markSystemDirty);
 
     const [newBadgeIds, setNewBadgeIds] = useState<string[]>(() => {
         try { return JSON.parse(localStorage.getItem('sm_new_badge_ids') || '[]'); } catch { return []; }
@@ -473,6 +473,7 @@ export const useAppData = () => {
 
         setTemplates: () => { },
         toggleTheme,
+        setTheme,
         toggleVoice: () => setIsVoiceEnabled(prev => !prev),
         togglePin,
         togglePinOption,

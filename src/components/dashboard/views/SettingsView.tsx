@@ -1,19 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Upload, Loader2, Cloud, CloudOff, ChevronRight, Database, FileJson } from 'lucide-react';
+import { Download, Upload, Loader2, Cloud, CloudOff, Database, FileJson } from 'lucide-react';
 import type { AppTheme } from '../../../theme';
 import { useSettingsTranslation } from '../../../i18n/settings';
 import { SettingsPreferences } from './SettingsPreferences';
 import { SettingsAbout } from './SettingsAbout';
+import { NavRow, SettingsGroup } from './SettingsRows';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import { exportOfflineBackup } from '../../../services/offlineBackup/export';
 import { importOfflineBackup } from '../../../services/offlineBackup/import';
 import type { OfflineBackupIssue } from '../../../types';
 
-export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel, onZoomChange,
+const LAST_EXPORT_KEY = 'settings_last_export_at';
+
+function readLastExport() {
+  try { return localStorage.getItem(LAST_EXPORT_KEY); } catch { return null; }
+}
+
+export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel, onZoomChange,
   isCloudConnected, isCloudSyncing, onOpenCloud, onOpenBgStats, onOpenGameCatalogImport }: {
-  themeMode: AppTheme; onToggleTheme: () => void; onBusyChange: (busy: boolean) => void;
+  themeMode: AppTheme; onSelectTheme: (theme: AppTheme) => void; onBusyChange: (busy: boolean) => void;
   zoomLevel: number; onZoomChange: (value: number) => void;
   isCloudConnected: boolean; isCloudSyncing: boolean; onOpenCloud: () => void;
   onOpenBgStats: () => void; onOpenGameCatalogImport: () => void;
@@ -27,6 +34,8 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel
   const [filename, setFilename] = useState('');
   const [feedback, setFeedback] = useState<{ text: string; error: boolean; warning?: boolean } | null>(null);
   const [importIssues, setImportIssues] = useState<OfflineBackupIssue[]>([]);
+  // Records that a file was produced on this device; whether it was kept is outside the app's view.
+  const [lastExport, setLastExport] = useState(readLastExport);
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
   useEffect(() => {
     if (!operation) return;
@@ -64,6 +73,8 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel
         link.click();
         link.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+        setLastExport(date);
+        try { localStorage.setItem(LAST_EXPORT_KEY, date); } catch { /* The reminder is optional. */ }
         setFeedback({ text: t(hasMissingReferences ? 'export_success_with_missing_refs' : 'export_success'), error: false });
       } else if (file) {
         const report = await importOfflineBackup(file, setFilename);
@@ -96,59 +107,45 @@ export function SettingsView({ themeMode, onToggleTheme, onBusyChange, zoomLevel
     }
   };
 
+  const actionClass = 'min-h-[44px] px-3 flex items-center justify-center gap-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors';
+
   return <section aria-labelledby="settings-title" className="max-w-xl mx-auto space-y-6">
     <h2 id="settings-title" className="text-xl font-bold text-txt-primary">{t('settings')}</h2>
-    {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-status-danger text-sm' : feedback.warning ? 'text-status-warning text-sm' : 'text-status-success text-sm'}>{feedback.text}</p>}
-    {!!importIssues.length && <details className="text-sm text-txt-secondary">
-      <summary className="cursor-pointer text-status-warning">{t('import_issues')} ({importIssues.length})</summary>
-      <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap break-all">{importIssues.map(issue =>
-        `${issue.path} — ${t(`issue_${issue.reason}`)}${issue.detail ? ` (${issue.detail})` : ''}`).join('\n')}</pre>
-    </details>}
-    <SettingsPreferences themeMode={themeMode} onToggleTheme={onToggleTheme} zoomLevel={zoomLevel}
+    <SettingsPreferences themeMode={themeMode} onSelectTheme={onSelectTheme} zoomLevel={zoomLevel}
       onZoomChange={onZoomChange} disabled={!!operation} />
-    <div className="space-y-3">
-      <h3 className="text-sm font-medium text-txt-secondary">{t('data_backup')}</h3>
-      <button type="button" disabled={!!operation || isCloudSyncing} onClick={onOpenCloud}
-        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
-        {isCloudSyncing ? <Loader2 size={22} className="text-txt-muted shrink-0 animate-spin" />
-          : isCloudConnected ? <Cloud size={22} className="text-brand-primary shrink-0" /> : <CloudOff size={22} className="text-txt-muted shrink-0" />}
-        <span className="flex-1 min-w-0"><span className="block font-medium">{t('cloud_backup')}</span>
-          <span className="block text-sm text-txt-secondary mt-1">{t('cloud_description')}</span>
-          <span className="block text-sm text-txt-muted mt-1">{t('cloud_shortcut')}</span></span>
-        <span className="text-sm text-txt-secondary shrink-0">{t(isCloudSyncing ? 'cloud_syncing' : isCloudConnected ? 'cloud_connected' : 'cloud_disconnected')}</span>
-        <ChevronRight size={16} className="text-txt-muted shrink-0" />
-      </button>
-      <button type="button" disabled={!!operation} onClick={() => void run('exporting')}
-        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
-        <Download size={22} className="text-brand-primary shrink-0" />
-        <span><span className="block font-medium">{t('export_all')}</span>
-          <span className="block text-sm text-txt-secondary mt-1">{t('export_description')}</span></span>
-      </button>
-      <button type="button" disabled={!!operation} onClick={() => inputRef.current?.click()}
-        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
-        <Upload size={22} className="text-txt-secondary shrink-0" />
-        <span><span className="block font-medium">{t('import_all')}</span>
-          <span className="block text-sm text-txt-secondary mt-1">{t('import_description')}</span></span>
-      </button>
-      <p className="text-sm text-txt-muted px-1">{t('builtin_notice')}</p>
-    </div>
-    <div className="space-y-3">
-      <h3 className="text-sm font-medium text-txt-secondary">{t('external_data')}</h3>
-      <button type="button" disabled={!!operation} onClick={onOpenGameCatalogImport}
-        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
-        <Database size={22} className="text-txt-muted shrink-0" />
-        <span className="flex-1 min-w-0"><span className="block font-medium">{t('catalog_import')}</span>
-          <span className="block text-sm text-txt-secondary mt-1">{t('catalog_description')}</span></span>
-        <ChevronRight size={16} className="text-txt-muted shrink-0" />
-      </button>
-      <button type="button" disabled={!!operation} onClick={onOpenBgStats}
-        className="w-full min-h-[64px] p-4 flex items-center gap-3 rounded-xl border border-surface-border bg-surface-bg text-txt-primary hover:bg-surface-hover disabled:opacity-50 text-left transition-colors">
-        <FileJson size={22} className="text-txt-muted shrink-0" />
-        <span className="flex-1 min-w-0"><span className="block font-medium">{t('bgstats_transfer')}</span>
-          <span className="block text-sm text-txt-secondary mt-1">{t('bgstats_description')}</span></span>
-        <ChevronRight size={16} className="text-txt-muted shrink-0" />
-      </button>
-    </div>
+    <SettingsGroup title={t('data_backup')} footer={t('backup_footer')}>
+      <NavRow disabled={!!operation || isCloudSyncing} onClick={onOpenCloud} label={t('cloud_backup')}
+        icon={isCloudSyncing ? <Loader2 size={20} className="text-txt-muted shrink-0 animate-spin" />
+          : isCloudConnected ? <Cloud size={20} className="text-brand-primary shrink-0" /> : <CloudOff size={20} className="text-txt-muted shrink-0" />}
+        status={t(isCloudSyncing ? 'cloud_syncing' : isCloudConnected ? 'cloud_connected' : 'cloud_disconnected')} />
+      <div className="px-4 py-3 space-y-2">
+        <p className="font-medium">{t('local_backup')}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" disabled={!!operation} onClick={() => void run('exporting')}
+            className={`${actionClass} bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color`}>
+            <Download size={18} className="shrink-0" />{t('export_all')}
+          </button>
+          {/* Restoring replaces everything, so it stays visually secondary to exporting. */}
+          <button type="button" disabled={!!operation} onClick={() => inputRef.current?.click()}
+            className={`${actionClass} border border-surface-border bg-surface-alt hover:bg-surface-hover text-txt-secondary`}>
+            <Upload size={18} className="shrink-0" />{t('import_all')}
+          </button>
+        </div>
+        <p className="text-xs text-txt-muted tabular-nums">{lastExport ? `${t('last_export')}${lastExport}` : t('never_exported')}</p>
+        {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-status-danger text-sm' : feedback.warning ? 'text-status-warning text-sm' : 'text-status-success text-sm'}>{feedback.text}</p>}
+        {!!importIssues.length && <details className="text-sm text-txt-secondary">
+          <summary className="cursor-pointer text-status-warning">{t('import_issues')} ({importIssues.length})</summary>
+          <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap break-all">{importIssues.map(issue =>
+            `${issue.path} — ${t(`issue_${issue.reason}`)}${issue.detail ? ` (${issue.detail})` : ''}`).join('\n')}</pre>
+        </details>}
+      </div>
+    </SettingsGroup>
+    <SettingsGroup title={t('external_data')} footer={t('external_footer')}>
+      <NavRow disabled={!!operation} onClick={onOpenGameCatalogImport} label={t('catalog_import')}
+        icon={<Database size={20} className="text-txt-muted shrink-0" />} />
+      <NavRow disabled={!!operation} onClick={onOpenBgStats} label={t('bgstats_transfer')}
+        icon={<FileJson size={20} className="text-txt-muted shrink-0" />} />
+    </SettingsGroup>
     <SettingsAbout />
     <input ref={inputRef} type="file" accept=".zip,application/zip,application/x-zip-compressed" className="hidden"
       aria-label={t('import_all')} onChange={event => {

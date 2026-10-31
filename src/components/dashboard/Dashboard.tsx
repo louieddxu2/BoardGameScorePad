@@ -62,6 +62,7 @@ interface DashboardProps {
   setSearchQuery: (query: string) => void;
   themeMode: AppTheme;
   onToggleTheme: () => void;
+  onSelectTheme: (theme: AppTheme) => void;
   zoomLevel: number;
   onZoomChange: (value: number) => void;
   onTemplateSelect: (template: GameTemplate, options?: { persistIfMissing?: boolean }) => void;
@@ -119,6 +120,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   setSearchQuery,
   themeMode,
   onToggleTheme,
+  onSelectTheme,
   zoomLevel,
   onZoomChange,
   onTemplateSelect,
@@ -409,7 +411,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           style={{ transform: `translateX(${dampedOffset}px)` }}
         >
           {viewMode === 'settings' || isBackupBusy ? (
-            <SettingsView themeMode={themeMode} onToggleTheme={onToggleTheme} onBusyChange={setIsBackupBusy}
+            <SettingsView themeMode={themeMode} onSelectTheme={onSelectTheme} onBusyChange={setIsBackupBusy}
               zoomLevel={zoomLevel} onZoomChange={onZoomChange}
               isCloudConnected={isConnected} isCloudSyncing={isSyncing} onOpenCloud={handleHeaderCloudClick}
               onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}

@@ -29,6 +29,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Settings now gathers appearance, interface size, language, cloud backup, game data import and BG Stats in one place.' },
       { kind: 'new', zh: '設定頁新增「關於」，可查看歷次更新內容。',
         en: 'Settings now has an About section with the update history.' },
+      { kind: 'improved', zh: '設定頁改為精簡分組：色系與語言直接點選，匯出與還原並排並顯示上次匯出日期，「關於」顯示目前版本。',
+        en: 'Settings is now compact and grouped: tap a theme or language directly, export and restore sit side by side with the last export date, and About shows the installed version.' },
       { kind: 'improved', zh: '輸入分數後一律移到下一列，不再需要設定方向。',
         en: 'Score entry now always advances downward; the direction preference was removed.' },
       { kind: 'improved', zh: '匯入入口分開「BGG／GeekGroup」與「BG Stats」。',
