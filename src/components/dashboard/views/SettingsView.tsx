@@ -11,7 +11,7 @@ import { BackupError } from '../../../services/offlineBackup/errors';
 import { exportOfflineBackup } from '../../../services/offlineBackup/export';
 import { applyOfflineBackup } from '../../../services/offlineBackup/import';
 import { validateOfflineBackup } from '../../../services/offlineBackup/validate';
-import { previewBackupRecords, previewDeviceRecords, type RecordPreview } from '../../../services/offlineBackup/preview';
+import { deviceHasNewerRecords, previewBackupRecords, previewDeviceRecords, type RecordPreview } from '../../../services/offlineBackup/preview';
 import type { OfflineBackupIssue } from '../../../types';
 
 const LAST_EXPORT_KEY = 'settings_last_export_at';
@@ -86,10 +86,12 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
           ...(preview.recent.length ? preview.recent.map(record => `・${formatDate(new Date(record.endTime))} ${record.name}`)
             : [`・${t('preview_no_records')}`]),
         ];
+        const backupRecords = previewBackupRecords(backup);
         const preview = [
+          ...(deviceHasNewerRecords(backupRecords, device) ? [`⚠ ${t('preview_device_newer')}`, ''] : []),
           `${t('preview_file')}${file.name}`,
           `${t('preview_created')}${formatDate(created)} ${pad(created.getHours())}:${pad(created.getMinutes())}`,
-          '', ...records('preview_backup', previewBackupRecords(backup)),
+          '', ...records('preview_backup', backupRecords),
           '', ...records('preview_device', device),
           ...(backup.issues.length ? ['', t('preview_issues').replace('{count}', String(backup.issues.length))] : []),
         ].join('\n');

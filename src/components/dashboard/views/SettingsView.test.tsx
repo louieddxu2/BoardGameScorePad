@@ -7,7 +7,7 @@ import { useMobileZoom } from '../../../hooks/useMobileZoom';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import type { OfflineBackupResult } from '../../../services/offlineBackup/import';
 
-const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(), readData: vi.fn(),
+const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(), readData: vi.fn(), deviceRecords: vi.fn(),
   openCloud: vi.fn(), openBgStats: vi.fn(), openCatalog: vi.fn(), selectTheme: vi.fn(), busy: vi.fn() }));
 vi.mock('../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: mocks.confirm }) }));
 vi.mock('../../../services/offlineBackup/export', () => ({ exportOfflineBackup: mocks.exportData }));
@@ -18,10 +18,15 @@ vi.mock('../../../services/offlineBackup/preview', () => ({
     { name: 'Carcassonne', endTime: new Date(2026, 9, 28, 20).getTime() },
     { name: 'Splendor', endTime: new Date(2026, 9, 27, 20).getTime() },
   ] }),
-  previewDeviceRecords: async () => ({ total: 0, recent: [] }),
+  previewDeviceRecords: mocks.deviceRecords,
+  deviceHasNewerRecords: (backup: { recent: { endTime: number }[] }, device: { recent: { endTime: number }[] }) =>
+    !!device.recent[0] && (!backup.recent[0] || device.recent[0].endTime > backup.recent[0].endTime),
 }));
 const backup = { createdAt: new Date(2026, 9, 28, 21, 30).getTime(), issues: [] };
-beforeEach(() => { mocks.readData.mockResolvedValue(backup); });
+beforeEach(() => {
+  mocks.readData.mockResolvedValue(backup);
+  mocks.deviceRecords.mockResolvedValue({ total: 0, recent: [] });
+});
 afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
@@ -164,6 +169,14 @@ it('previews the chosen backup before replacing data and rejects invalid files b
   expect(mocks.importData).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: /Restore from backup/ }))
     .toHaveAccessibleDescription('Replaces all data on this device');
+  expect(mocks.confirm.mock.calls[0][0].message).not.toContain('newer than this backup');
+  mocks.confirm.mockResolvedValueOnce(false);
+  mocks.deviceRecords.mockResolvedValueOnce({ total: 13, recent: [{ name: 'Azul', endTime: new Date(2026, 9, 30).getTime() }] });
+  fireEvent.change(input, { target: { files: [file] } });
+  await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(2));
+  expect(mocks.confirm.mock.calls[1][0].message).toMatch(
+    /^⚠ This device has records newer than this backup\. They will be lost\.\n\nFile: backup\.zip/);
+  expect(mocks.importData).not.toHaveBeenCalled();
   mocks.readData.mockRejectedValueOnce(new BackupError('invalid', 'table: history'));
   fireEvent.change(input, { target: { files: [file] } });
   await screen.findByRole('alert');
@@ -171,7 +184,7 @@ it('previews the chosen backup before replacing data and rejects invalid files b
   expect(mocks.importData).not.toHaveBeenCalled();
   expect(screen.getByRole('alert')).toHaveTextContent('Existing data has not been replaced');
   expect(screen.getByRole('alert')).toHaveTextContent('Check location: table: history');
-  expect(mocks.confirm).toHaveBeenCalledTimes(1);
+  expect(mocks.confirm).toHaveBeenCalledTimes(2);
 });
 
 it('locks the controls during export and downloads a ZIP with the backup filename', async () => {

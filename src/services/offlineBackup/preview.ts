@@ -22,3 +22,11 @@ export async function previewDeviceRecords(limit = 1): Promise<RecordPreview> {
   ]);
   return { total, recent: rows.map(row => ({ name: row.gameName, endTime: row.endTime })) };
 }
+
+/** True when this device holds a game record finished after the backup's latest one, which a restore would lose. */
+export function deviceHasNewerRecords(backup: RecordPreview, device: RecordPreview): boolean {
+  const deviceLatest = device.recent[0]?.endTime;
+  if (deviceLatest === undefined) return false;
+  const backupLatest = backup.recent[0]?.endTime;
+  return backupLatest === undefined || deviceLatest > backupLatest;
+}
