@@ -45,19 +45,23 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       }}
     >
       <div
-        className="modal-container p-6 relative"
+        className="modal-container p-6 relative max-h-full"
         onClick={(e) => e.stopPropagation()} // Prevent click propagation from content
       >
-        <div className="flex flex-col items-center text-center gap-3 mb-6">
+        {/* Long messages scroll inside the dialog so the action buttons stay on screen. */}
+        <div className="flex flex-col items-center text-center gap-3 mb-6 min-h-0">
           {isDangerous && (
-            <div className="bg-status-danger/20 p-3 rounded-full text-status-danger">
+            <div className="bg-status-danger/20 p-3 rounded-full text-status-danger shrink-0">
               <AlertTriangle size={32} />
             </div>
           )}
-          <h3 className="text-xl font-bold text-txt-primary">{title}</h3>
-          <p className="text-txt-secondary text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
+          <h3 className="text-xl font-bold text-txt-primary shrink-0">{title}</h3>
+          <p data-testid="confirmation-message"
+            className="min-h-0 w-full overflow-y-auto overscroll-contain text-txt-secondary text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
+            {message}
+          </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 shrink-0">
           {!hideCancel && (
             <button
               onClick={onCancel}

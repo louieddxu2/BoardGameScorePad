@@ -37,6 +37,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Score entry now always advances downward; the direction preference was removed.' },
       { kind: 'improved', zh: '匯入入口分開「BGG／GeekGroup」與「BG Stats」。',
         en: 'Import entries now separate game data (BGG / GeekGroup) from BG Stats.' },
+      { kind: 'fixed', zh: '確認視窗內容較長時改為捲動，按鈕不會被擠出畫面。',
+        en: 'Long confirmation messages now scroll so the buttons stay on screen.' },
       { kind: 'fixed', zh: '首頁上方按鈕在縮放時保持固定間距。',
         en: 'Home header buttons keep fixed spacing while zoomed.' },
     ],
