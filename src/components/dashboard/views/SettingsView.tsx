@@ -128,11 +128,11 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
             </button>
             <p className="text-xs text-txt-muted tabular-nums">{lastExport ? `${t('last_export')}${lastExport}` : t('never_exported')}</p>
           </div>
-          {/* Restoring replaces everything: the button stays secondary and the warning is visible before tapping. */}
+          {/* Restoring replaces everything: it uses the shared danger style and warns before tapping. */}
           <div className="space-y-1.5">
             <button type="button" disabled={!!operation} onClick={() => inputRef.current?.click()}
               aria-describedby="settings-restore-warning"
-              className={`${actionClass} w-full border border-surface-border bg-surface-alt hover:bg-surface-hover text-txt-secondary`}>
+              className={`${actionClass} w-full border border-status-danger/30 bg-status-danger/10 hover:bg-status-danger/20 text-status-danger`}>
               <Upload size={18} className="shrink-0" />{t('import_all')}
             </button>
             <p id="settings-restore-warning" className="flex gap-1 text-xs font-medium text-status-danger">
