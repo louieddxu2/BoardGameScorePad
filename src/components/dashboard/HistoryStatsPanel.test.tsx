@@ -6,6 +6,7 @@ import { LanguageProvider } from '../../i18n';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import HistoryStatsPanel from './HistoryStatsPanel';
+import type { HistoryPhotoRecapSnapshot } from '../../utils/historyPhotoRecapContext';
 
 vi.mock('../../hooks/useModalBackHandler', () => ({
   useModalBackHandler: vi.fn(() => ({ order: 0, zIndex: 0, triggerClose: vi.fn() }))
@@ -13,17 +14,18 @@ vi.mock('../../hooks/useModalBackHandler', () => ({
 
 vi.mock('./HistoryPhotoGridShareModal', () => ({
   default: (props: {
-    isOpen: boolean;
-    entries: Array<{ displayName: string }>;
-    selectionMode?: string;
-    playerCountOverride?: number;
-  }) => props.isOpen ? (
+    recap: HistoryPhotoRecapSnapshot | null;
+    onClose: () => void;
+  }) => props.recap ? (
     <div
       data-testid="photo-recap"
-      data-selection-mode={props.selectionMode}
-      data-player-count={props.playerCountOverride}
+      data-selection-mode={props.recap.context.isSingleGame ? 'records' : 'games'}
+      data-player-count={props.recap.playerCountOverride}
+      data-date-label={props.recap.context.dateLabel}
+      data-player-name={props.recap.playerName}
     >
-      {props.entries.map(entry => entry.displayName).join('、')}
+      {props.recap.entries.map(entry => entry.displayName).join('、')}
+      <button onClick={props.onClose}>Close recap</button>
     </div>
   ) : null
 }));
@@ -233,9 +235,32 @@ describe('HistoryStatsPanel navigation', () => {
     fireEvent.click(screen.getByText('Alice'));
     fireEvent.click(screen.getByTitle('照片回顧'));
 
-    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-selection-mode', 'games');
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-selection-mode', 'records');
     expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-player-count', '1');
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-player-name', 'Alice');
     expect(screen.getByTestId('photo-recap')).toHaveTextContent('Game A');
     expect(screen.getByTestId('photo-recap')).not.toHaveTextContent('Game B');
+  });
+
+  it('freezes the searched records while open and refreshes dates and selection mode on reopening', () => {
+    const original = [record({ id: 'first', gameName: 'Game A', endTime: new Date(2026, 10, 1, 9).getTime() })];
+    const updated = [...original, record({ id: 'next', gameName: 'Game B', endTime: new Date(2026, 10, 2).getTime() })];
+    const view = (records: HistorySummary[]) => (
+      <LanguageProvider><HistoryStatsPanel entries={buildHistoryGameEntries(records)} records={records} onSearchClick={vi.fn()} /></LanguageProvider>
+    );
+    const { rerender } = render(view(original));
+    fireEvent.click(screen.getByTitle('照片回顧'));
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-date-label', '2026.11.01');
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-selection-mode', 'records');
+
+    rerender(view(updated));
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-date-label', '2026.11.01');
+    expect(screen.getByTestId('photo-recap')).not.toHaveTextContent('Game B');
+
+    fireEvent.click(screen.getByText('Close recap'));
+    fireEvent.click(screen.getByTitle('照片回顧'));
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-date-label', '2026.11.01 — 11.02');
+    expect(screen.getByTestId('photo-recap')).toHaveAttribute('data-selection-mode', 'games');
+    expect(screen.getByTestId('photo-recap')).toHaveTextContent('Game B');
   });
 });

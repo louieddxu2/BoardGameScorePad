@@ -3,6 +3,7 @@ import type { buildHistoryStats } from '../../../utils/historyStats';
 import { getHistoryPhotoGridBaseSize } from '../../../utils/historyPhotoGrid';
 import { type EditableGridTile, PHOTO_RECAP_TILE_ASPECT, PHOTO_RECAP_ROW_GAP_HEIGHT_RATIO, getTileFrameAspect, formatGridDate } from '../historyPhotoGridModel';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
+import type { HistoryPhotoRecapContext } from '../../../utils/historyPhotoRecapContext';
 
 // Match the photo title's fine edge and local scrim, scaling with preview/export width.
 // Fixed paint avoids extra pixel reads for each preview and export tile.
@@ -15,19 +16,28 @@ const PHOTO_LABEL_PAINT: React.CSSProperties = {
 interface PhotoGridCanvasProps {
   tiles: EditableGridTile[];
   stats: ReturnType<typeof buildHistoryStats>;
-  contextLabel: string;
+  context: HistoryPhotoRecapContext;
+  scopeLabel?: string;
+  filters?: string[];
   labels: {
     plays: string;
     games: string;
     players: string;
+    recap: string;
+    photoSelection: string;
+    selectionUnit: string;
+    selectionUnitSingle?: string;
   };
   onSelect?: (index: number) => void;
-  isSingleGame?: boolean;
 }
-export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, contextLabel, labels, onSelect, isSingleGame }, ref) => {
+export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasProps>(({ tiles, stats, context, scopeLabel, filters, labels, onSelect }, ref) => {
   const activeTiles = useMemo(() => tiles.filter(tile => tile && tile.url), [tiles]);
   const N = activeTiles.length;
-  const shouldHideTileGameName = isSingleGame || new Set(activeTiles.map(tile => tile.gameKey)).size === 1;
+  const shouldHideTileGameName = context.isSingleGame && !!context.gameName;
+  const shouldHideTileDate = context.isSingleDay && !!context.dateLabel;
+  const title = context.gameName || context.dateLabel || labels.recap;
+  const subtitle = context.gameName ? context.dateLabel : context.dateLabel ? labels.recap : '';
+  const details = [scopeLabel, ...(filters ?? [])].filter(Boolean).join(' · ');
 
   const layout = useMemo(() => {
     if (N === 0) return { cols: 1, rows: 1, aspect: PHOTO_RECAP_TILE_ASPECT };
@@ -46,14 +56,15 @@ export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasP
     <div
       ref={ref}
       style={{
-        containerType: 'inline-size',
-        aspectRatio: `${layout.aspect}`
+        containerType: 'inline-size'
       }}
       className="w-full bg-app-bg p-[1.2cqw] flex flex-col gap-[1.2cqw] rounded-[2cqw] border border-surface-border shadow-2xl overflow-hidden"
     >
       <div className="flex-none rounded-[1.5cqw] bg-app-bg-deep border border-surface-border px-[2cqw] py-[2cqw] flex items-center justify-between gap-[1.5cqw]">
         <div className="min-w-0 flex-1">
-          <div className="text-[4.2cqw] leading-tight font-black text-txt-title truncate">{contextLabel}</div>
+          <div className="text-[4.2cqw] leading-tight font-black text-txt-title break-words">{title}</div>
+          {subtitle && <div className="mt-[0.6cqw] text-[2.8cqw] leading-snug font-medium text-txt-secondary break-words">{subtitle}</div>}
+          {details && <div className="mt-[0.6cqw] text-[2.4cqw] leading-snug text-txt-secondary break-words">{details}</div>}
         </div>
         <div className="flex items-center gap-[1.5cqw] text-right shrink-0">
           {stats.gameCount > 1 && <StatPill value={stats.gameCount} label={labels.games} />}
@@ -63,8 +74,9 @@ export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasP
       </div>
 
       <div
-        className="flex-1 min-h-0 grid gap-[0.8cqw]"
+        className="shrink-0 grid gap-[0.8cqw]"
         style={{
+          aspectRatio: `${layout.aspect}`,
           gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`
         }}
@@ -76,17 +88,20 @@ export const PhotoGridCanvas = React.forwardRef<HTMLDivElement, PhotoGridCanvasP
             <button
               key={`${tile.id}-${index}`}
               type="button"
-              aria-label={`${tile.gameName} · ${formatGridDate(tile.endTime)}`}
+              aria-label={`${tile.gameName} · ${formatGridDate(tile.endTime, true)}`}
               onClick={() => onSelect?.(tiles.indexOf(tile))}
               disabled={!onSelect}
               className={`bg-app-bg-deep border border-surface-border rounded-[1cqw] overflow-hidden select-none disabled:cursor-default active:scale-[0.99] transition-transform relative min-h-0 ${
                 isLarge ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'
               }`}
             >
-              <PhotoTile tile={tile} hideGameName={shouldHideTileGameName} />
+              <PhotoTile tile={tile} hideGameName={shouldHideTileGameName} hideDate={shouldHideTileDate} includeYear={context.includePhotoYear} />
             </button>
           );
         })}
+      </div>
+      <div className="px-[0.8cqw] py-[0.4cqw] text-[2.4cqw] leading-snug text-txt-muted">
+        {labels.photoSelection} · {N} {N === 1 ? labels.selectionUnitSingle ?? labels.selectionUnit : labels.selectionUnit}
       </div>
     </div>
   );
@@ -121,11 +136,11 @@ export const PhotoImage: React.FC<{ tile: EditableGridTile }> = ({ tile }) => {
   );
 };
 
-const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = ({ tile, hideGameName }) => {
+const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName: boolean; hideDate: boolean; includeYear: boolean }> = ({ tile, hideGameName, hideDate, includeYear }) => {
   return (
     <div className="relative w-full h-full overflow-hidden bg-app-bg-deep">
       <PhotoImage tile={tile} />
-      <div className="pointer-events-none absolute inset-x-[1.5cqw] top-[1.5cqw] flex items-start gap-[1.5cqw]" style={PHOTO_LABEL_PAINT}>
+      {(!hideGameName || !hideDate) && <div className="pointer-events-none absolute inset-x-[1.5cqw] top-[1.5cqw] flex items-start gap-[1.5cqw]" style={PHOTO_LABEL_PAINT}>
         {!hideGameName && (
           <div className="relative min-w-0 text-left">
             <div aria-hidden="true" className="absolute -inset-[1cqw]" style={{ background: PHOTO_TITLE_FALLBACK.background }} />
@@ -134,11 +149,11 @@ const PhotoTile: React.FC<{ tile: EditableGridTile; hideGameName?: boolean }> = 
             </span>
           </div>
         )}
-        <div className="relative ml-auto shrink-0">
+        {!hideDate && <div className="relative ml-auto shrink-0">
           <div aria-hidden="true" className="absolute -inset-[1cqw]" style={{ background: PHOTO_TITLE_FALLBACK.background }} />
-          <span className="relative text-[2.2cqw] leading-tight font-mono font-semibold whitespace-nowrap">{formatGridDate(tile.endTime)}</span>
-        </div>
-      </div>
+          <span className="relative text-[2.2cqw] leading-tight font-mono font-semibold whitespace-nowrap">{formatGridDate(tile.endTime, includeYear)}</span>
+        </div>}
+      </div>}
     </div>
   );
 };

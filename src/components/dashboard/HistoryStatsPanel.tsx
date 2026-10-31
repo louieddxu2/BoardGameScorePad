@@ -14,6 +14,7 @@ import type { HistoryStatsDetailView, HistoryStatsOverviewTab } from './historyS
 import { buildHistoryStatsGameView } from './parts/buildHistoryStatsGameView';
 import { buildHistoryStatsPlayerView } from './parts/buildHistoryStatsPlayerView';
 import { buildHistoryStatsOverviewView } from './parts/buildHistoryStatsOverviewView';
+import { buildHistoryPhotoRecapContext, type HistoryPhotoRecapSnapshot } from '../../utils/historyPhotoRecapContext';
 
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
@@ -50,7 +51,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
 }) => {
   const { t, language } = useHistoryStatsTranslation();
   const [playerCount, setPlayerCount] = useState<number | null>(null);
-  const [showPhotoGrid, setShowPhotoGrid] = useState(false);
+  const [photoRecap, setPhotoRecap] = useState<HistoryPhotoRecapSnapshot | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [dateRange, setDateRange] = useState<HistoryStatsDateRange>('all');
   const [scoringRuleFilter, setScoringRuleFilter] = useState<ScoringRule | null>(null);
@@ -291,18 +292,21 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
       specificPlayerStats.games.flatMap(game => game.companions.map(companion => companion.key))
     ).size;
   }, [detailView, specificPlayerStats]);
-  const photoGridScopeLabel = detailView?.type === 'game'
-    ? specificStats?.gameName
-    : detailView?.type === 'player'
-      ? specificPlayerStats?.name
-      : null;
-  const photoGridContextLabel = [
-    photoGridScopeLabel,
-    dateRangeLabel,
-    activeScoringRuleFilter ? ruleLabel : null,
-    activeLocationFilter,
-    playerCount ? `${playerCount} ${t('stats_players_label')}` : null
-  ].filter(Boolean).join(' · ');
+  const openPhotoRecap = () => {
+    // Snapshot immutable summaries at the user's action, rather than following live queries while cropping.
+    setPhotoRecap({
+      entries: photoGridEntries,
+      context: buildHistoryPhotoRecapContext(photoGridEntries, filteredRecords),
+      filters: [
+        activeScoringRuleFilter ? ruleLabel : null,
+        activeLocationFilter,
+        playerCount ? `${playerCount} ${t('stats_players_label')}` : null,
+      ].filter((label): label is string => !!label),
+      playerName: detailView?.type === 'player' ? specificPlayerStats?.name : undefined,
+      playerCountOverride: photoGridCompanionCount,
+      playerLabelOverride: detailView?.type === 'player' ? t('stats_companions_label') : undefined,
+    });
+  };
 
   const openMenu = (type: 'rule' | 'location', event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -453,7 +457,7 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
             </button>
 
             <button
-              onClick={() => setShowPhotoGrid(true)}
+              onClick={openPhotoRecap}
               className="flex-1 min-w-0 h-full flex flex-col items-center justify-center gap-0.5 transition-all active:brightness-90 bg-brand-primary hover:filter hover:brightness-110 text-txt-on-color"
               title={t('stats_photo_grid_title')}
             >
@@ -466,13 +470,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
       </div>
 
       <HistoryPhotoGridShareModal
-        isOpen={showPhotoGrid}
-        entries={photoGridEntries}
-        contextLabel={photoGridContextLabel}
-        selectionMode={detailView?.type === 'game' ? 'records' : 'games'}
-        playerCountOverride={photoGridCompanionCount}
-        playerLabelOverride={detailView?.type === 'player' ? t('stats_companions_label') : undefined}
-        onClose={() => setShowPhotoGrid(false)}
+        recap={photoRecap}
+        onClose={() => setPhotoRecap(null)}
       />
 
       {activeMenu?.type === 'rule' && (

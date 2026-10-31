@@ -21,8 +21,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    date: '2026-10-31',
+    date: '2026-11-01',
     items: [
+      { kind: 'improved', zh: '照片回顧顯示實際日期範圍，單日或單款會省略重複標示；只剩一款時可回顧多場照片，並標明實際展示數量。',
+        en: 'Photo recaps show actual dates, omit repeated labels for a shared day or game, and include multiple plays when only one game remains, with an accurate photo selection count.' },
+      { kind: 'fixed', zh: '首頁搜尋缺少遊戲人數資料時，不再顯示預設的4人標籤。',
+        en: 'Home search no longer shows a default four-player label when game player-count data is missing.' },
+      { kind: 'improved', zh: '成功加入歷史紀錄後才記住結束時的人數，未完成的遊戲不會覆蓋上次人數。',
+        en: 'The remembered player count updates only after a game is saved to history, using its final players; unfinished games keep the previous count.' },
       { kind: 'new', zh: '設定頁可將全部資料（含照片）匯出成 ZIP 備份，並從備份還原。',
         en: 'Settings can export a full offline ZIP backup (custom scoreboards, game records, active games, photos and settings) and restore from it.' },
       { kind: 'new', zh: '設定頁集中色系、介面大小、語言、雲端備份與資料匯入。',

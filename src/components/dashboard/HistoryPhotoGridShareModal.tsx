@@ -14,26 +14,25 @@ import { useToast } from '../../hooks/useToast';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
 import { PhotoGridCanvas, PhotoImage } from './parts/HistoryPhotoGridCanvas';
 import { type LoadedGridPhoto, type EditableGridTile, type CropDraft, EXPORT_GRID_WIDTH, PHOTO_RECAP_TILE_COUNT, getLimitedCandidatePhotos, getTileFrameAspect, getImageSize, getCropFrameStyle, createTileFromPhoto, toTile } from './historyPhotoGridModel';
+import { EMPTY_PHOTO_RECAP_CONTEXT, type HistoryPhotoRecapSnapshot } from '../../utils/historyPhotoRecapContext';
+
+const EMPTY_ENTRIES: HistoryGameEntry[] = [];
+const EMPTY_FILTERS: string[] = [];
 
 interface HistoryPhotoGridShareModalProps {
-  isOpen: boolean;
-  entries: HistoryGameEntry[];
-  contextLabel: string;
-  selectionMode?: 'games' | 'records';
-  playerCountOverride?: number;
-  playerLabelOverride?: string;
+  recap: HistoryPhotoRecapSnapshot | null;
   onClose: () => void;
 }
 
 const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
-  isOpen,
-  entries,
-  contextLabel,
-  selectionMode = 'games',
-  playerCountOverride,
-  playerLabelOverride,
+  recap,
   onClose
 }) => {
+  const isOpen = recap !== null;
+  const entries = recap?.entries ?? EMPTY_ENTRIES;
+  const context = recap?.context ?? EMPTY_PHOTO_RECAP_CONTEXT;
+  const selectionMode = context.isSingleGame ? 'records' : 'games';
+  const playerCountOverride = recap?.playerCountOverride;
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'history-photo-grid-share');
   const { showToast } = useToast();
   const { t } = useHistoryStatsTranslation();
@@ -406,7 +405,16 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
   const statLabels = {
     plays: t('stats_count_label'),
     games: t('stats_games_label'),
-    players: playerLabelOverride || t('stats_players_label')
+    players: recap?.playerLabelOverride || t('stats_players_label'),
+    recap: t('grid_recap_heading'),
+    photoSelection: t('grid_photo_selection'),
+    selectionUnit: t(context.isSingleGame ? 'grid_record_unit' : 'grid_game_unit'),
+    selectionUnitSingle: t(context.isSingleGame ? 'grid_record_unit_single' : 'grid_game_unit_single'),
+  };
+  const canvasProps = {
+    tiles, stats, labels: statLabels, context,
+    filters: recap?.filters ?? EMPTY_FILTERS,
+    scopeLabel: recap?.playerName ? t('grid_player_recap').replace('{name}', recap.playerName) : undefined,
   };
 
   return (
@@ -543,9 +551,9 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
               </div>
             ) : (
               <div className="w-full max-w-[520px]">
-                <PhotoGridCanvas tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} onSelect={openCropEditor} isSingleGame={selectionMode === 'records'} />
+                <PhotoGridCanvas {...canvasProps} onSelect={openCropEditor} />
                 <div className="absolute left-[-10000px] top-0 pointer-events-none" style={{ width: EXPORT_GRID_WIDTH }}>
-                  <PhotoGridCanvas ref={exportRef} tiles={tiles} stats={stats} labels={statLabels} contextLabel={contextLabel} isSingleGame={selectionMode === 'records'} />
+                  <PhotoGridCanvas ref={exportRef} {...canvasProps} />
                 </div>
               </div>
             )}

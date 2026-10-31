@@ -52,8 +52,11 @@ export const getCropFrameStyle = (tile: EditableGridTile): CSSProperties => {
   };
 };
 
-export const formatGridDate = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit' });
+export const formatGridDate = (timestamp: number, includeYear = false): string => {
+  if (!Number.isFinite(timestamp) || !Number.isFinite(new Date(timestamp).getTime())) return '';
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    ...(includeYear ? { year: 'numeric' as const } : {}), month: '2-digit', day: '2-digit',
+  });
 };
 
 export const createTileFromPhoto = (photo: LoadedGridPhoto): EditableGridTile => ({
