@@ -148,6 +148,8 @@ it('asks for destructive replacement confirmation before importing and keeps can
     message: expect.stringContaining('Built-in scoreboards are preserved'),
   }));
   expect(mocks.importData).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: /Restore from backup/ }))
+    .toHaveAccessibleDescription('Replaces all data on this device. You will confirm after choosing a file.');
   fireEvent.change(input, { target: { files: [file] } });
   await screen.findByRole('alert');
   expect(mocks.importData).toHaveBeenCalledTimes(1);

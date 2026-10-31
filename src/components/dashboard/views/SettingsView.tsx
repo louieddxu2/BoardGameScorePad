@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Upload, Loader2, Cloud, CloudOff, Database, FileJson } from 'lucide-react';
+import { AlertTriangle, Download, Upload, Loader2, Cloud, CloudOff, Database, FileJson } from 'lucide-react';
 import type { AppTheme } from '../../../theme';
 import { useSettingsTranslation } from '../../../i18n/settings';
 import { SettingsPreferences } from './SettingsPreferences';
@@ -120,18 +120,26 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
         status={t(isCloudSyncing ? 'cloud_syncing' : isCloudConnected ? 'cloud_connected' : 'cloud_disconnected')} />
       <div className="px-4 py-3 space-y-2">
         <p className="font-medium">{t('local_backup')}</p>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" disabled={!!operation} onClick={() => void run('exporting')}
-            className={`${actionClass} bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color`}>
-            <Download size={18} className="shrink-0" />{t('export_all')}
-          </button>
-          {/* Restoring replaces everything, so it stays visually secondary to exporting. */}
-          <button type="button" disabled={!!operation} onClick={() => inputRef.current?.click()}
-            className={`${actionClass} border border-surface-border bg-surface-alt hover:bg-surface-hover text-txt-secondary`}>
-            <Upload size={18} className="shrink-0" />{t('import_all')}
-          </button>
+        <div className="grid grid-cols-2 gap-2 items-start">
+          <div className="space-y-1.5">
+            <button type="button" disabled={!!operation} onClick={() => void run('exporting')}
+              className={`${actionClass} w-full bg-brand-primary-deep hover:bg-brand-primary text-txt-on-color`}>
+              <Download size={18} className="shrink-0" />{t('export_all')}
+            </button>
+            <p className="text-xs text-txt-muted tabular-nums">{lastExport ? `${t('last_export')}${lastExport}` : t('never_exported')}</p>
+          </div>
+          {/* Restoring replaces everything: the button stays secondary and the warning is visible before tapping. */}
+          <div className="space-y-1.5">
+            <button type="button" disabled={!!operation} onClick={() => inputRef.current?.click()}
+              aria-describedby="settings-restore-warning"
+              className={`${actionClass} w-full border border-surface-border bg-surface-alt hover:bg-surface-hover text-txt-secondary`}>
+              <Upload size={18} className="shrink-0" />{t('import_all')}
+            </button>
+            <p id="settings-restore-warning" className="flex gap-1 text-xs font-medium text-status-danger">
+              <AlertTriangle size={14} className="shrink-0 mt-px" aria-hidden="true" />{t('restore_warning')}
+            </p>
+          </div>
         </div>
-        <p className="text-xs text-txt-muted tabular-nums">{lastExport ? `${t('last_export')}${lastExport}` : t('never_exported')}</p>
         {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-status-danger text-sm' : feedback.warning ? 'text-status-warning text-sm' : 'text-status-success text-sm'}>{feedback.text}</p>}
         {!!importIssues.length && <details className="text-sm text-txt-secondary">
           <summary className="cursor-pointer text-status-warning">{t('import_issues')} ({importIssues.length})</summary>
