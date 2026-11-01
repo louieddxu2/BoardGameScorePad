@@ -533,14 +533,14 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
         </>
       ) : (
         <>
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 flex items-center justify-center">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 flex items-start justify-center">
             {isLoading && tiles.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 text-txt-muted">
+              <div className="my-auto flex flex-col items-center gap-3 text-txt-muted">
                 <Loader2 size={32} className="animate-spin text-brand-primary" />
                 <span className="text-sm font-bold">{t('grid_loading')}</span>
               </div>
             ) : tiles.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 text-txt-muted text-center">
+              <div className="my-auto flex flex-col items-center gap-3 text-txt-muted text-center">
                 <div className="w-16 h-16 rounded-full bg-surface-alt flex items-center justify-center">
                   <ImageIcon size={30} className="opacity-60" />
                 </div>
@@ -550,7 +550,7 @@ const HistoryPhotoGridShareModal: React.FC<HistoryPhotoGridShareModalProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="w-full max-w-[520px]">
+              <div className="my-auto w-full max-w-[520px]">
                 <PhotoGridCanvas {...canvasProps} onSelect={openCropEditor} />
                 <div className="absolute left-[-10000px] top-0 pointer-events-none" style={{ width: EXPORT_GRID_WIDTH }}>
                   <PhotoGridCanvas ref={exportRef} {...canvasProps} />

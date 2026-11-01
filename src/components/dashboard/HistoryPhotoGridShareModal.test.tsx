@@ -78,6 +78,9 @@ describe('photo recap sharing', () => {
     expect(screen.getAllByText('Plays')[0].previousElementSibling).toHaveTextContent('10');
     const preview = container.querySelector('.grid')!.parentElement!;
     expect(within(preview).getAllByRole('button')).toHaveLength(8);
+    // Auto margins center short recaps, but leave an overflowing recap's top reachable.
+    expect(preview.parentElement).toHaveClass('my-auto');
+    expect(preview.parentElement?.parentElement).toHaveClass('overflow-y-auto', 'items-start');
 
     fireEvent.click(generate());
     await waitFor(() => expect(toBlob).toHaveBeenCalledTimes(1));

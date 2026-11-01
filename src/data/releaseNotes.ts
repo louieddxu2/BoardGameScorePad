@@ -23,8 +23,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-01',
     items: [
-      { kind: 'improved', zh: '照片回顧顯示實際日期範圍，單日或單款會省略重複標示；只剩一款時可回顧多場照片，並標明實際展示數量。',
-        en: 'Photo recaps show actual dates, omit repeated labels for a shared day or game, and include multiple plays when only one game remains, with an accurate photo selection count.' },
+      { kind: 'improved', zh: '照片回顧顯示實際日期範圍，單日或單款會省略重複標示；只剩一款時可回顧多場照片，標明實際展示數量，長圖預覽可完整捲看。',
+        en: 'Photo recaps show actual dates, omit repeated labels for a shared day or game, and include multiple plays when only one game remains, with an accurate photo selection count and fully scrollable tall previews.' },
       { kind: 'fixed', zh: '首頁搜尋缺少遊戲人數資料時，不再顯示預設的4人標籤。',
         en: 'Home search no longer shows a default four-player label when game player-count data is missing.' },
       { kind: 'improved', zh: '成功加入歷史紀錄後才記住結束時的人數，未完成的遊戲不會覆蓋上次人數。',
