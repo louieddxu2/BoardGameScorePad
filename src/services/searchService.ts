@@ -13,7 +13,7 @@ export const searchService = {
   /**
    * 內部共用核心搜尋邏輯
    */
-  _coreSearch<T>(list: T[], query: string, keys: (string | { name: string; weight: number })[], includeMatches: boolean): FuseResult<T>[] {
+  _coreSearch<T>(list: T[], query: string, keys: (string | { name: string; weight: number })[], includeMatches: boolean, includeScore = false): FuseResult<T>[] {
     const trimmedQuery = query?.trim();
     if (!trimmedQuery) return list.map((item, refIndex) => ({ item, refIndex }));
 
@@ -33,6 +33,7 @@ export const searchService = {
       useExtendedSearch: false,
       shouldSort: true,
       includeMatches,
+      includeScore,
     });
 
     const finalQuery = {
@@ -56,7 +57,7 @@ export const searchService = {
   /**
    * 帶有高亮/匹配資訊的搜尋函式
    */
-  searchWithMatches<T>(list: T[], query: string, keys: (string | { name: string; weight: number })[]): FuseResult<T>[] {
-    return this._coreSearch(list, query, keys, true);
+  searchWithMatches<T>(list: T[], query: string, keys: (string | { name: string; weight: number })[], { includeScore = false }: { includeScore?: boolean } = {}): FuseResult<T>[] {
+    return this._coreSearch(list, query, keys, true, includeScore);
   }
 };

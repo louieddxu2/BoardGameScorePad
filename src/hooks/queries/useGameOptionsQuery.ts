@@ -9,6 +9,7 @@ import { searchService } from '../../services/searchService';
 import { GameOption } from '../../features/game-selector/types';
 import { BggGameSummary, extractBggGameSummary } from '../../utils/extractDataSummaries';
 import { GameTemplate, SavedListItem } from '../../types';
+import { getGameSearchNames, getRecentSearchUids, normalizeGameSearch } from '../../features/game-selector/utils/searchRanking';
 
 const EMPTY_TEMPLATES: GameTemplate[] = [];
 const EMPTY_SAVED_GAMES: SavedListItem[] = [];
@@ -59,19 +60,30 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     hiddenTemplateIdentities
   );
 
+  const recentSearchUids = useMemo(() => getRecentSearchUids(aggregatedOptions), [aggregatedOptions]);
+
   // 4. Search
   const gameOptions = useMemo(() => {
     if (!enabled) return [];
+    const normalizedQuery = normalizeGameSearch(searchQuery);
+    if (!normalizedQuery) return aggregatedOptions;
 
     const fuseResults = searchService.searchWithMatches<GameOption>(aggregatedOptions, searchQuery, [
       { name: 'displayName', weight: 1.0 },
       { name: '_searchTokens', weight: 0.8 }
-    ]);
+    ], { includeScore: true });
 
     return fuseResults.map(result => {
+      const names = getGameSearchNames(result.item);
+      const item: GameOption = { ...result.item, _searchRanking: {
+        query: normalizedQuery,
+        score: result.score,
+        recentMatch: recentSearchUids.has(result.item.uid) && names.some(name => name.includes(normalizedQuery)),
+        exactNameMatch: names.includes(normalizedQuery)
+      } };
       // 若沒有匹配資訊，直接回傳原物件 (雖然 searchWithMatches 預設會給)
       if (!result.matches || result.matches.length === 0) {
-        return result.item;
+        return item;
       }
 
       // 找出 _searchTokens 的匹配
@@ -83,16 +95,16 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
         // 如果命中的別名和原本的名字不同，則動態覆寫 displayName
         if (matchedMatched.toLowerCase() !== originalName.toLowerCase()) {
           return {
-            ...result.item,
+            ...item,
             cleanName: matchedMatched,
             displayName: `${matchedMatched} (${originalName})`
           };
         }
       }
 
-      return result.item;
+      return item;
     });
-  }, [aggregatedOptions, searchQuery, enabled]);
+  }, [aggregatedOptions, searchQuery, enabled, recentSearchUids]);
 
   return {
     gameOptions,

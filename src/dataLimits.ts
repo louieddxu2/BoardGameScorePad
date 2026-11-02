@@ -25,6 +25,8 @@ export const DATA_LIMITS = {
     HISTORY_RECORDS: 50,
     /** 首頁近期遊戲捷徑上限 */
     RECENT_GAMES: 5,
+    /** Distinct recently played games eligible for search promotion. */
+    SEARCH_RECENT_GAMES: 50,
     /** 歷史統計面板遊戲排行顯示上限；完整統計仍使用全量資料 */
     HISTORY_STATS_GAMES: 50,
     /** 歷史統計面板玩家排行顯示上限；完整統計仍使用全量資料 */

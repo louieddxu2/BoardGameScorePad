@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GameTemplate, SavedListItem } from '../../types';
 import type { BggGameSummary } from '../../utils/extractDataSummaries';
 import { useGameOptionsQuery } from './useGameOptionsQuery';
+import { getSearchResults } from '../../features/game-selector/utils/sortStrategies';
 
 const fixtures = vi.hoisted(() => ({
   templates: [] as GameTemplate[],
@@ -72,7 +73,8 @@ describe('useGameOptionsQuery', () => {
     expect(result.current.gameOptions).toEqual([{
       ...original,
       cleanName: '農家樂新版',
-      displayName: `農家樂新版 (${name})`
+      displayName: `農家樂新版 (${name})`,
+      _searchRanking: { query: '農家樂新版', score: expect.any(Number), recentMatch: true, exactNameMatch: true }
     }]);
     expect(result.current.gameOptions[0]).toMatchObject({
       uid: 'saved-game', savedGameId: 'saved-game', bggId: '123',
@@ -82,6 +84,7 @@ describe('useGameOptionsQuery', () => {
     expect(result.current.allOptions).toBe(allOptions);
     expect(original.displayName).toBe(name);
     expect(original.cleanName).toBeUndefined();
+    expect(original._searchRanking).toBeUndefined();
   });
 
   it('waits for template and BGG queries before allowing a name-only association', () => {
@@ -118,5 +121,53 @@ describe('useGameOptionsQuery', () => {
       templateId: undefined, ambiguousName: true
     });
     expect(result.current.allOptions.some(option => option.templateId === 'hidden-simple')).toBe(false);
+  });
+
+  it('marks recent literal matches before label decoration and leaves fuzzy-only matches ordinary', () => {
+    fixtures.savedGames = [{ id: 'played', name: 'Terraforming Mars', lastUsed: 1000, usageCount: 1 }];
+    const pinnedIds: string[] = [];
+    const { result, rerender } = renderHook(({ query }) => useGameOptionsQuery(query, pinnedIds), {
+      initialProps: { query: '  TERRAFORMING   Mars  ' }
+    });
+    expect(result.current.gameOptions[0]._searchRanking).toEqual({
+      query: 'terraforming mars', score: expect.any(Number), recentMatch: true, exactNameMatch: true
+    });
+    rerender({ query: 'Terraforming Marss' });
+    expect(result.current.gameOptions[0]._searchRanking).toMatchObject({ recentMatch: false, exactNameMatch: false });
+    rerender({ query: 'Mars Terraforming' });
+    expect(result.current.gameOptions[0]._searchRanking?.recentMatch).toBe(false);
+    rerender({ query: ' \t ' });
+    expect(result.current.gameOptions).toBe(result.current.allOptions);
+    expect(result.current.gameOptions[0]._searchRanking).toBeUndefined();
+  });
+
+  it('keeps the recent window global across queries and refreshes it only when play data changes', () => {
+    fixtures.savedGames = Array.from({ length: 51 }, (_, index) => ({
+      id: `played-${index}`, name: index === 50 ? 'Old Orchard Comets' : `Recent Lagoon ${index}`,
+      lastUsed: 1000 - index, usageCount: 1
+    }));
+    const pinnedIds: string[] = [];
+    const { result, rerender } = renderHook(({ query }) => useGameOptionsQuery(query, pinnedIds), {
+      initialProps: { query: 'Old Orchard Comets' }
+    });
+    expect(result.current.gameOptions[0]._searchRanking?.recentMatch).toBe(false);
+    fixtures.savedGames = fixtures.savedGames.map(game => game.id === 'played-50' ? { ...game, lastUsed: 2000 } : game);
+    rerender({ query: 'Old Orchard Comets' });
+    expect(result.current.gameOptions[0]._searchRanking?.recentMatch).toBe(true);
+  });
+
+  it.each([
+    { leaders: ['Telestrations', 'Tend', 'Terminus'], expectedPrefix: ['Sky Team', 'Telestrations'] },
+    { leaders: ['Telestrations', 'Terraforming Mars'], expectedPrefix: ['Telestrations', 'Terraforming Mars', 'Sky Team'] },
+    { leaders: ['Telestrations'], expectedPrefix: ['Telestrations', 'Sky Team'] }
+  ])('ranks the real English te matches behind the protected prefix: $leaders', ({ leaders, expectedPrefix }) => {
+    fixtures.savedGames = [{ id: 'played-sky', name: 'Sky Team', bggId: 'sky', lastUsed: 1000, usageCount: 1 }];
+    fixtures.bggGames = [...leaders, 'Bites', 'Sky Team'].map((name, index) => ({
+      id: name === 'Sky Team' ? 'sky' : `catalog-${index}`, name, altNames: [], _searchName: name, _altNames: ''
+    }));
+    const { result } = renderHook(() => useGameOptionsQuery('te', []));
+    const results = getSearchResults(result.current.gameOptions, 'te');
+    expect(results.slice(0, expectedPrefix.length).map(option => option.displayName)).toEqual(expectedPrefix);
+    expect(results.find(option => option.uid === 'played-sky')).toMatchObject({ savedGameId: 'played-sky', bggId: 'sky' });
   });
 });

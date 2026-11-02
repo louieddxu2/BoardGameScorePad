@@ -85,6 +85,14 @@ export interface GameOption {
 
   /** 供 Fuse.js 搜尋，包含名稱、別名、ID */
   _searchTokens: string[];
+
+  /** Query-local ranking metadata; never persisted or added to allOptions. */
+  _searchRanking?: {
+    query: string;
+    score?: number;
+    recentMatch: boolean;
+    exactNameMatch: boolean;
+  };
 }
 
 export interface SearchFilters {

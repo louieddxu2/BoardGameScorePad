@@ -23,6 +23,18 @@ describe('searchService 核心邏輯測試', () => {
     });
 
     describe('searchWithMatches 別名命中提取', () => {
+        it('returns scores on request without changing the existing match order or default result shape', () => {
+            const games = ['Telestrations', 'Tend', 'Terminus', 'Terra Mystica', 'Terraforming Mars', 'Steam', 'Bites']
+                .map(name => ({ displayName: name, _searchTokens: [name] }));
+            const keys = [{ name: 'displayName', weight: 1 }, { name: '_searchTokens', weight: 0.8 }];
+            const normal = searchService.searchWithMatches(games, 'te', keys);
+            const scored = searchService.searchWithMatches(games, 'te', keys, { includeScore: true });
+            expect(scored.map(result => result.item)).toEqual(normal.map(result => result.item));
+            expect(normal.every(result => result.score === undefined)).toBe(true);
+            expect(scored.every(result => Number.isFinite(result.score))).toBe(true);
+            expect(scored.find(result => result.item.displayName === 'Terra Mystica')!.score).toBeCloseTo(0.00756833, 6);
+        });
+
         it('別名精確命中時，應能回傳正確的匹配資訊', () => {
             const query = '幽港迷城';
             const results = searchService.searchWithMatches(mockGames, query, ['_searchTokens']);

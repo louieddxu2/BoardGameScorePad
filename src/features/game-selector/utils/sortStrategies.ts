@@ -1,5 +1,9 @@
 
 import { GameOption } from '../types';
+import { getRecentIdentity, getRecentOptions, isSameGame } from './recentGameOptions';
+import { normalizeGameSearch, rankGameSearchResults } from './searchRanking';
+
+export { getRecentOptions } from './recentGameOptions';
 
 /**
  * 比較器函式簽名
@@ -55,99 +59,6 @@ export const applySort = (items: GameOption[], ...strategies: Comparator[]): Gam
     }
     return 0;
   });
-};
-
-interface RecentOptionIdentity {
-  bggId: string;
-  localIds: string[];
-  name: string;
-}
-
-const getRecentIdentity = (option: GameOption): RecentOptionIdentity => ({
-  bggId: option.bggId?.trim().toLowerCase() || '',
-  localIds: [option.savedGameId, option.templateId]
-    .filter((id): id is string => !!id?.trim())
-    .map(id => id.trim().toLowerCase()),
-  name: (option.cleanName || option.displayName).trim().replace(/\s+/g, ' ').toLowerCase()
-});
-
-const isSameGame = (a: RecentOptionIdentity, b: RecentOptionIdentity): boolean => {
-  // Conflicting known BGG IDs must never be collapsed by a shared name or local ID.
-  if (a.bggId && b.bggId) return a.bggId === b.bggId;
-  if (a.localIds.some(id => b.localIds.includes(id))) return true;
-  return !!a.name && a.name === b.name;
-};
-
-interface ExcludedIdentityBucket {
-  bggIds: Set<string>;
-  hasUnknownBgg: boolean;
-}
-
-const addExcludedIdentity = (index: Map<string, ExcludedIdentityBucket>, key: string, bggId: string): void => {
-  if (!key) return;
-  let bucket = index.get(key);
-  if (!bucket) {
-    bucket = { bggIds: new Set(), hasUnknownBgg: false };
-    index.set(key, bucket);
-  }
-  if (bggId) bucket.bggIds.add(bggId);
-  else bucket.hasUnknownBgg = true;
-};
-
-const matchesExcludedIdentity = (bucket: ExcludedIdentityBucket | undefined, bggId: string): boolean =>
-  !!bucket && (!bggId || bucket.hasUnknownBgg || bucket.bggIds.has(bggId));
-
-/**
- * Select distinct recently played games before applying the display limit.
- * Only played options are retained; the full BGG dictionary is never sorted.
- * The exclusion indexes and bounded insertion keep this O(n + played * limit).
- */
-export const getRecentOptions = (
-  options: GameOption[],
-  limit: number,
-  excludedTemplateIds: ReadonlySet<string> = new Set()
-): GameOption[] => {
-  if (limit <= 0) return [];
-
-  const excludedBggIds = new Set<string>();
-  const excludedLocalIds = new Map<string, ExcludedIdentityBucket>();
-  const excludedNames = new Map<string, ExcludedIdentityBucket>();
-  const candidates: { option: GameOption; identity: RecentOptionIdentity }[] = [];
-  for (const option of options) {
-    const isExcluded = option.isPinned || !!(option.templateId && excludedTemplateIds.has(option.templateId));
-    if (!isExcluded && (!option.savedGameId || option.lastUsed <= 0)) continue;
-    const identity = getRecentIdentity(option);
-    if (isExcluded) {
-      if (identity.bggId) excludedBggIds.add(identity.bggId);
-      identity.localIds.forEach(id => addExcludedIdentity(excludedLocalIds, id, identity.bggId));
-      addExcludedIdentity(excludedNames, identity.name, identity.bggId);
-    } else {
-      candidates.push({ option, identity });
-    }
-  }
-
-  const recent: typeof candidates = [];
-  for (const candidate of candidates) {
-    const { bggId, localIds, name } = candidate.identity;
-    if ((bggId && excludedBggIds.has(bggId))
-      || localIds.some(id => matchesExcludedIdentity(excludedLocalIds.get(id), bggId))
-      // A same-name pinned board cannot identify a BGG-less ambiguous history entry.
-      || (!candidate.option.ambiguousName && matchesExcludedIdentity(excludedNames.get(name), bggId))) continue;
-
-    const duplicateAt = recent.findIndex(existing => isSameGame(candidate.identity, existing.identity));
-    if (duplicateAt >= 0) {
-      if (candidate.option.lastUsed <= recent[duplicateAt].option.lastUsed) continue;
-      recent.splice(duplicateAt, 1);
-    }
-
-    const insertAt = recent.findIndex(existing => candidate.option.lastUsed > existing.option.lastUsed);
-    if (insertAt < 0) recent.push(candidate);
-    else recent.splice(insertAt, 0, candidate);
-
-    if (recent.length > limit) recent.pop();
-  }
-
-  return recent.map(({ option }) => option);
 };
 
 /**
@@ -381,23 +292,23 @@ export const filterOptionsByCriteria = (
 /**
  * 搜尋結果處理函式 (Search Results Pipeline)
  * 邏輯：
- * 1. 取搜尋結果前 limit 筆。
+ * 1. 保留前段明確命中，提升近期字面命中，再取前 limit 筆。
  * 2. 若無完全匹配的名稱，則在最後加入「建立新遊戲」的虛擬選項。
  */
 export const getSearchResults = (options: GameOption[], searchQuery: string, limit: number = 5): GameOption[] => {
   const trimmedQuery = searchQuery.trim();
 
   // 1. 基礎列表：取前 limit 筆
-  let topResults = options.slice(0, limit);
-  const sorted = topResults;
+  const sorted = rankGameSearchResults(options, searchQuery).slice(0, limit);
 
   // 2. 注入「建立」選項
   if (trimmedQuery) {
-    const normalizedQuery = trimmedQuery.toLowerCase();
+    const normalizedQuery = normalizeGameSearch(trimmedQuery);
 
     // 檢查是否已有完全匹配的項目 (忽略大小寫)
-    const hasExactMatch = sorted.some(opt =>
-      (opt.cleanName || opt.displayName).trim().toLowerCase() === normalizedQuery
+    const hasExactMatch = options.some(opt =>
+      opt._searchRanking?.query === normalizedQuery ? opt._searchRanking.exactNameMatch
+        : normalizeGameSearch(opt.cleanName || opt.displayName) === normalizedQuery
     );
 
     if (!hasExactMatch) {
