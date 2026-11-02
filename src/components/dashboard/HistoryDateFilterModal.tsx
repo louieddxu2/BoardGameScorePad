@@ -42,9 +42,9 @@ const HistoryDateFilterModal: React.FC<Props> = ({ value, onApply, onClose }) =>
     const open = draft.range && draft[openKey];
     const fieldLabel = fieldLabels[draft.range ? (endpoint === 'start' ? 1 : 2) : 0];
     return <section aria-label={fieldLabel} className="min-w-0">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <h3 className="text-sm font-medium text-txt-secondary">{fieldLabel}</h3>
-        {draft.range && <div className="flex items-center gap-1">
+      {draft.range && <div className="flex items-center justify-between gap-2 mb-1">
+        <h3 className="text-sm font-medium text-txt-secondary">{t(endpoint === 'start' ? 'date_start' : 'date_end')}</h3>
+        <div className="flex items-center gap-1">
           <button type="button" aria-label={`${fieldLabel} ${t('date_unlimited')}`} aria-pressed={!!open}
             className={`min-h-11 px-2 text-xs rounded-lg ${open ? 'text-brand-primary bg-brand-primary/10' : 'text-txt-muted'}`}
             onClick={() => setDraft(current => ({ ...current, [openKey]: !current[openKey] }))}>{t('date_unlimited')}</button>
@@ -53,9 +53,9 @@ const HistoryDateFilterModal: React.FC<Props> = ({ value, onApply, onClose }) =>
             onClick={() => setDraft(current => ({ ...current, range: false, start: { ...(current.startOpen ? current.end : current.start) }, startOpen: false, endOpen: false }))}>
             <X size={15} />
           </button>}
-        </div>}
-      </div>
-      <div className="flex gap-2">
+        </div>
+      </div>}
+      <div className="grid grid-cols-3 gap-2">
         {PRECISIONS.map(key => {
           const included = PRECISIONS.indexOf(key) <= PRECISIONS.indexOf(draft.precision);
           return <HistoryDateWheel key={key} label={labels[key]} value={draft[endpoint][key]} min={1}
@@ -86,17 +86,16 @@ const HistoryDateFilterModal: React.FC<Props> = ({ value, onApply, onClose }) =>
         <button type="button" aria-label={t('date_cancel')} onClick={onClose} className="w-11 h-11 flex items-center justify-center text-txt-muted"><X size={20} /></button>
       </header>
       <div className="min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
-        <div role="group" aria-label={t('date_precision')} className="flex items-center gap-2">
-          <span className="text-xs text-txt-muted mr-1">{t('date_precision')}</span>
+        <div role="group" aria-label={t('date_precision')} className="grid grid-cols-3 gap-2">
           {PRECISIONS.map((precision, index) => <button key={precision} type="button" aria-pressed={draft.precision === precision}
-            className={`min-w-11 min-h-11 px-3 rounded-lg border text-sm font-bold ${
+            className={`min-w-0 min-h-11 px-3 rounded-lg border text-sm font-bold ${
               PRECISIONS.indexOf(draft.precision) >= index ? 'border-brand-primary text-brand-primary bg-brand-primary/10' : 'border-surface-border text-txt-muted'
             }`} onClick={() => setDraft(current => changeHistoryDatePrecision(current, precision))}>{labels[precision]}</button>)}
         </div>
         {renderEndpoint('start')}
         {draft.range ? <div className="border-t border-surface-border pt-3">{renderEndpoint('end')}</div> :
           <button type="button" onClick={() => setDraft(current => ({ ...current, range: true, end: { ...current.start }, startOpen: false, endOpen: false }))}
-            className="min-h-11 flex items-center gap-2 text-sm text-brand-primary"><Plus size={16} />{fieldLabels[2]}</button>}
+            className="min-h-11 flex items-center gap-2 text-sm text-brand-primary"><Plus size={16} />{t('date_add_range')}</button>}
         {!valid && <p role="alert" className="text-sm text-status-danger">{t('date_invalid_range')}</p>}
       </div>
       <footer className="flex-none px-4 py-3 border-t border-surface-border bg-modal-bg-elevated flex justify-end">

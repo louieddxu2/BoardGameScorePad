@@ -47,11 +47,15 @@ describe('history time selector', () => {
   it('starts with one date, exposes precision and a second endpoint progressively, and cancels drafts', () => {
     const applied = setup(); open();
     expect(screen.getByRole('region', { name: '日期' })).toBeInTheDocument();
+    for (const label of ['年', '月', '日']) expect(screen.getAllByText(label, { exact: true })).toHaveLength(1);
+    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '結束日期' })).not.toBeInTheDocument();
     setNumber('日期', '日', 20);
     expect(applied).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: '結束日期' }));
+    fireEvent.click(screen.getByRole('button', { name: '設定範圍' }));
     expect(screen.getByRole('region', { name: '開始日期' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 3 }).map(heading => heading.textContent)).toEqual(['開始', '結束']);
+    for (const label of ['年', '月', '日']) expect(screen.getAllByText(label, { exact: true })).toHaveLength(1);
     expect(within(screen.getByRole('region', { name: '結束日期' })).getByRole('spinbutton', { name: '日' })).toHaveTextContent('20');
     fireEvent.click(screen.getByRole('button', { name: '取消' }));
     expect(applied).not.toHaveBeenCalled();
@@ -82,7 +86,7 @@ describe('history time selector', () => {
   it('rejects reversed bounds, accepts equal bounds and supports unlimited endpoints', () => {
     const applied = setup(); open();
     setNumber('日期', '日', 15);
-    fireEvent.click(screen.getByRole('button', { name: '結束日期' }));
+    fireEvent.click(screen.getByRole('button', { name: '設定範圍' }));
     setNumber('結束日期', '日', 14);
     expect(screen.getByRole('alert')).toHaveTextContent('結束不可早於開始');
     expect(screen.getByRole('button', { name: '套用' })).toBeDisabled();
@@ -150,6 +154,6 @@ describe('history time selector', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Filter dates:/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Custom…' }));
     expect(screen.getByRole('dialog', { name: 'Custom play dates' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'End date' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set a range' })).toBeInTheDocument();
   });
 });

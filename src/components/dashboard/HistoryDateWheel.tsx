@@ -85,7 +85,6 @@ export const HistoryDateWheel: React.FC<Props> = (props) => {
     }}
     onPointerCancel={() => { drag.current = null; setOffset(0); suppressClick.current = true; }}
     onLostPointerCapture={() => { drag.current = null; setOffset(0); }}>
-    <div className="text-xs text-txt-muted mb-1">{label}</div>
     <div style={{ transform: `translateY(${offset}px)` }}>
       <button type="button" disabled={disabled} aria-label={`${label} −1`} onClick={() => move(-1)}
         className="w-full h-11 text-sm font-mono text-txt-muted disabled:invisible">{neighbor(-1)}</button>
