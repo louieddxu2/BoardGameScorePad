@@ -7,7 +7,7 @@ import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
-import type { HistoryDateFilter } from '../../utils/historyDateFilter';
+import { ALL_HISTORY_DATES, type HistoryDateFilter } from '../../utils/historyDateFilter';
 import { BgStatsExport, ImportManualLinks } from '../../features/bgstats/types';
 import { GameOption } from '../../features/game-selector/types';
 
@@ -311,12 +311,15 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
 
   useModalBackHandler(viewMode === 'settings' && isVisible, () => setViewMode('library'), 'dashboard-settings');
 
-  // [Migrated] 搜尋介面返回鍵由 useModalBackHandler 統一管理
-  useModalBackHandler(isSearchActive, () => {
+  const hasHistoryDateFilter = viewMode === 'history' && historyDateFilter && historyDateFilter.kind !== 'all' && !!onHistoryDateFilterChange;
+  // Reserve the query layer below statistics, even before a date is selected there.
+  // Search and applied dates share one Back action when the user returns to the list.
+  useModalBackHandler(isSearchActive || isStatsMode || !!hasHistoryDateFilter, () => {
     setIsSearchActive(false);
     setIsSearchInputFocused(false);
     setIsSetupMode(false);
     setSearchQuery('');
+    if (hasHistoryDateFilter) onHistoryDateFilterChange?.(ALL_HISTORY_DATES);
   }, 'dashboard-search');
 
   // [Fix] 關閉面板時一併清除搜尋狀態，避免需要額外按一次返回鍵
