@@ -26,7 +26,18 @@
 - The publish command requires a clean `V3test` worktree, runs the same dependency audit as CI, type-check and core tests, updates the dated service-worker cache revision, commits only `public/sw.js`, and pushes `origin/V3test`.
 - If any precondition or verification fails, stop without publishing.
 - Routine V3test publishing does not require creating or updating release notes.
-- Immediately before merging into `main`, update and commit `src/data/releaseNotes.ts` for the user-facing changes not yet in `main`. Write short zh-TW and en items (`new` / `improved` / `fixed`); skip tests, refactors and internal tooling; describe repeated fixes of the same problem once. Set the entry date to the merge/release date. Update the first entry if it has not yet been merged to `main`; otherwise start a new first entry.
+- Immediately before merging into `main`, update and commit `src/data/releaseNotes.ts` for the user-facing changes not yet in `main`, following the Release Notes rules below. Set the entry date to the merge/release date. Update the first entry if it has not yet been merged to `main`; otherwise start a new first entry.
+
+# Release Notes
+
+- Write for users in Settings → About. Apply four principles: concise, clear, accurate and honest. Describe what changed in natural language; do not turn entries into commit summaries, feature inventories or operating instructions.
+- Include meaningful user-visible changes only. Skip tests, refactors and internal tooling. Use `new` for a newly available capability, `improved` for a change to existing behavior, and `fixed` for a correction to incorrect behavior. Moving an existing feature to a new entry point does not make the feature itself new.
+- Keep each item focused on one coherent change or problem. Combine repeated fixes and overlapping descriptions of the same change; separate unrelated topics. Choose detail by its value to the reader, without fixed item counts or length quotas.
+- Name the affected feature or game when needed to identify the change. Keep conditions and consequences that materially affect expectations, such as a required action, manual versus automatic behavior, or replacement of existing data. Do not add exhaustive scope lists or routine caveats to every item.
+- Check claims against the relevant implementation and change history. For historical dates, version names, counts and original availability, use evidence from that release or its announcement; current behavior and commit dates alone do not establish what was released when. Omit unsupported details rather than inventing them.
+- Avoid unverified guarantees, completeness claims and comparisons. State the behavior or specific fix instead of asserting that everything works or that results are better without evidence. Keep a supported fix direct; do not replace precise wording with vague hedging.
+- Write short zh-TW and en items with the same meaning, scope, conditions and certainty. Use natural wording in each language, and check that neither translation adds or substitutes a capability.
+- Keep formal release dates, historical version names and service-worker cache revisions distinct. Routine V3test publishes need no release-note update; prepare the first entry before merging into `main`. Correct published entries only when supported by evidence, preserving their historical context.
 
 # Project-Specific Testing Notes
 

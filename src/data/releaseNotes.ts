@@ -1,7 +1,7 @@
 // User-facing release notes shown in Settings → About.
-// One entry per main release; the first entry collects V3test publishes until the next merge to main.
-// Before each V3test publish, update the first entry from the commits since the previous publish
-// (scripts/publish-v3test.ps1 refuses to publish user-facing commits without a change here).
+// One entry per main release; prepare the first entry before merging into main.
+// Routine V3test publishes do not require release-note updates.
+// Follow the Release Notes rules in AGENTS.md.
 
 export type ReleaseNoteKind = 'new' | 'improved' | 'fixed';
 
@@ -12,7 +12,7 @@ export interface ReleaseNoteItem {
 }
 
 export interface ReleaseNote {
-  /** Date of the main release, or of the latest V3test publish for the in-progress entry. */
+  /** Main release date (YYYY-MM-DD); finalize it when merging into main. */
   date: string;
   /** Version name used in earlier announcements, when there was one. */
   version?: string;
