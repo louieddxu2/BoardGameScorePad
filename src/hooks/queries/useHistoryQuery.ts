@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback, useReducer } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { DATA_LIMITS } from '../../dataLimits';
@@ -7,6 +7,7 @@ import { SavedListItem } from '../../types';
 import { extractHistorySummary } from '../../utils/extractDataSummaries';
 import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import type { HistorySummary } from '../../utils/extractDataSummaries';
+import { ALL_HISTORY_DATES, matchesHistoryDate, resolveHistoryDateFilter, type HistoryDateFilter } from '../../utils/historyDateFilter';
 
 export const useHistoryQuery = (
   searchQuery: string,
@@ -14,6 +15,21 @@ export const useHistoryQuery = (
 ) => {
   const isSearching = searchQuery && searchQuery.trim().length > 0;
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  const [historyDateFilter, setDateFilter] = useState<HistoryDateFilter>(ALL_HISTORY_DATES);
+  const [, refreshCalendar] = useReducer((revision: number) => revision + 1, 0);
+  const setHistoryDateFilter = useCallback((filter: HistoryDateFilter) => {
+    refreshCalendar();
+    setDateFilter(filter);
+  }, []);
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) refreshCalendar(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
 
   const allSummaries = useLiveQuery(async (): Promise<HistorySummary[]> => {
     const records = await db.history.orderBy('endTime').reverse().toArray();
@@ -35,34 +51,35 @@ export const useHistoryQuery = (
       : allSummaries;
   }, [allSummaries, pendingDeleteIds]);
 
-  const historyGameEntries = useMemo(() => {
-    return buildHistoryGameEntries(activeSummaries, { savedPlayers });
-  }, [activeSummaries, savedPlayers]);
-
+  // Re-evaluate the calendar month on ordinary query/UI renders as well as foregrounding.
+  const currentMonth = new Date();
+  const monthKey = `${currentMonth.getFullYear()}-${currentMonth.getMonth()}`;
+  const dateBounds = useMemo(() => resolveHistoryDateFilter(historyDateFilter), [historyDateFilter, monthKey]);
   const filteredSummaries = useMemo(() => {
-    let results = activeSummaries;
+    let results = historyDateFilter.kind === 'all' ? activeSummaries :
+      activeSummaries.filter(record => matchesHistoryDate(record.endTime, dateBounds));
 
     if (isSearching) {
       const searchKeys = [
         { name: 'gameName', weight: 1.0 },
         { name: 'location', weight: 0.9 },
-        { name: '_playerNames', weight: 0.9 },
-        { name: '_compactDate', weight: 0.8 },
-        { name: '_rocDate', weight: 0.8 },
-        { name: '_dateStr', weight: 0.6 }
+        { name: '_playerNames', weight: 0.9 }
       ];
 
       results = searchService.search(results, searchQuery, searchKeys);
     }
 
     return results;
-  }, [activeSummaries, searchQuery, isSearching]);
+  }, [activeSummaries, searchQuery, isSearching, dateBounds, historyDateFilter.kind]);
+  const historyGameEntries = useMemo(() => buildHistoryGameEntries(filteredSummaries, { savedPlayers }), [filteredSummaries, savedPlayers]);
 
   return {
     historyRecords: filteredSummaries.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS),
     historyStatsRecords: filteredSummaries,
     historyGameEntries,
-    historyCount: isSearching ? filteredSummaries.length : activeSummaries.length,
+    historyCount: filteredSummaries.length,
+    historyDateFilter,
+    setHistoryDateFilter,
     setPendingDeleteHistoryIds: setPendingDeleteIds
   };
 };

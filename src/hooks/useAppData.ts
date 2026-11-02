@@ -428,6 +428,8 @@ export const useAppData = () => {
         activeSessions: queries.activeSessions, // [Update] Expose this!
         historyRecords: queries.historyRecords,
         historyStatsRecords: queries.historyStatsRecords,
+        historyDateFilter: queries.historyDateFilter,
+        setHistoryDateFilter: queries.setHistoryDateFilter,
         historyGameEntries: queries.historyGameEntries,
         recentlyPlayedGames: queries.recentlyPlayedGames,
         historyCount: queries.historyCount,

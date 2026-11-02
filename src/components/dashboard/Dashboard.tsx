@@ -7,6 +7,7 @@ import { useModalBackHandler } from '../../hooks/useModalBackHandler';
 import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
 import { HistorySummary } from '../../utils/extractDataSummaries';
 import { HistoryGameEntry } from '../../utils/historyGameEntries';
+import type { HistoryDateFilter } from '../../utils/historyDateFilter';
 import { BgStatsExport, ImportManualLinks } from '../../features/bgstats/types';
 import { GameOption } from '../../features/game-selector/types';
 
@@ -54,6 +55,8 @@ interface DashboardProps {
   activeSessions: GameSession[] | undefined;
   historyRecords?: HistorySummary[] | HistoryRecord[];
   historyStatsRecords?: HistorySummary[];
+  historyDateFilter?: HistoryDateFilter;
+  onHistoryDateFilterChange?: (value: HistoryDateFilter) => void;
   historyGameEntries?: HistoryGameEntry[];
   recentlyPlayedGames: GameOption[];
   historyCount?: number;
@@ -112,6 +115,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   activeSessions,
   historyRecords,
   historyStatsRecords,
+  historyDateFilter,
+  onHistoryDateFilterChange,
   historyGameEntries,
   recentlyPlayedGames,
   historyCount,
@@ -421,6 +426,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               records={historyRecords}
               totalCount={historyCount || 0}
               searchQuery={searchQuery}
+              dateFilter={historyDateFilter}
+              onDateFilterChange={onHistoryDateFilterChange}
+              showDateFilter={!isStatsMode}
               onDelete={dashboardActions.handleDeleteHistoryConfirmed}
               onSelect={onHistorySelect}
             />
@@ -498,6 +506,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           <HistoryStatsPanel
             entries={historyGameEntries || []}
             records={historyStatsRecords}
+            dateFilter={historyDateFilter}
+            onDateFilterChange={onHistoryDateFilterChange}
             savedPlayers={savedPlayers}
             onSearchClick={handlePanelSearchFocus}
             isSearchKeyboardOpen={isSearchActive && isSearchInputFocused && isKeyboardOpen}

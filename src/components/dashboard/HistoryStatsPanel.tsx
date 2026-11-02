@@ -1,7 +1,9 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, CalendarDays, ChevronDown, ChevronUp, Gamepad2, Images, MapPin, Search, Users } from 'lucide-react';
+import { BarChart3, ChevronDown, ChevronUp, Gamepad2, Images, MapPin, Search, Users } from 'lucide-react';
 import { HistoryGameEntry, buildHistoryGameEntries, createHistoryPlayerResolver } from '../../utils/historyGameEntries';
-import { buildHistoryStats, getNextHistoryStatsDateRange, HistoryStatsDateRange, buildSpecificGameStats } from '../../utils/historyStats';
+import { buildHistoryStats, buildSpecificGameStats } from '../../utils/historyStats';
+import { ALL_HISTORY_DATES, type HistoryDateFilter } from '../../utils/historyDateFilter';
+import HistoryDateFilterControl from './HistoryDateFilterControl';
 import { buildHistoryPlayerEntries, buildSpecificPlayerStats } from '../../utils/historyPlayerEntries';
 import HistoryPhotoGridShareModal from './HistoryPhotoGridShareModal';
 import { useHistoryStatsTranslation } from '../../i18n/history_stats';
@@ -19,6 +21,8 @@ import { buildHistoryPhotoRecapContext, type HistoryPhotoRecapSnapshot } from '.
 interface HistoryStatsPanelProps {
   entries: HistoryGameEntry[];
   records?: HistorySummary[];
+  dateFilter?: HistoryDateFilter;
+  onDateFilterChange?: (value: HistoryDateFilter) => void;
   savedPlayers?: Pick<SavedListItem, 'id' | 'name'>[];
   onSearchClick: () => void;
   isSearchKeyboardOpen?: boolean;
@@ -29,12 +33,8 @@ const BOTTOM_ROW_HEIGHT_CLASS = 'h-[60px]';
 const ACTION_ROW_WIDTH_CLASS = 'w-[118px] sm:w-[140px]';
 const STATS_FILTER_ALL = '__all__';
 const SCORING_RULE_ORDER: ScoringRule[] = ['HIGHEST_WINS', 'LOWEST_WINS', 'COOP', 'COMPETITIVE_NO_SCORE', 'COOP_NO_SCORE'];
-const DATE_RANGE_LABEL_KEYS: Record<HistoryStatsDateRange, 'stats_range_all' | 'stats_range_month' | 'stats_range_quarter' | 'stats_range_year'> = {
-  all: 'stats_range_all',
-  month: 'stats_range_month',
-  quarter: 'stats_range_quarter',
-  year: 'stats_range_year'
-};
+const EMPTY_RECORDS: HistorySummary[] = [];
+const NO_DATE_CHANGE = (_value: HistoryDateFilter) => {};
 
 const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
   if (!timestamp) return emptyLabel;
@@ -44,6 +44,8 @@ const formatDate = (timestamp: number | undefined, emptyLabel: string) => {
 const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   entries,
   records,
+  dateFilter = ALL_HISTORY_DATES,
+  onDateFilterChange = NO_DATE_CHANGE,
   savedPlayers,
   onSearchClick,
   isSearchKeyboardOpen = false,
@@ -53,7 +55,6 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const [playerCount, setPlayerCount] = useState<number | null>(null);
   const [photoRecap, setPhotoRecap] = useState<HistoryPhotoRecapSnapshot | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [dateRange, setDateRange] = useState<HistoryStatsDateRange>('all');
   const [scoringRuleFilter, setScoringRuleFilter] = useState<ScoringRule | null>(null);
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<({ type: 'rule' | 'location' } & UpwardSelectMenuAnchor) | null>(null);
@@ -107,14 +108,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
     }
   }, [detailView, overviewTab]);
 
-  // 1. 單局層面篩選：時間
-  const dateFilteredRecords = useMemo(() => {
-    if (!records) return [];
-    if (dateRange === 'all') return records;
-    const days = { month: 30, quarter: 90, year: 365 }[dateRange] || 0;
-    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-    return records.filter(r => r.endTime >= cutoff);
-  }, [records, dateRange]);
+  // Search and dates are already applied to the shared history query result.
+  const dateFilteredRecords = records ?? EMPTY_RECORDS;
 
   // 2. 為了維持 locationOptions / scoringRuleOptions 的計算相容性
   // 我們先將 dateFilteredRecords 臨時聚合為 dateFilteredEntries，用來提取原有的過濾選項
@@ -257,7 +252,6 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
   const panelLayoutClass = isSearchKeyboardOpen
     ? 'bottom-0 left-0 right-0 h-[220px]'
     : (isExpanded ? 'inset-0 top-[calc(56px+var(--app-safe-area-top))]' : 'bottom-0 left-0 right-0 h-[45dvh]');
-  const dateRangeLabel = t(DATE_RANGE_LABEL_KEYS[dateRange]);
   const ruleLabel = activeScoringRuleFilter
     ? t(`rule_${activeScoringRuleFilter}` as any)
     : t('stats_rules_short');
@@ -437,14 +431,8 @@ const HistoryStatsPanel: React.FC<HistoryStatsPanelProps> = ({
               </div>
               */}
 
-              <button
-                onClick={() => setDateRange(prev => getNextHistoryStatsDateRange(prev))}
-                className="h-10 bg-app-bg border border-surface-border rounded-lg px-2.5 flex items-center gap-1.5 text-txt-primary hover:border-txt-secondary transition-colors"
-                title={t('stats_date_filter_title')}
-              >
-                <CalendarDays size={14} className="text-txt-muted shrink-0" />
-                <span className="text-sm font-bold whitespace-nowrap">{dateRangeLabel}</span>
-              </button>
+              <HistoryDateFilterControl value={dateFilter} onChange={onDateFilterChange}
+                zIndex={detailView && zIndex ? zIndex + 5 : undefined} />
             </div>
 
             <div className={`absolute bottom-0 right-0 ${ACTION_ROW_WIDTH_CLASS} ${BOTTOM_ROW_HEIGHT_CLASS} flex border-t border-l border-surface-border z-20 bg-app-bg-deep pointer-events-auto`}>
