@@ -33,8 +33,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       { kind: 'new', zh: '設定頁新增更新日誌。', en: 'Update history is available in Settings.' },
       { kind: 'new', zh: '歷史紀錄新增年月日與範圍篩選，套用至清單、統計與照片回顧。',
         en: 'Filter history, statistics and photo recaps by day, month, year or range.' },
-      { kind: 'new', zh: '照片回顧標示日期範圍與張數；僅一款遊戲時可選用多場照片。',
-        en: 'Recaps show date ranges and photo counts, using multiple plays when a stats view contains one game.' },
+      { kind: 'new', zh: '照片回顧標示日期範圍與精選數量，單款可選多場照片。',
+        en: 'Recaps show dates and selection counts; one-game views can use multiple plays.' },
       { kind: 'improved', zh: '搜尋先保留明顯較相關的結果，再優先顯示近期遊戲。',
         en: 'Search keeps clear leading matches first, then prioritizes recently played games.' },
       { kind: 'improved', zh: '下一步改為向下，移除方向設定。',
@@ -58,9 +58,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Refined light-theme text, tables and home sections.' },
       { kind: 'improved', zh: '照片名牌依明暗切換深淺樣式，皇冠移至右上角。',
         en: 'Photo brightness selects dark or light name plates; crowns sit at the top right.' },
-      { kind: 'fixed', zh: '介面與分享照片保留玩家自選文字顏色。',
-        en: 'Player text colors stay unchanged in the app and shared photos.' },
-      { kind: 'fixed', zh: '單款照片回顧省略局數。', en: 'Single-game recaps omit play counts.' },
+      { kind: 'fixed', zh: '一般介面與分享照片保留自選文字色。',
+        en: 'Standard UI and shared photos preserve chosen text colors.' },
+      { kind: 'fixed', zh: '單款回顧省略款數。', en: 'Recaps omit redundant game counts.' },
       { kind: 'fixed', zh: '修正白色總分預覽難以辨識。', en: 'Fixed unreadable white total previews.' },
     ],
   },
@@ -92,7 +92,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     items: [
       { kind: 'improved', zh: '按鈕與選項文字依空間調整字級，縮放時間距固定。',
         en: 'Button and option text fits available space; zoom keeps spacing fixed.' },
-      { kind: 'improved', zh: '調整甜蜜國度選項版面。', en: 'Refined Sweet Lands option layouts.' },
+      { kind: 'improved', zh: '調整甜蜜國度選項版面。' },
       { kind: 'fixed', zh: '修正雙指縮放誤觸，以及照片縮放與拖曳衝突。',
         en: 'Fixed pinch-triggered taps and photo zoom/drag conflicts.' },
       { kind: 'fixed', zh: '拖曳排序依插入線位置放下。', en: 'Reordering follows the insertion line.' },
@@ -118,8 +118,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     items: [
       { kind: 'new', zh: '統計面板可搜尋。', en: 'Search statistics.' },
       { kind: 'new', zh: '工具箱顯示本局照片。', en: 'Session photos in the toolbox.' },
-      { kind: 'improved', zh: '全員零分時只顯示勝負，分享照片亦同。',
-        en: 'Zero-score games show outcomes only, including shared photos.' },
+      { kind: 'improved', zh: '競爭遊戲全員零分時顯示勝負。',
+        en: 'Competitive games show outcomes when all scores are zero.' },
       { kind: 'improved', zh: '加大玩家名稱建議按鈕。', en: 'Larger player name suggestions.' },
       { kind: 'fixed', zh: '修正 iPhone 與 Android 的輸入面板遮擋與跑位。',
         en: 'Fixed toolbar overlap and score-panel positioning on iPhone Safari and Android.' },
@@ -158,157 +158,212 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       { kind: 'fixed', zh: '修正 iPhone 全螢幕安全區域。', en: 'Fixed iPhone fullscreen safe areas.' },
     ],
   },
+  // main: bac3b5a..2269814. The scanner commit followed the May 12 merge.
   {
     date: '2026-05-18',
     items: [
-      { kind: 'new', zh: 'AI 規則書掃描：拍下規則書即可自動產生計分板。',
-        en: 'AI rulebook scanner: photograph a rulebook to generate a scoreboard.' },
-      { kind: 'new', zh: '進階搜尋：可依人數及派對、家庭、合作等情境篩選，並支援模糊搜尋與排序。',
-        en: 'Advanced search with player count and party, family or cooperative filters, plus fuzzy matching and ranking.' },
-      { kind: 'improved', zh: '加上 BGG 資料來源標示。', en: 'Added BGG data attribution.' },
-      { kind: 'fixed', zh: '合作模式的皇冠與歷史總分列不再重疊；BGG 匯入可正確讀取西元前年份。',
-        en: 'Fixed cooperative crowns overlapping history totals, and BGG imports read BC years correctly.' },
+      { kind: 'new', zh: 'AI 依規則書照片產生計分板。',
+        en: 'AI generates scoreboards from rulebook photos.' },
+      { kind: 'fixed', zh: '修正合作模式皇冠與歷史總分列重疊。',
+        en: 'Fixed cooperative crowns overlapping history totals.' },
     ],
   },
+  // main: e6b1d5b..bac3b5a (two merges on 2026-05-12).
+  {
+    date: '2026-05-12',
+    items: [
+      { kind: 'new', zh: '進階搜尋支援人數與情境篩選、模糊比對及排序。',
+        en: 'Advanced search adds player-count and scenario filters, fuzzy matching and ranking.' },
+      { kind: 'improved', zh: '標示 BGG 資料來源。', en: 'BGG data attribution.' },
+      { kind: 'fixed', zh: 'BGG 匯入保留西元前年份。', en: 'BGG imports preserve BC years.' },
+    ],
+  },
+  // main: 506dd97..e6b1d5b.
   {
     date: '2026-05-04',
     items: [
-      { kind: 'new', zh: '在 LINE、Facebook 內開啟時提示改用一般瀏覽器；新增 iOS 安裝教學。',
-        en: 'In-app browsers such as LINE and Facebook now suggest opening a standard browser; added an iOS install guide.' },
-      { kind: 'improved', zh: '選擇人數時可鎖定，並與遊戲搜尋整合。',
-        en: 'Player count can be locked and filters game search.' },
+      { kind: 'new', zh: '新增 iOS 安裝教學。', en: 'Added an iOS install guide.' },
+      { kind: 'improved', zh: '人數鎖定與遊戲搜尋整合。', en: 'Player-count locks filter game search.' },
     ],
   },
+  // main: 8a2deb2..506dd97.
+  {
+    date: '2026-05-03',
+    items: [
+      { kind: 'new', zh: '內建瀏覽器開啟時，提示改用一般瀏覽器。',
+        en: 'In-app browsers prompt users to open a standard browser.' },
+    ],
+  },
+  // main: a8590c4..8a2deb2.
   {
     date: '2026-04-30',
     items: [
-      { kind: 'new', zh: '全面支援淺色模式。', en: 'Full light mode support.' },
-      { kind: 'new', zh: '搜尋時提示可從 BG Stats 或 BGG 匯入遊戲。',
-        en: 'Search now hints that games can be imported from BG Stats or BGG.' },
-      { kind: 'improved', zh: '玩家編輯器整合顏色與名稱，手機鍵盤版面更精簡。',
-        en: 'The player editor combines colors and names, with a more compact mobile keyboard.' },
-      { kind: 'fixed', zh: '歷史回顧中的備忘錄可正確保存與顯示。',
-        en: 'Memos in history review are saved and shown correctly.' },
+      { kind: 'improved', zh: '搜尋提示可從 BG Stats 或 BGG 匯入遊戲。',
+        en: 'Search suggests importing games from BG Stats or BGG.' },
+      { kind: 'fixed', zh: '歷史回顧備忘錄可保存與顯示。', en: 'History memos save and display correctly.' },
     ],
   },
+  // main: 97a9349..a8590c4.
   {
-    date: '2026-04-12',
+    date: '2026-04-28',
     items: [
-      { kind: 'improved', zh: '更新內建計分板。', en: 'Updated built-in scoreboards.' },
-      { kind: 'fixed', zh: '修正 iOS 鍵盤偵測，並改善照片管理。',
-        en: 'Fixed iOS keyboard detection and improved photo management.' },
+      { kind: 'improved', zh: '玩家編輯整合顏色與名稱，精簡手機鍵盤版面。',
+        en: 'Combined player name/color editing and compact mobile keypads.' },
     ],
   },
+  // main: 2b47296..7e6c415. Later color fixes do not make light mode a new April 30 feature.
+  {
+    date: '2026-04-24',
+    items: [
+      { kind: 'new', zh: '支援淺色模式。', en: 'Light mode support.' },
+    ],
+  },
+  // main: 18a0dbc..9a0983d (three merges on 2026-04-11).
+  {
+    date: '2026-04-11',
+    items: [
+      { kind: 'fixed', zh: '修正 iOS 鍵盤偵測。', en: 'Fixed iOS keyboard detection.' },
+    ],
+  },
+  // main: 67cf393..18a0dbc.
   {
     date: '2026-04-02',
     items: [
-      { kind: 'new', zh: '計分項目支援多選，舊資料會自動轉換。',
-        en: 'Score items support multiple selections, with automatic migration of old data.' },
+      { kind: 'new', zh: '計分項目支援多選，舊資料自動轉換。',
+        en: 'Multi-select score items with automatic data migration.' },
       { kind: 'improved', zh: '輸入面板加入滑動提示。', en: 'The input panel shows a swipe hint.' },
     ],
   },
+  // main: ffbbf87..67cf393.
   {
     date: '2026-03-29',
     items: [
-      { kind: 'new', zh: '新增自動加總計分。', en: 'Added auto-sum scoring.' },
-      { kind: 'improved', zh: '所有視窗都能用返回鍵關閉，不再閃爍或誤關。',
-        en: 'Every dialog closes with the back button without flicker or accidental closing.' },
-      { kind: 'fixed', zh: '修正歷史紀錄當機與計分項目設定未保存。',
-        en: 'Fixed a history record crash and unsaved score item settings.' },
+      { kind: 'new', zh: '新增跨玩家加總。', en: 'Cross-player sums.' },
+      { kind: 'improved', zh: '統一視窗返回鍵操作。', en: 'Unified dialog back-button handling.' },
+      { kind: 'fixed', zh: '修正歷史紀錄當機及項目設定未保存。',
+        en: 'Fixed a history crash and unsaved item settings.' },
     ],
   },
+  // main: b0f01ee..b866264.
   {
-    date: '2026-03-16',
+    date: '2026-03-15',
     items: [
-      { kind: 'improved', zh: 'Google Drive 同步更穩定：一鍵同步不再略過項目，刪除計分板更可靠。',
-        en: 'Google Drive sync is more reliable: one-tap sync no longer skips items and deleting scoreboards is safer.' },
-      { kind: 'improved', zh: '長字會自動斷行，截圖中也一樣；相機介面更新。',
-        en: 'Long words hyphenate automatically, including in screenshots; refreshed camera UI.' },
-      { kind: 'fixed', zh: '修正計分規則套用，以及無分數遊戲的勝者判定。',
-        en: 'Fixed scoring rule application and winners in no-score games.' },
+      { kind: 'improved', zh: '截圖支援英文長字斷字。', en: 'English hyphenation in screenshots.' },
+      { kind: 'fixed', zh: '修正計分規則與勝者判定。', en: 'Fixed scoring rules and winner selection.' },
     ],
   },
+  // main: 37d20cc..a62dfb9.
+  {
+    date: '2026-03-12',
+    items: [
+      { kind: 'fixed', zh: '修正雲端同步略過項目與計分板刪除問題。',
+        en: 'Fixed skipped sync items and cloud scoreboard deletion.' },
+    ],
+  },
+  // main: cd13d18..a91431a (two merges on 2026-03-08).
   {
     date: '2026-03-08',
     items: [
-      { kind: 'new', zh: '計分板分享連結：上傳到雲端產生網址，他人點開即可匯入，並顯示下載次數。',
-        en: 'Scoreboard share links: upload to the cloud, others open the link to import, with download counts.' },
-      { kind: 'new', zh: '支援共用變數與合併儲存格。', en: 'Shared variables and merged cells.' },
-      { kind: 'improved', zh: '計分項目的單位與倍數更清楚，快速按鈕文字空間加大。',
-        en: 'Units and multipliers are clearer, and quick buttons have more room for text.' },
-      { kind: 'fixed', zh: '開始遊戲面板保留原本的選擇；簡易遊戲可正確釘選。',
-        en: 'The start game panel keeps your selection, and simple games pin correctly.' },
+      { kind: 'fixed', zh: '保留開局選擇，修正簡易計分板釘選。',
+        en: 'Preserved setup selections and fixed simple-board pinning.' },
     ],
   },
+  // main: 037244c..cd13d18.
+  {
+    date: '2026-03-04',
+    items: [
+      { kind: 'new', zh: '計分板可透過連結分享匯入，並顯示下載次數。',
+        en: 'Share and import scoreboards by link, with download counts.' },
+      { kind: 'new', zh: '支援共用變數與合併儲存格。', en: 'Shared variables and merged cells.' },
+      { kind: 'improved', zh: '調整單位、倍數與快速按鈕文字空間。',
+        en: 'Refined units, multipliers and quick-button text space.' },
+      { kind: 'improved', zh: '英文長字自動斷字。', en: 'English words hyphenate automatically.' },
+    ],
+  },
+  // main: f533726..037244c.
   {
     date: '2026-02-28',
     items: [
-      { kind: 'new', zh: '完整的中英雙語介面。', en: 'Full Chinese and English interface.' },
-      { kind: 'new', zh: '拍照時可附上玩家分數，也可選擇匿名。', en: 'Photos can include player scores, optionally anonymous.' },
-      { kind: 'improved', zh: '自動預測地點、人數與玩家更準確。', en: 'Location, player count and player predictions are more accurate.' },
-      { kind: 'fixed', zh: '修正搜尋別名顯示，以及更新後畫面未刷新。',
-        en: 'Fixed alias display in search and stale screens after updates.' },
+      { kind: 'new', zh: '支援中英雙語。', en: 'Chinese and English UI.' },
+      { kind: 'fixed', zh: '修正搜尋別名與更新後畫面未刷新。',
+        en: 'Fixed search aliases and stale screens after updates.' },
     ],
   },
+  // main: 9af4cb1..f533726; these fixes followed the V3.5 announcement on February 21.
   {
     date: '2026-02-22',
-    version: 'V3.5',
     items: [
-      { kind: 'new', zh: '匯入 BG Stats 紀錄，也可將遊戲紀錄匯出成 BG Stats 格式。',
-        en: 'Import BG Stats records and export game records in BG Stats format.' },
-      { kind: 'new', zh: '匯入 BGG 或 GeekGroup 的收藏檔，搜尋遊戲更方便。',
-        en: 'Import BGG or GeekGroup collection files for easier game search.' },
-      { kind: 'new', zh: '自動預測地點、人數、玩家與玩家顏色。',
-        en: 'Location, player count, players and player colors are predicted automatically.' },
-      { kind: 'new', zh: '工具箱：收納遊戲常用的小工具，從計分板下方開啟。',
-        en: 'Toolbox: handy game tools, opened from below the scoreboard.' },
-      { kind: 'new', zh: '目錄右下角新增快速搜尋，直接開始計分。',
-        en: 'Quick search at the bottom right of the library starts scoring directly.' },
-      { kind: 'improved', zh: '點選清單選項後不再自動跳到下一項。',
-        en: 'Choosing a list option no longer jumps to the next item.' },
-      { kind: 'fixed', zh: '橫向拍照時照片不再上下顛倒。', en: 'Landscape photos are no longer upside down.' },
+      { kind: 'improved', zh: '點選清單選項後不再自動跳項。', en: 'List selections no longer auto-advance.' },
+      { kind: 'fixed', zh: '修正橫向照片上下顛倒。', en: 'Fixed upside-down landscape photos.' },
     ],
   },
+  // main: bfa3c46..9af4cb1; date/version confirmed by the original introduction document.
+  {
+    date: '2026-02-21',
+    version: 'V3.5',
+    items: [
+      { kind: 'new', zh: '匯入 BG Stats 紀錄，也可匯出 BG Stats 格式。',
+        en: 'Import BG Stats records; export in BG Stats format.' },
+      { kind: 'new', zh: '匯入 BGG／GeekGroup 收藏供搜尋。',
+        en: 'Search games from imported BGG or GeekGroup collections.' },
+      { kind: 'new', zh: '自動推薦地點、人數、玩家與顏色。',
+        en: 'Automatic location, count, player and color suggestions.' },
+      { kind: 'new', zh: '工具箱收納遊戲工具，可從計分板下方開啟。',
+        en: 'Game tools in a toolbox below the scoreboard.' },
+      { kind: 'new', zh: '目錄右下角可快速搜尋並開始計分。',
+        en: 'Quick search at the library’s bottom right starts scoring.' },
+      { kind: 'new', zh: '分享照片可隱藏玩家名稱。', en: 'Shared photos can hide player names.' },
+    ],
+  },
+  // main: 5aa9d13..bfa3c46. V3 features are also described in the original introduction.
   {
     date: '2026-01-27',
     version: 'V3',
     items: [
-      { kind: 'new', zh: '拍下實體計分紙當背景並劃分格子，畫面與紙本一致。',
-        en: 'Photograph a paper score sheet as the background and mark its cells.' },
-      { kind: 'new', zh: '公式自動計算：排名分數、兩數相乘累加，也可直接點總分輸入。',
-        en: 'Automatic formulas for rank scores and summed products; totals can be entered directly.' },
-      { kind: 'new', zh: '保存遊戲歷史紀錄，可記錄地點。', en: 'Game history is saved, with an optional location.' },
-      { kind: 'new', zh: 'Google Drive 雲端備份與跨裝置同步。', en: 'Google Drive backup and cross-device sync.' },
-      { kind: 'fixed', zh: '「發現新遊戲」不再一直出現；修正清單選單的標籤顯示。',
-        en: 'The new game notice no longer keeps appearing, and list menu labels display correctly.' },
+      { kind: 'new', zh: '以實體計分紙照片當背景，劃分計分格。',
+        en: 'Use a paper score-sheet photo as a background and mark its cells.' },
+      { kind: 'new', zh: '公式支援排名與乘積累加，也可直接輸入總分。',
+        en: 'Rank formulas, summed products and direct total entry.' },
+      { kind: 'new', zh: '保存遊戲紀錄與地點。', en: 'Save game records with locations.' },
+      { kind: 'new', zh: 'Google Drive 備份與還原。', en: 'Google Drive backup and restore.' },
+      { kind: 'fixed', zh: '修正重複的新遊戲提示與清單標籤。',
+        en: 'Fixed repeated new-game notices and list labels.' },
     ],
   },
+  // main: dff89b8..5aa9d13. Storage fixes followed the initial V2 release.
+  {
+    date: '2025-12-27',
+    items: [
+      { kind: 'fixed', zh: '修正計分板存檔。', en: 'Fixed scoreboard saving.' },
+    ],
+  },
+  // main: d0331e4..4db6bf1; the original introduction confirms V2 and 23 built-in boards.
   {
     date: '2025-12-21',
     version: 'V2',
     items: [
-      { kind: 'new', zh: '分項累加：一格可記多筆輸入並自動加總，可刪除最後一筆。',
-        en: 'Running totals: one cell keeps several entries and sums them; undo the last one.' },
+      { kind: 'new', zh: '分項累加可記多筆輸入，並撤回最後一筆。',
+        en: 'Running totals keep multiple entries and undo the last.' },
       { kind: 'new', zh: '線性查表：可設定「超過幾個後，每多幾個加幾分」。',
         en: 'Linear lookups such as "after 3, every 2 more adds 5 points".' },
-      { kind: 'new', zh: '自訂快速按鈕（標籤、數值、顏色、排列），以及累加用的修正值按鈕。',
-        en: 'Custom quick buttons (label, value, color, layout) and modifier buttons that add to a cell.' },
-      { kind: 'new', zh: '簡潔截圖：隱藏右側單位與累加細項。', en: 'Clean screenshots hide units and entry details.' },
+      { kind: 'new', zh: '快速按鈕可自訂標籤、數值、顏色及排列，並支援累加修正值。',
+        en: 'Custom button labels, values, colors and layouts, plus additive modifiers.' },
+      { kind: 'new', zh: '簡潔截圖隱藏單位與累加細項。', en: 'Simple captures hide units and entry details.' },
       { kind: 'improved', zh: '內建計分板增加到 23 款。', en: 'Built-in scoreboards increased to 23.' },
-      { kind: 'fixed', zh: '修正 iOS 截圖與下載、手機上編輯玩家名稱，以及離線使用與存檔問題。',
-        en: 'Fixed iOS screenshots and downloads, editing player names on phones, offline use and saving.' },
+      { kind: 'fixed', zh: '修正 iOS 截圖下載與玩家改名。',
+        en: 'Fixed iOS captures/downloads and player renaming.' },
     ],
   },
   {
     date: '2025-12-07',
     version: 'V1',
     items: [
-      { kind: 'new', zh: '首次推出：可安裝成 App、離線使用的桌遊計分板。',
-        en: 'First release: an installable board game score pad that works offline.' },
-      { kind: 'new', zh: '自訂計分板：數量、排名或勾選計分，支援倍率與查表，自動算出總分。',
-        en: 'Custom scoreboards for counts, ranks or checkboxes, with multipliers, lookups and automatic totals.' },
-      { kind: 'new', zh: '內建熱門桌遊計分板，也能分享自製計分板。',
-        en: 'Built-in boards for popular games, and your own boards can be shared.' },
+      { kind: 'new', zh: '首次推出可安裝的桌遊計分板。',
+        en: 'First release: an installable board game score pad.' },
+      { kind: 'new', zh: '自訂數量、排名與勾選計分，支援倍率、查表與總分加總。',
+        en: 'Custom count, rank or checkbox scoring, with multipliers, lookups and totals.' },
+      { kind: 'new', zh: '內建桌遊計分板，並可分享自製計分板。',
+        en: 'Built-in scoreboards and shareable custom boards.' },
       { kind: 'new', zh: '記住玩家名稱，下次開局一點即加入；截圖保存結果。',
         en: 'Player names are remembered for quick setup; save results as screenshots.' },
     ],

@@ -248,6 +248,8 @@ it('shows release status and notes in the reader language with earlier updates c
   expect(september).not.toHaveTextContent('Sweet Lands');
   expect(september).not.toHaveTextContent('甜蜜國度');
   expect(september.querySelectorAll('li:empty')).toHaveLength(0);
+  const october = earlier.querySelector('section[aria-label="2026-10-02"]')!;
+  expect(october).not.toHaveTextContent('Sweet Lands');
   view.unmount();
   renderSettings(undefined, 'zh-TW');
   expect(screen.getByText('內建計分板新增甜蜜國度。')).toBeInTheDocument();
