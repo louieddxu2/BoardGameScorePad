@@ -62,7 +62,7 @@ export const HistoryDateWheel: React.FC<Props> = (props) => {
     }}
     onPointerMove={event => {
       const start = drag.current;
-      if (!start) return;
+      if (!start || start.id !== event.pointerId) return;
       const dy = event.clientY - start.y;
       if (Math.abs(event.clientX - start.x) > Math.max(10, Math.abs(dy))) {
         drag.current = null; setOffset(0); return;
@@ -74,17 +74,25 @@ export const HistoryDateWheel: React.FC<Props> = (props) => {
     }}
     onPointerUp={event => {
       const start = drag.current;
+      if (!start || start.id !== event.pointerId) return;
       drag.current = null;
       setOffset(0);
-      if (!start) return;
       const distance = start.y - event.clientY;
       if (Math.abs(distance) >= 12) {
         suppressClick.current = true;
         move(Math.sign(distance) * Math.max(1, Math.round(Math.abs(distance) / 32)));
       }
     }}
-    onPointerCancel={() => { drag.current = null; setOffset(0); suppressClick.current = true; }}
-    onLostPointerCapture={() => { drag.current = null; setOffset(0); }}>
+    onPointerCancel={event => {
+      if (drag.current?.id !== event.pointerId) return;
+      drag.current = null; setOffset(0); suppressClick.current = true;
+    }}
+    onLostPointerCapture={event => {
+      // Touch implicitly captures on the pressed child button. Its capture loss
+      // bubbles here when the wheel takes over; only our own loss ends the drag.
+      if (event.target !== event.currentTarget || drag.current?.id !== event.pointerId) return;
+      drag.current = null; setOffset(0); suppressClick.current = true;
+    }}>
     <div style={{ transform: `translateY(${offset}px)` }}>
       <button type="button" disabled={disabled} aria-label={`${label} −1`} onClick={() => move(-1)}
         className="w-full h-11 text-sm font-mono text-txt-muted disabled:invisible">{neighbor(-1)}</button>
