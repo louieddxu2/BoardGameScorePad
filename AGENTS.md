@@ -31,6 +31,7 @@
 # Release Notes
 
 - Write for users in Settings → About. Apply four principles: concise, clear, accurate and honest. Describe what changed in natural language; do not turn entries into commit summaries, feature inventories or operating instructions.
+- Group changes by actual merges into `main`, including fast-forwards recorded in the `main`/`origin/main` reflog. Compare each release with the preceding main release; improvements made to a new feature before its first main release belong with that feature. Keep unmerged changes in the first entry without a date, shown as upcoming; set its date before merging into `main`. Skip releases containing only internal maintenance.
 - Include meaningful user-visible changes only. Skip tests, refactors and internal tooling. Use `new` for a newly available capability, `improved` for a change to existing behavior, and `fixed` for a correction to incorrect behavior. Moving an existing feature to a new entry point does not make the feature itself new.
 - Keep each item focused on one coherent change or problem. Combine repeated fixes and overlapping descriptions of the same change; separate unrelated topics. Choose detail by its value to the reader, without fixed item counts or length quotas.
 - Name the affected feature or game when needed to identify the change. Keep conditions and consequences that materially affect expectations, such as a required action, manual versus automatic behavior, or replacement of existing data. Do not add exhaustive scope lists or routine caveats to every item.

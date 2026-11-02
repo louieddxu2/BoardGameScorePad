@@ -230,12 +230,14 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
   localStorage.removeItem('settings_last_export_at');
 });
 
-it('shows the latest release notes in the reader language and keeps earlier updates collapsed', async () => {
+it('shows release status and notes in the reader language with earlier updates collapsed', async () => {
   const { RELEASE_NOTES } = await import('../../../data/releaseNotes');
   renderSettings();
   const [latest, previous] = RELEASE_NOTES;
   expect(screen.getByRole('heading', { name: 'About' })).toBeInTheDocument();
-  expect(screen.getByText(latest.date)).toBeInTheDocument();
+  expect(screen.getByText(latest.date ? 'Latest update' : 'Upcoming update')).toBeInTheDocument();
+  if (latest.date) expect(screen.getByText(latest.date)).toBeInTheDocument();
+  else expect(screen.queryByText('Latest update')).not.toBeInTheDocument();
   expect(screen.getByText(latest.items[0].en)).toBeVisible();
   expect(screen.queryByText(latest.items[0].zh)).toBeNull();
   const earlier = screen.getByText('Earlier updates').closest('details')!;
@@ -251,7 +253,9 @@ it('shows the installed service worker revision next to the About heading', asyn
 
 it('keeps release notes newest first with bilingual text', async () => {
   const { RELEASE_NOTES } = await import('../../../data/releaseNotes');
-  const dates = RELEASE_NOTES.map(note => note.date);
+  expect(RELEASE_NOTES.slice(1).every(note => !!note.date)).toBe(true);
+  const dates = RELEASE_NOTES.flatMap(note => note.date ? [note.date] : []);
+  for (const date of dates) expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(new Set(dates).size).toBe(dates.length);
   expect([...dates].sort().reverse()).toEqual(dates);
   for (const note of RELEASE_NOTES) {

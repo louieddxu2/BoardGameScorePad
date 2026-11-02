@@ -62,7 +62,9 @@ export function SettingsAbout() {
       {revision && <p className="text-xs text-txt-muted tabular-nums">{t('version')} {revision}</p>}
     </div>
     <div className="px-4 py-3 rounded-xl border border-surface-border bg-surface-bg">
-      <p className="font-medium text-txt-primary">{t('latest_update')}<span className="ml-2 text-sm text-txt-secondary tabular-nums">{latest.date}</span></p>
+      <p className="font-medium text-txt-primary">{t(latest.date ? 'latest_update' : 'upcoming_update')}
+        {latest.date && <span className="ml-2 text-sm text-txt-secondary tabular-nums">{latest.date}</span>}
+      </p>
       <ReleaseItems note={latest} />
       {!!earlier.length && <details className="mt-3 border-t border-surface-border pt-1">
         <summary className="cursor-pointer min-h-[44px] flex items-center text-sm text-txt-secondary">{t('earlier_updates')}</summary>
