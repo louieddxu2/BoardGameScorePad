@@ -8,7 +8,8 @@ export type ReleaseNoteKind = 'new' | 'improved' | 'fixed';
 export interface ReleaseNoteItem {
   kind: ReleaseNoteKind;
   zh: string;
-  en: string;
+  /** Omit when the item should not appear in English. */
+  en?: string;
 }
 
 export interface ReleaseNote {
@@ -102,7 +103,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     date: '2026-09-30',
     items: [
       { kind: 'new', zh: '快速開始列出最近遊戲，最多五款。', en: 'Quick start lists up to five recent games.' },
-      { kind: 'new', zh: '新增甜蜜國度。', en: 'Added Sweet Lands.' },
+      { kind: 'new', zh: '內建計分板新增甜蜜國度。' },
       { kind: 'improved', zh: '開局時推薦地點與人數。', en: 'Setup suggests location and player count.' },
       { kind: 'improved', zh: '進行中與釘選遊戲改為整列可點。',
         en: 'Active and pinned games are clickable across the row.' },

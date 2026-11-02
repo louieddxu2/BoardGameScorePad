@@ -32,7 +32,7 @@ function ReleaseItems({ note }: { note: ReleaseNote }) {
   const { language } = useTranslation();
   return <div className="mt-1.5 space-y-1.5 text-sm text-txt-primary">
     {KINDS.map(({ kind, className }) => {
-      const items = note.items.filter(item => item.kind === kind);
+      const items = note.items.filter(item => item.kind === kind && (language === 'zh-TW' || item.en));
       if (!items.length) return null;
       return <div key={kind}>
         <p className={`text-xs font-medium ${className}`}>{t(`release_${kind}`)}</p>

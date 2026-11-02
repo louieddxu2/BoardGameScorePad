@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-const renderSettings = (busy = vi.fn()) => render(<LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
+const renderSettings = (busy = vi.fn(), language: 'en' | 'zh-TW' = 'en') => render(<LanguageContext.Provider value={{ language, setLanguage: vi.fn() }}>
   <SettingsView themeMode="sage" onSelectTheme={vi.fn()} onBusyChange={busy}
     zoomLevel={1} onZoomChange={vi.fn()} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={vi.fn()}
     onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />
@@ -232,17 +232,25 @@ it('locks the controls during export and downloads a ZIP with the backup filenam
 
 it('shows release status and notes in the reader language with earlier updates collapsed', async () => {
   const { RELEASE_NOTES } = await import('../../../data/releaseNotes');
-  renderSettings();
+  const view = renderSettings();
   const [latest, previous] = RELEASE_NOTES;
   expect(screen.getByRole('heading', { name: 'About' })).toBeInTheDocument();
   expect(screen.getByText(latest.date ? 'Latest update' : 'Upcoming update')).toBeInTheDocument();
   if (latest.date) expect(screen.getByText(latest.date)).toBeInTheDocument();
   else expect(screen.queryByText('Latest update')).not.toBeInTheDocument();
-  expect(screen.getByText(latest.items[0].en)).toBeVisible();
+  expect(screen.getByText(latest.items[0].en!)).toBeVisible();
   expect(screen.queryByText(latest.items[0].zh)).toBeNull();
   const earlier = screen.getByText('Earlier updates').closest('details')!;
   expect(earlier).not.toHaveAttribute('open');
-  expect(earlier).toHaveTextContent(previous.items[0].en);
+  expect(earlier).toHaveTextContent(previous.items[0].en!);
+  const september = earlier.querySelector('section[aria-label="2026-09-30"]')!;
+  expect(september).toHaveTextContent('Quick start lists up to five recent games.');
+  expect(september).not.toHaveTextContent('Sweet Lands');
+  expect(september).not.toHaveTextContent('甜蜜國度');
+  expect(september.querySelectorAll('li:empty')).toHaveLength(0);
+  view.unmount();
+  renderSettings(undefined, 'zh-TW');
+  expect(screen.getByText('內建計分板新增甜蜜國度。')).toBeInTheDocument();
 });
 
 it('shows the installed service worker revision next to the About heading', async () => {
@@ -251,7 +259,7 @@ it('shows the installed service worker revision next to the About heading', asyn
   expect(await screen.findByText('Version 2026-10-31-02')).toBeInTheDocument();
 });
 
-it('keeps release notes newest first with bilingual text', async () => {
+it('keeps release notes newest first with nonempty available translations', async () => {
   const { RELEASE_NOTES } = await import('../../../data/releaseNotes');
   expect(RELEASE_NOTES.slice(1).every(note => !!note.date)).toBe(true);
   const dates = RELEASE_NOTES.flatMap(note => note.date ? [note.date] : []);
@@ -260,6 +268,9 @@ it('keeps release notes newest first with bilingual text', async () => {
   expect([...dates].sort().reverse()).toEqual(dates);
   for (const note of RELEASE_NOTES) {
     expect(note.items.length).toBeGreaterThan(0);
-    for (const item of note.items) expect(item.zh.trim() && item.en.trim()).toBeTruthy();
+    for (const item of note.items) {
+      expect(item.zh.trim()).toBeTruthy();
+      if (item.en !== undefined) expect(item.en.trim()).toBeTruthy();
+    }
   }
 });
