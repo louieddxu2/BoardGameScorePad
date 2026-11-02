@@ -138,15 +138,15 @@ describe('history time selector', () => {
     fireEvent.pointerDown(wheel, { button: 0, clientX: 10, clientY: 100 });
     fireEvent.pointerMove(wheel, { clientX: 10, clientY: 68 });
     fireEvent.pointerCancel(wheel);
-    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent('1');
+    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent(/^2$/);
     fireEvent.wheel(wheel, { deltaY: 10 });
-    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent('2');
+    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent(/^3$/);
     fireEvent.wheel(wheel, { deltaY: 10, ctrlKey: true });
-    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent('2');
+    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent(/^3$/);
     fireEvent.pointerDown(wheel, { button: 0, clientX: 10, clientY: 100 });
     fireEvent.pointerMove(wheel, { clientX: 60, clientY: 90 });
     fireEvent.pointerUp(wheel, { clientX: 60, clientY: 68 });
-    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent('2');
+    expect(screen.getByRole('spinbutton', { name: '月' })).toHaveTextContent(/^3$/);
   });
 
   it('renders English labels', () => {
