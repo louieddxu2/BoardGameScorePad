@@ -64,15 +64,17 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
     // database. Their contents are not evidence of files lost during this import.
     const tables = {} as BackupTables;
     const usedPaths = new Set<string>();
+    let allTablesEmpty = true;
     for (const table of DATA_TABLES) {
       const paths = manifest.tables[table];
       const documents: { path: string; value: unknown }[] = [];
       if (!Array.isArray(paths)) {
         log.record(`${MANIFEST.slice(ROOT.length)}#tables.${table}`, 'invalid');
+        allTablesEmpty = false;
         tables[table] = []; continue;
       }
+      const area = table === 'templates' ? '_Templates/' : table === 'history' ? '_History/' : table === 'sessions' ? '_Active/' : '_System/tables/';
       for (const path of paths) {
-        const area = table === 'templates' ? '_Templates/' : table === 'history' ? '_History/' : table === 'sessions' ? '_Active/' : '_System/tables/';
         if (typeof path !== 'string' || !safePath(path) || !path.startsWith(ROOT + area) || usedPaths.has(path)) {
           log.record(`table:${table}`, 'invalid', 'file path'); continue;
         }
@@ -82,6 +84,12 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
         const value = readJson(path);
         if (value !== undefined) documents.push({ path: relative, value });
       }
+      // Record tables have one file per row; list tables always export an array file.
+      const isEmptyTable = area === '_System/tables/'
+        ? paths.length > 0 && documents.length === paths.length
+          && documents.every(({ value }) => Array.isArray(value) && value.length === 0)
+        : paths.length === 0;
+      allTablesEmpty &&= isEmptyTable;
       tables[table] = recoverTableRows(table, documents, log.record);
     }
     const images: LocalImage[] = [];
@@ -113,6 +121,13 @@ export async function validateOfflineBackup(blob: Blob, onProgress: Progress = (
         } catch { log.record(`${relative}#rotationSource`, 'invalid'); }
       }
       images.push(image);
+    }
+    const hasRestorableData = DATA_TABLES.some(table => tables[table].length > 0) || images.length > 0;
+    const isEmptyBackup = allTablesEmpty && Array.isArray(manifest.images) && manifest.images.length === 0;
+    // Settings and report files alone cannot establish that it is safe to clear the device.
+    if (!hasRestorableData && !isEmptyBackup) {
+      location = 'ZIP';
+      invalid();
     }
     // Image/file entries above define the archive's promised contents. Keep
     // dangling source references unchanged without inventing a missing ZIP file.

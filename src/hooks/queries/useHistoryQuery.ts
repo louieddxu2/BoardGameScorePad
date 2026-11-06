@@ -63,7 +63,10 @@ export const useHistoryQuery = (
       const searchKeys = [
         { name: 'gameName', weight: 1.0 },
         { name: 'location', weight: 0.9 },
-        { name: '_playerNames', weight: 0.9 }
+        { name: '_playerNames', weight: 0.9 },
+        { name: '_compactDate', weight: 0.8 },
+        { name: '_rocDate', weight: 0.8 },
+        { name: '_dateStr', weight: 0.6 }
       ];
 
       results = searchService.search(results, searchQuery, searchKeys);

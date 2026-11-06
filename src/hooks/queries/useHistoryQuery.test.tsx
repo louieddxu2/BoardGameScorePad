@@ -49,14 +49,18 @@ describe('shared history date query', () => {
     expect(read).toHaveBeenCalledTimes(reads);
   });
 
-  it('intersects keyword and date criteria and no longer searches date strings fuzzily', async () => {
-    await db.history.bulkPut([record('one', 2026, 11, 2), record('two', 2026, 11, 2, 'Lagoon'), record('old', 2026, 10, 2)]);
+  it('keeps all date text formats searchable alongside the calendar filter', async () => {
+    await db.history.bulkPut([record('one', 2026, 11, 2), record('two', 2026, 11, 2, 'Lagoon'), record('old', 1995, 4, 27)]);
     const { result, rerender } = renderHook(({ query }) => useHistoryQuery(query, undefined), { initialProps: { query: '' } });
     await waitFor(() => expect(result.current.historyCount).toBe(3));
     act(() => result.current.setHistoryDateFilter(singleDay(2026, 11, 2)));
     rerender({ query: 'Orchard Comets' });
     expect(result.current.historyRecords.map(row => row.id)).toEqual(['one']);
-    rerender({ query: '2026/11/02' });
+    for (const date of ['2026/11/02', '261102', '1151102']) {
+      rerender({ query: date });
+      expect(result.current.historyRecords.map(row => row.id).sort()).toEqual(['one', 'two']);
+    }
+    rerender({ query: 'Orchard 1995/04/27' });
     expect(result.current.historyCount).toBe(0);
     rerender({ query: '' });
     expect(result.current.historyCount).toBe(2);

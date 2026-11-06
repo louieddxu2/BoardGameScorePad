@@ -53,8 +53,9 @@ in `_System/missing_image_references.json` and declared in the manifest. This ca
 occur when historical snapshots retain a replaced/deleted background's old ID.
 Photo revision markers are copied independently of the current local Blob, just
 as they exist locally; they are cloud synchronization metadata, not evidence of
-a missing local file. Import accepts explicitly declared dangling references but
-still rejects any file missing or corrupted relative to the ZIP's file manifest.
+a missing local file. Import skips and reports missing or corrupted archive
+entries while restoring readable data. If no records or images can be recovered,
+replacement is allowed only when the archive confirms an empty snapshot.
 History without a template snapshot (simple scoreboards) is also valid.
 
 Exports use format version 2, which explicitly records pre-existing dangling

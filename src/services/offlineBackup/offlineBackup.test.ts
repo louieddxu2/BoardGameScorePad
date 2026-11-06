@@ -250,6 +250,34 @@ describe('offline full-data backup', () => {
     }
   });
 
+  it.each(['settings only', 'empty lists and invalid history'])('rejects an unrecoverable backup containing %s before replacement', async mode => {
+    await seed();
+    const damaged = await rewrite(await exportOfflineBackup(), async (files, manifest) => {
+      for (const path of Object.keys(manifest.files)) {
+        if (path === `${ROOT}_System/settings_backup.json`) continue;
+        if (mode === 'empty lists and invalid history') {
+          if (path === manifest.tables.history[0]) {
+            files[path] = jsonBytes({ id: record.id });
+            manifest.files[path] = { size: files[path].length, sha256: await digest(files[path]) };
+            continue;
+          }
+          if (path.startsWith(`${ROOT}_System/tables/`)) {
+            const rows = parseJson(files[path]);
+            if (Array.isArray(rows) && rows.length === 0) continue;
+          }
+        }
+        delete files[path];
+      }
+    });
+    localStorage.setItem('app_theme_mode', 'light');
+    await expect(importOfflineBackup(damaged)).rejects.toMatchObject({ code: 'invalid' });
+    expect(await db.history.get(record.id)).toEqual(record);
+    expect(await db.templates.get(template.id)).toEqual(template);
+    expect(await db.sessions.get('active')).toBeDefined();
+    expect(await db.images.count()).toBe(3);
+    expect(localStorage.getItem('app_theme_mode')).toBe('light');
+  });
+
   it('preserves legacy simple-history snapshot markers supported by the history viewer', async () => {
     await seed();
     await db.history.clear();
@@ -497,6 +525,7 @@ describe('offline full-data backup', () => {
         }
         else files[path][0] ^= 1;
       });
+      await db.history.clear();
       const report = await importOfflineBackup(damaged);
       expect(report.issues).toEqual([{ path: path.slice(ROOT.length), reason: missing ? 'missing' : 'checksum' }]);
       expect(await db.history.get('h1')).toMatchObject({ gameName: record.gameName, players: record.players, photos: record.photos });
@@ -570,8 +599,8 @@ describe('offline full-data backup', () => {
     expect(await db.history.get('h1')).toEqual(record);
   });
 
-  it('can replace a populated installation with a valid empty backup', async () => {
-    const empty = await exportOfflineBackup();
+  it.each([1, 2] as const)('can replace a populated installation with a valid empty version %i backup', async version => {
+    const empty = await rewrite(await exportOfflineBackup(), (_files, manifest) => { manifest.version = version; });
     await seed();
     await importOfflineBackup(empty);
     for (const table of DATA_TABLES) expect(await db.table(table).count(), table).toBe(0);
