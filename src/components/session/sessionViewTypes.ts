@@ -14,7 +14,7 @@ export interface SessionViewProps {
   onUpdateSession: (session: GameSession, options?: SessionUpdateOptions) => void;
   onUpdateTemplate: (template: GameTemplate) => Promise<{ template: GameTemplate; session: GameSession | null }>;
   onUpdateSavedPlayer: (name: string) => void; // Renamed from onUpdatePlayerHistory
-  onUpdateImage: (img: string | Blob | null) => void;
+  onUpdateImage: (img: string | Blob | null) => void | Promise<void>;
   onExit: (location?: string) => void;
   onResetScores: () => void;
   onSaveToHistory: (location?: string) => void;

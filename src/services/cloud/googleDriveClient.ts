@@ -232,9 +232,10 @@ class GoogleDriveClient {
       return response.json();
   }
 
-  public async downloadBlob(fileId: string): Promise<Blob> {
+  public async downloadBlob(fileId: string, signal?: AbortSignal): Promise<Blob> {
       const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-          headers: { 'Authorization': `Bearer ${googleAuth.token}` }
+          headers: { 'Authorization': `Bearer ${googleAuth.token}` },
+          signal
       });
       if (!response.ok) throw new Error("下載失敗");
       return await response.blob();

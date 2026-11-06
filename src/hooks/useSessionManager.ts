@@ -550,7 +550,7 @@ export const useSessionManager = ({
         setSessionImage(URL.createObjectURL(blob));
 
         const updatedT = { ...activeTemplate, imageId: savedImg.id, hasImage: true, cloudImageId: undefined };
-        updateActiveTemplate(updatedT);
+        await updateActiveTemplate(updatedT);
     };
 
     return {

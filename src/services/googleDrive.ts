@@ -548,9 +548,9 @@ class GoogleDriveService {
         return data;
     }
 
-    public async downloadImage(fileId: string): Promise<Blob> {
+    public async downloadImage(fileId: string, signal?: AbortSignal): Promise<Blob> {
         if (!this.isAuthorized) await this.signIn();
-        return await googleDriveClient.downloadBlob(fileId);
+        return await googleDriveClient.downloadBlob(fileId, signal);
     }
 }
 

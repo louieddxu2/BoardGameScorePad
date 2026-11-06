@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { GameSession, GameTemplate } from '../../../types';
 import { useToast } from '../../../hooks/useToast';
 import { useGoogleDrive } from '../../../hooks/useGoogleDrive';
@@ -8,6 +8,8 @@ import { googleDriveService } from '../../../services/googleDrive';
 import { UIState } from './useSessionState';
 import { useSessionTranslation } from '../../../i18n/session';
 import { usePhotoManager } from '../../../hooks/usePhotoManager';
+import { BackupInProgressError, withBackupAccess } from '../../../services/backupAccess';
+import { useCommonTranslation } from '../../../i18n/common';
 
 interface UseSessionMediaProps {
     session: GameSession;
@@ -15,7 +17,7 @@ interface UseSessionMediaProps {
     baseImage: string | null;
     onUpdateSession: (session: GameSession) => void | Promise<void>;
     onUpdateTemplate: (template: GameTemplate) => void; // Added for removing image ref
-    onUpdateImage: (img: string | Blob | null) => void; // Allow null to clear
+    onUpdateImage: (img: string | Blob | null) => void | Promise<void>;
     setUiState: React.Dispatch<React.SetStateAction<UIState>>;
     isEditMode: boolean; // New Prop
 }
@@ -32,6 +34,7 @@ export const useSessionMedia = ({
 }: UseSessionMediaProps) => {
     const { showToast } = useToast();
     const { t } = useSessionTranslation();
+    const { t: tCommon } = useCommonTranslation();
     const { downloadCloudImage, isAutoConnectEnabled, isConnected, connectToCloud } = useGoogleDrive();
 
     // === 照片管理（委託給 usePhotoManager） ===
@@ -73,8 +76,44 @@ export const useSessionMedia = ({
 
     // Refs for hidden inputs (background only)
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const triedAutomaticDownload = useRef(false);
+    const backgroundRequest = useRef<AbortController | null>(null);
 
-    const hasPromptedRef = useRef(false);
+    useLayoutEffect(() => () => {
+        backgroundRequest.current?.abort();
+        backgroundRequest.current = null;
+        triedAutomaticDownload.current = false;
+    }, [session.id, template.id]);
+
+    const downloadBackground = useCallback(async (fileId: string, manual: boolean): Promise<boolean> => {
+        backgroundRequest.current?.abort();
+        const controller = new AbortController();
+        backgroundRequest.current = controller;
+        const { signal } = controller;
+        try {
+            if (manual && !isConnected && !await connectToCloud()) return false;
+            if (signal.aborted) return false;
+            return await withBackupAccess('drive', async () => {
+                if (signal.aborted) return false;
+                const blob = await downloadCloudImage(fileId, signal);
+                if (!blob || signal.aborted) return false;
+                // Keep the Drive lock until the background and its template are stored.
+                await onUpdateImage(blob);
+                return !signal.aborted;
+            });
+        } catch (error) {
+            if (signal.aborted) return false;
+            if (error instanceof BackupInProgressError) {
+                if (manual) showToast({ message: tCommon('backup_in_progress'), type: 'warning' });
+            } else {
+                console.error('Cloud background update failed', error);
+                showToast({ message: t('toast_save_failed'), type: 'error' });
+            }
+            return false;
+        } finally {
+            if (backgroundRequest.current === controller) backgroundRequest.current = null;
+        }
+    }, [connectToCloud, downloadCloudImage, isConnected, onUpdateImage, showToast, t, tCommon]);
 
     // [Logic] Auto-download background image from cloud if missing
     useEffect(() => {
@@ -83,25 +122,13 @@ export const useSessionMedia = ({
         const hasBackgroundDesign = !!template.globalVisuals || !!template.hasImage;
         if (!hasBackgroundDesign) return;
 
-        if (hasPromptedRef.current) return;
-        hasPromptedRef.current = true;
+        if (triedAutomaticDownload.current) return;
+        triedAutomaticDownload.current = true;
 
-        const checkCloud = async () => {
-            if (template.cloudImageId) {
-                if (isAutoConnectEnabled && googleDriveService.isAuthorized) {
-                    const imgBlob = await downloadCloudImage(template.cloudImageId);
-                    if (imgBlob) {
-                        onUpdateImage(imgBlob);
-                        return;
-                    }
-                }
-                // [Modified] Removed forced modal trigger on failure or missing image.
-                // Users can manually trigger upload/download via the header menu.
-            }
-        };
-
-        checkCloud();
-    }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, downloadCloudImage, isAutoConnectEnabled, onUpdateImage, setUiState]);
+        if (template.cloudImageId && isAutoConnectEnabled && googleDriveService.isAuthorized) {
+            void downloadBackground(template.cloudImageId, false);
+        }
+    }, [baseImage, template.globalVisuals, template.hasImage, template.cloudImageId, downloadBackground, isAutoConnectEnabled, session.id, template.id]);
 
     // [Handler] Manual Background Upload (Redirects to Scanner)
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,14 +178,7 @@ export const useSessionMedia = ({
 
     // [Handler] Manual Cloud Download Trigger (from Modal)
     const handleCloudDownload = async () => {
-        if (!template.cloudImageId) return;
-        if (!isConnected) {
-            const success = await connectToCloud();
-            if (!success) return;
-        }
-        const imgBlob = await downloadCloudImage(template.cloudImageId);
-        if (imgBlob) {
-            onUpdateImage(imgBlob);
+        if (template.cloudImageId && await downloadBackground(template.cloudImageId, true)) {
             setUiState(p => ({ ...p, isImageUploadModalOpen: false }));
 
             // [Feature] Tip for Edit Mode

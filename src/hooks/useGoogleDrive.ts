@@ -210,17 +210,20 @@ export const useGoogleDrive = () => {
     }, [showToast, tCloud]);
 
     // [UPDATED] Return Blob instead of string
-    const downloadCloudImage = useCallback(async (fileId: string): Promise<Blob | null> => {
+    const downloadCloudImage = useCallback(async (fileId: string, signal?: AbortSignal): Promise<Blob | null> => {
+        if (signal?.aborted) return null;
         setIsSyncing(true);
         try {
             await ensureConnection();
+            if (signal?.aborted) return null;
             showToast({ message: tCloud('cloud_toast_downloading_image'), type: 'info' });
-            const blob = await googleDriveService.downloadImage(fileId);
+            const blob = await googleDriveService.downloadImage(fileId, signal);
+            if (signal?.aborted) return null;
             setIsConnected(true);
             showToast({ message: tCloud('cloud_toast_image_success'), type: 'success' });
             return blob;
         } catch (error: any) {
-            handleError(error, "cloud_action_download_image");
+            if (!signal?.aborted) handleError(error, "cloud_action_download_image");
             return null;
         } finally {
             setIsSyncing(false);

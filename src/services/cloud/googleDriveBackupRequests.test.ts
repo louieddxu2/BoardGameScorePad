@@ -70,6 +70,20 @@ describe('backup API request budgets and recovery', () => {
     });
     afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
+    it('passes cancellation through to the Drive image request', async () => {
+        const controller = new AbortController();
+        fetchMock.mockImplementationOnce((_input, options) => new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        }));
+        const request = googleDriveService.downloadImage('background', controller.signal);
+        expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+            'https://www.googleapis.com/drive/v3/files/background?alt=media',
+            expect.objectContaining({ signal: controller.signal }),
+        );
+        controller.abort();
+        await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+    });
+
     it.each(['active', 'history'] as const)('backs up ten new %s photos and combines rename with metadata in thirteen requests', async kind => {
         const photos = Array.from({ length: 10 }, (_, index) => `photo-${index}`);
         const photoContentIds = Object.fromEntries(photos.map(id => [id, 'v2']));
