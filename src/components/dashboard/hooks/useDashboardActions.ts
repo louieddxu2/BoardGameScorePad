@@ -9,6 +9,7 @@ import { GameOption } from '../../../features/game-selector/types';
 import { buildBuiltinShareUrl, toBuiltinShortId } from '../../../utils/deepLink';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useCommonTranslation } from '../../../i18n/common';
+import { BackupInProgressError, withBackupAccess } from '../../../services/backupAccess';
 
 interface UseDashboardActionsProps {
     isAutoConnectEnabled: boolean;
@@ -77,11 +78,20 @@ export const useDashboardActions = ({
             showToast({ message: t('msg_cloud_connect_first'), type: 'warning' });
             return;
         }
-        const full = await onGetFullTemplate(partialTemplate.id);
-        if (full) {
-            const updated = await handleBackup(full);
-            if (updated) {
-                onTemplateSave({ ...updated, lastSyncedAt: Date.now() }, { skipCloud: true, preserveTimestamps: true });
+        try {
+            await withBackupAccess('drive', async () => {
+                const full = await onGetFullTemplate(partialTemplate.id);
+                if (!full) return;
+                const updated = await handleBackup(full);
+                if (updated) {
+                    await onTemplateSave({ ...updated, lastSyncedAt: Date.now() }, { skipCloud: true, preserveTimestamps: true });
+                }
+            });
+        } catch (error) {
+            if (error instanceof BackupInProgressError) {
+                showToast({ message: tCommon('backup_in_progress'), type: 'warning' });
+            } else {
+                throw error;
             }
         }
     };

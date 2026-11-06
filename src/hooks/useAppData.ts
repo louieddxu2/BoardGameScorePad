@@ -4,6 +4,7 @@ import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { googleDriveService, getAutoConnectPreference } from '../services/googleDrive';
+import { backupTemplateToCloud } from './sessionCloudBackup';
 import { imageService } from '../services/imageService';
 import { cleanupService } from '../services/cleanupService';
 import { bgStatsImportService } from '../features/bgstats/services/bgStatsImportService';
@@ -116,11 +117,7 @@ export const useAppData = () => {
 
         // Do not back up disposable templates; pinned simple templates remain eligible.
         if (!options.skipCloud && isCloudEnabled() && !isDisposableTemplate(finalTemplate, pinnedIds)) {
-            googleDriveService.backupTemplate(finalTemplate).then((updated) => {
-                if (updated) {
-                    db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
-                }
-            }).catch(console.error);
+            backupTemplateToCloud(finalTemplate).catch(console.error);
         }
     };
 

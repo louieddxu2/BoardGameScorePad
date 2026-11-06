@@ -39,8 +39,12 @@ abort the transaction; preference changes are also restored on failure. Import
 does not merge with old data or resume old room identities. An active room blocks
 replacement. Cloud folder/image mappings are detached to avoid reusing another
 installation's account-specific IDs. Success reloads the app to reinitialize all
-state owners from the restored snapshot. The confirmation asks users to close
-other tabs; this operation cannot stop writes from other already-open clients.
+state owners from the restored snapshot once the completion notice closes.
+
+ZIP export and restore run separately from Google Drive transfers. If either
+is active, the other cannot start. Skipped background uploads are not queued.
+The lock spans tabs when the browser supports Web Locks. Close other tabs
+before restoring to prevent unrelated local writes.
 
 ZIP support is bundled with the app for offline use. Compression runs through
 fflate's asynchronous ZIP API; existing photos use STORE without recompression.

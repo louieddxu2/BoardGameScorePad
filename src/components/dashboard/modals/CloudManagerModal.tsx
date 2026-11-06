@@ -4,6 +4,7 @@ import { GameTemplate, GameSession, HistoryRecord } from '../../../types';
 import { DownloadCloud, X, FolderOpen, Trash2, RefreshCw, UploadCloud, Download, Clock, RefreshCcw, Activity, LayoutGrid, History, Loader2, CloudOff, Cloud, ArrowRightLeft } from 'lucide-react';
 import { CloudFile, CloudResourceType } from '../../../services/googleDrive';
 import { useToast } from '../../../hooks/useToast';
+import { BackupInProgressError, withBackupAccess } from '../../../services/backupAccess';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { calculateCloudScanStats } from './cloudSyncScan';
 import { extractCloudLocalId } from '../../../services/cloud/cloudMetadata';
@@ -176,62 +177,68 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
         if (viewMode === 'trash') return;
         setIsLoading(true);
         try {
-            if (category === 'templates') {
-                const templateWithExtra = await restoreBackup(file.id);
-                const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
-                onRestoreSuccess(cleanTemplate);
-                if (_tempImageBase64) {
-                    showToast({ message: tCloud('cloud_image_note'), type: 'info' });
-                }
-            } else if (category === 'sessions') {
-                const uuid = extractCloudLocalId(file.name);
-                if (uuid) {
-                    const historyRecord = await db.history.get(uuid);
-                    if (historyRecord) {
-                        const dateStr = new Date(historyRecord.endTime).toLocaleString();
-                        await confirm({
-                            title: tCommon('info'),
-                            message: tCloud('cloud_alert_session_in_history', { date: dateStr }),
-                            confirmText: tCommon('confirm'),
-                            hideCancel: true
-                        });
-                        setIsLoading(false);
-                        return;
+            await withBackupAccess('drive', async () => {
+                if (category === 'templates') {
+                    const templateWithExtra = await restoreBackup(file.id);
+                    const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
+                    await onRestoreSuccess(cleanTemplate);
+                    if (_tempImageBase64) {
+                        showToast({ message: tCloud('cloud_image_note'), type: 'info' });
                     }
-                }
-                const session = await restoreSessionBackup(file.id);
-                const localTemplate = await db.templates.get(session.templateId) || await db.builtins.get(session.templateId);
+                } else if (category === 'sessions') {
+                    const uuid = extractCloudLocalId(file.name);
+                    if (uuid) {
+                        const historyRecord = await db.history.get(uuid);
+                        if (historyRecord) {
+                            const dateStr = new Date(historyRecord.endTime).toLocaleString();
+                            await confirm({
+                                title: tCommon('info'),
+                                message: tCloud('cloud_alert_session_in_history', { date: dateStr }),
+                                confirmText: tCommon('confirm'),
+                                hideCancel: true
+                            });
+                            setIsLoading(false);
+                            return;
+                        }
+                    }
+                    const session = await restoreSessionBackup(file.id);
+                    const localTemplate = await db.templates.get(session.templateId) || await db.builtins.get(session.templateId);
 
-                if (localTemplate) {
-                    onSessionRestoreSuccess(session);
-                } else {
-                    showToast({ message: tCloud('cloud_toast_find_linked_template'), type: 'info' });
-                    const templatesList = await fetchFileList('active', 'templates');
-                    const targetFile = templatesList.find(t => extractCloudLocalId(t.name) === session.templateId);
-
-                    if (targetFile) {
-                        const templateWithExtra = await restoreBackup(targetFile.id);
-                        const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
-                        onRestoreSuccess(cleanTemplate);
-                        onSessionRestoreSuccess(session);
-                        showToast({ message: tCloud('cloud_toast_restore_all_success'), type: 'success' });
+                    if (localTemplate) {
+                        await onSessionRestoreSuccess(session);
                     } else {
-                        await confirm({
-                            title: tCommon('info'),
-                            message: tCloud('cloud_alert_template_missing'),
-                            confirmText: tCommon('confirm'),
-                            hideCancel: true
-                        });
-                    }
-                }
+                        showToast({ message: tCloud('cloud_toast_find_linked_template'), type: 'info' });
+                        const templatesList = await fetchFileList('active', 'templates');
+                        const targetFile = templatesList.find(t => extractCloudLocalId(t.name) === session.templateId);
 
-            } else if (category === 'history' && restoreHistoryBackup && onHistoryRestoreSuccess) {
-                const record = await restoreHistoryBackup(file.id);
-                onHistoryRestoreSuccess(record);
-            }
-            onClose();
+                        if (targetFile) {
+                            const templateWithExtra = await restoreBackup(targetFile.id);
+                            const { _tempImageBase64, ...cleanTemplate } = templateWithExtra as any;
+                            await onRestoreSuccess(cleanTemplate);
+                            await onSessionRestoreSuccess(session);
+                            showToast({ message: tCloud('cloud_toast_restore_all_success'), type: 'success' });
+                        } else {
+                            await confirm({
+                                title: tCommon('info'),
+                                message: tCloud('cloud_alert_template_missing'),
+                                confirmText: tCommon('confirm'),
+                                hideCancel: true
+                            });
+                        }
+                    }
+
+                } else if (category === 'history' && restoreHistoryBackup && onHistoryRestoreSuccess) {
+                    const record = await restoreHistoryBackup(file.id);
+                    await onHistoryRestoreSuccess(record);
+                }
+                onClose();
+            });
         } catch (e) {
-            console.error(e);
+            if (e instanceof BackupInProgressError) {
+                showToast({ message: tCommon('backup_in_progress'), type: 'warning' });
+            } else {
+                console.error(e);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -297,13 +304,13 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
         setSyncResult({ success: 0, skipped: 0, failed: [], errors: [], total: 0, current: 0, type: 'upload' });
 
         try {
-            const stats = await onSystemBackup(
+            const stats = await withBackupAccess('drive', () => onSystemBackup(
                 (count, total) => setSyncResult(prev => ({ ...prev, current: count, total })),
                 (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] }))
-            );
+            ));
             setSyncResult(prev => ({ ...prev, success: stats.success, skipped: stats.skipped }));
         } catch (e: any) {
-            setSyncResult(prev => ({ ...prev, errors: [e.message || "Unknown error"] }));
+            setSyncResult(prev => ({ ...prev, errors: [e instanceof BackupInProgressError ? tCommon('backup_in_progress') : e.message || 'Unknown error'] }));
         } finally {
             setSyncStatus('done');
         }
@@ -315,41 +322,43 @@ const CloudManagerModal: React.FC<CloudManagerModalProps> = ({
         setSyncResult({ success: 0, skipped: 0, failed: [], errors: [], total: 0, current: 0, type: 'download' });
 
         try {
-            const localData = await onGetLocalData();
-            const templatesMap = new Map<string, number>();
-            const historyMap = new Map<string, number>();
-            const sessionsMap = new Map<string, number>();
+            const stats = await withBackupAccess('drive', async () => {
+                const localData = await onGetLocalData();
+                const templatesMap = new Map<string, number>();
+                const historyMap = new Map<string, number>();
+                const sessionsMap = new Map<string, number>();
 
-            (localData.data.templates || []).forEach((t: any) => templatesMap.set(t.id, t.updatedAt || 0));
-            (localData.data.overrides || []).forEach((t: any) => templatesMap.set(t.id, t.updatedAt || 0));
-            (localData.data.history || []).forEach((h: any) => historyMap.set(h.id, h.updatedAt || h.endTime || 0));
-            (localData.data.sessions || []).forEach((s: any) => sessionsMap.set(s.id, s.lastUpdatedAt || s.startTime || 0));
+                (localData.data.templates || []).forEach((t: any) => templatesMap.set(t.id, t.updatedAt || 0));
+                (localData.data.overrides || []).forEach((t: any) => templatesMap.set(t.id, t.updatedAt || 0));
+                (localData.data.history || []).forEach((h: any) => historyMap.set(h.id, h.updatedAt || h.endTime || 0));
+                (localData.data.sessions || []).forEach((s: any) => sessionsMap.set(s.id, s.lastUpdatedAt || s.startTime || 0));
 
-            const localMeta = { templates: templatesMap, history: historyMap, sessions: sessionsMap };
-            const handleItemRestored = async (type: 'template' | 'history' | 'session', item: any) => {
-                if (type === 'template') {
-                    await Promise.resolve(onRestoreSuccess(item));
-                    return;
-                }
-                if (type === 'history' && onHistoryRestoreSuccess) {
-                    await Promise.resolve(onHistoryRestoreSuccess(item));
-                    return;
-                }
-                if (type === 'session') {
-                    await Promise.resolve(onSessionRestoreSuccess(item));
-                }
-            };
+                const localMeta = { templates: templatesMap, history: historyMap, sessions: sessionsMap };
+                const handleItemRestored = async (type: 'template' | 'history' | 'session', item: any) => {
+                    if (type === 'template') {
+                        await Promise.resolve(onRestoreSuccess(item));
+                        return;
+                    }
+                    if (type === 'history' && onHistoryRestoreSuccess) {
+                        await Promise.resolve(onHistoryRestoreSuccess(item));
+                        return;
+                    }
+                    if (type === 'session') {
+                        await Promise.resolve(onSessionRestoreSuccess(item));
+                    }
+                };
 
-            const stats = await onSystemRestore(
-                localMeta,
-                (count, total) => setSyncResult(prev => ({ ...prev, current: count, total })),
-                (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] })),
-                handleItemRestored,
-                undefined
-            );
+                return onSystemRestore(
+                    localMeta,
+                    (count, total) => setSyncResult(prev => ({ ...prev, current: count, total })),
+                    (failed) => setSyncResult(prev => ({ ...prev, failed: [...prev.failed, ...failed] })),
+                    handleItemRestored,
+                    undefined
+                );
+            });
             setSyncResult(prev => ({ ...prev, success: stats.success, skipped: stats.skipped }));
         } catch (e: any) {
-            setSyncResult(prev => ({ ...prev, errors: [e.message || "Unknown error"] }));
+            setSyncResult(prev => ({ ...prev, errors: [e instanceof BackupInProgressError ? tCommon('backup_in_progress') : e.message || 'Unknown error'] }));
         } finally {
             setSyncStatus('done');
         }

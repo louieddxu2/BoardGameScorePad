@@ -1,9 +1,26 @@
 import { db } from '../db';
-import type { GameSession, HistoryRecord } from '../types';
+import type { GameSession, GameTemplate, HistoryRecord } from '../types';
 import { googleDriveService } from '../services/googleDrive';
+import { BackupInProgressError, withBackupAccess } from '../services/backupAccess';
+
+async function runBackgroundBackup(task: () => Promise<boolean>): Promise<boolean> {
+    try {
+        return await withBackupAccess('drive', task);
+    } catch (error) {
+        if (error instanceof BackupInProgressError) return false;
+        throw error;
+    }
+}
+
+export const backupTemplateToCloud = (template: GameTemplate): Promise<boolean> => runBackgroundBackup(async () => {
+    const updated = await googleDriveService.backupTemplate(template);
+    if (!updated) return false;
+    await db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
+    return true;
+});
 
 /** Background backup only; a cancelled record must not receive cloud IDs. */
-export const backupActiveSessionToCloud = async (session: GameSession, name: string): Promise<boolean> => {
+export const backupActiveSessionToCloud = (session: GameSession, name: string): Promise<boolean> => runBackgroundBackup(async () => {
     let folderId = session.cloudFolderId;
     if (!folderId) {
         if ((await db.sessions.get(session.id))?.status !== 'active') return false;
@@ -16,13 +33,13 @@ export const backupActiveSessionToCloud = async (session: GameSession, name: str
         await db.sessions.update(session.id, { photoCloudIds: backup.updatedSession.photoCloudIds });
     }
     return true;
-};
+});
 
 /** Retains the existing Active-to-History folder move for automatic backups. */
-export const backupHistoryRecordToCloud = async (
+export const backupHistoryRecordToCloud = (
     record: HistoryRecord,
     options: { moveFromActive?: boolean } = {},
-): Promise<boolean> => {
+): Promise<boolean> => runBackgroundBackup(async () => {
     let folderId = record.cloudFolderId;
     const isNewFolder = !folderId;
     if (!folderId) {
@@ -39,4 +56,4 @@ export const backupHistoryRecordToCloud = async (
         await googleDriveService.moveSessionToHistory(folderId);
     }
     return true;
-};
+});

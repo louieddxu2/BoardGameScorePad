@@ -1,4 +1,5 @@
 import { db } from '../../db';
+import { withBackupAccess } from '../backupAccess';
 import { DATA_TABLES, PREFERENCE_KEYS, BackupError, type Preferences, type Row, type Progress } from './format';
 import { validateOfflineBackup, type ValidatedBackup } from './validate';
 import type { OfflineBackupIssue } from '../../types';
@@ -22,10 +23,12 @@ function detachCloud(row: Row): Row {
 }
 
 /** Full replacement, deliberately separate from the cloud restore/merge operation. */
-export async function importOfflineBackup(blob: Blob, onProgress: Progress = () => {}): Promise<OfflineBackupResult> {
-  const backup = await validateOfflineBackup(blob, onProgress);
-  onProgress('');
-  return applyOfflineBackup(backup);
+export function importOfflineBackup(blob: Blob, onProgress: Progress = () => {}): Promise<OfflineBackupResult> {
+  return withBackupAccess('zip', async () => {
+    const backup = await validateOfflineBackup(blob, onProgress);
+    onProgress('');
+    return applyOfflineBackup(backup);
+  });
 }
 
 /** Writes a backup that was already validated, e.g. after the user reviewed its summary. */

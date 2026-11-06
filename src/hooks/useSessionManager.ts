@@ -8,8 +8,7 @@ import { loadSessionActivation } from './sessionActivation';
 import { applyTemplateToSession } from '../utils/sessionTemplateUpdate';
 import { calculateScoreSession } from '../utils/sessionScoring';
 import { imageService } from '../services/imageService';
-import { googleDriveService } from '../services/googleDrive';
-import { backupActiveSessionToCloud, backupHistoryRecordToCloud } from './sessionCloudBackup';
+import { backupActiveSessionToCloud, backupHistoryRecordToCloud, backupTemplateToCloud } from './sessionCloudBackup';
 import { cleanupService } from '../services/cleanupService';
 import { relationshipService } from '../services/relationshipService';
 import { applyRecommendationsToPlayers } from '../features/recommendation/SessionPlayerInitializer'; // [Refactor] New Import
@@ -404,11 +403,7 @@ export const useSessionManager = ({
         const isPureBuiltin = !!(await db.builtins.get(activeTemplate!.id)) && !activeTemplate!.sourceTemplateId;
 
         if (activeTemplate && !isPureBuiltin && isCloudEnabled() && isImageDirtyRef.current && !isDisposableTemplate(activeTemplate, pinnedIds)) {
-            googleDriveService.backupTemplate(activeTemplate).then((updated) => {
-                if (updated) {
-                    db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
-                }
-            }).catch(console.error);
+            backupTemplateToCloud(activeTemplate).catch(console.error);
         }
 
         setCurrentSession(null);
@@ -516,11 +511,7 @@ export const useSessionManager = ({
         setActiveTemplate(finalTemplate);
 
         if (isCloudEnabled() && !isDisposableTemplate(finalTemplate, pinnedIds)) {
-            googleDriveService.backupTemplate(finalTemplate).then((updated) => {
-                if (updated) {
-                    db.templates.update(updated.id, { lastSyncedAt: updated.updatedAt || Date.now() });
-                }
-            }).catch(console.error);
+            backupTemplateToCloud(finalTemplate).catch(console.error);
         }
 
         return { template: finalTemplate, session: sessionWithSync };

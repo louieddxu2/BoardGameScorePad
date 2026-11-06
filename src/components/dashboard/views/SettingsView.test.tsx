@@ -5,6 +5,7 @@ import { SettingsView } from './SettingsView';
 import { LanguageContext, LanguageProvider } from '../../../i18n';
 import { useMobileZoom } from '../../../hooks/useMobileZoom';
 import { BackupError } from '../../../services/offlineBackup/errors';
+import { BackupInProgressError, withBackupAccess } from '../../../services/backupAccess';
 import type { OfflineBackupResult } from '../../../services/offlineBackup/import';
 
 const mocks = vi.hoisted(() => ({ confirm: vi.fn(), exportData: vi.fn(), importData: vi.fn(), readData: vi.fn(), deviceRecords: vi.fn(),
@@ -29,9 +30,9 @@ beforeEach(() => {
 });
 afterEach(() => { vi.resetAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-const renderSettings = (busy = vi.fn(), language: 'en' | 'zh-TW' = 'en') => render(<LanguageContext.Provider value={{ language, setLanguage: vi.fn() }}>
+const renderSettings = (busy = vi.fn(), language: 'en' | 'zh-TW' = 'en', isCloudConnected = false) => render(<LanguageContext.Provider value={{ language, setLanguage: vi.fn() }}>
   <SettingsView themeMode="sage" onSelectTheme={vi.fn()} onBusyChange={busy}
-    zoomLevel={1} onZoomChange={vi.fn()} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={vi.fn()}
+    zoomLevel={1} onZoomChange={vi.fn()} isCloudConnected={isCloudConnected} isCloudSyncing={false} onOpenCloud={mocks.openCloud}
     onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />
 </LanguageContext.Provider>);
 
@@ -100,7 +101,7 @@ it('uses the existing zoom and language owners and opens cloud management only w
   }
 });
 
-it('waits for import to commit and the completion acknowledgement before reloading', async () => {
+it.each([true, false])('reloads after the completion notice closes with result %s', async result => {
   let finishImport!: (result: OfflineBackupResult) => void;
   let acknowledge!: (value: boolean) => void;
   mocks.confirm.mockResolvedValueOnce(true).mockImplementationOnce(() => new Promise<boolean>(resolve => { acknowledge = resolve; }));
@@ -110,7 +111,7 @@ it('waits for import to commit and the completion acknowledgement before reloadi
     return property === 'location' ? { reload } : Reflect.get(target, property, target);
   } }));
   const busy = vi.fn();
-  renderSettings(busy);
+  renderSettings(busy, 'en', true);
   fireEvent.change(screen.getByLabelText('Restore from backup'), {
     target: { files: [new File(['zip'], 'backup.zip', { type: 'application/zip' })] },
   });
@@ -120,34 +121,58 @@ it('waits for import to commit and the completion acknowledgement before reloadi
   expect(reload).not.toHaveBeenCalled();
   await act(async () => { finishImport({ issues: [] }); });
   expect(mocks.confirm).toHaveBeenLastCalledWith({
-    title: 'Import complete', message: 'All data imported. Press Confirm to reload the page and apply settings.',
+    title: 'Import complete', message: 'All data imported. Closing this message reloads the page and applies settings.',
     confirmText: 'Confirm', hideCancel: true,
   });
   expect(screen.queryByRole('dialog', { name: 'Validating and importing' })).not.toBeInTheDocument();
   expect(busy).toHaveBeenLastCalledWith(true);
   expect(reload).not.toHaveBeenCalled();
   expect(await screen.findByText(/^All data imported/)).toHaveAttribute('role', 'status');
-  await act(async () => { acknowledge(true); });
+  const drive = vi.fn(async () => {});
+  await expect(withBackupAccess('drive', drive)).rejects.toBeInstanceOf(BackupInProgressError);
+  await act(async () => { acknowledge(result); });
   expect(reload).toHaveBeenCalledTimes(1);
   expect(busy).toHaveBeenLastCalledWith(false);
+  expect(mocks.openCloud).not.toHaveBeenCalled();
+  expect(drive).not.toHaveBeenCalled();
 });
 
 it('shows damage details for the current import and clears them when settings is reopened', async () => {
-  const result: OfflineBackupResult = { issues: [{ path: '_History/game/photo.jpg', reason: 'missing' }] };
+  const result: OfflineBackupResult = {
+    issues: [1, 2, 3, 4].map(index => ({ path: `_History/game/photo-${index}.jpg`, reason: 'missing' })),
+  };
   mocks.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
   mocks.importData.mockResolvedValueOnce(result);
+  vi.stubGlobal('window', new Proxy(window, { get(target, property) {
+    return property === 'location' ? { reload: vi.fn() } : Reflect.get(target, property, target);
+  } }));
   const view = renderSettings();
   expect(screen.queryByText(/This import: missing or damaged items/)).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Restore from backup'), { target: { files: [new File(['zip'], 'backup.zip')] } });
   await waitFor(() => expect(mocks.confirm).toHaveBeenCalledTimes(2));
   expect(mocks.confirm).toHaveBeenLastCalledWith(expect.objectContaining({
-    title: 'Usable data imported', message: expect.stringContaining('_History/game/photo.jpg'),
+    title: 'Usable data imported', message: expect.stringContaining('_History/game/photo-4.jpg — Missing'),
   }));
   expect(screen.getByText(/^Usable data imported\./)).toHaveAttribute('role', 'status');
-  expect(screen.getByText('This import: missing or damaged items (1)')).toBeInTheDocument();
+  expect(screen.getByText('This import: missing or damaged items (4)')).toBeInTheDocument();
   view.unmount();
   renderSettings();
   expect(screen.queryByText(/This import: missing or damaged items/)).not.toBeInTheDocument();
+});
+
+it('rejects ZIP actions while Drive is busy, even without the cloud activity indicator', async () => {
+  await withBackupAccess('drive', async () => {
+    renderSettings(undefined, 'en', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Export backup' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('A backup or restore is in progress.');
+    fireEvent.change(screen.getByLabelText('Restore from backup'), {
+      target: { files: [new File(['zip'], 'backup.zip')] },
+    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('A backup or restore is in progress.');
+  });
+  expect(mocks.exportData).not.toHaveBeenCalled();
+  expect(mocks.readData).not.toHaveBeenCalled();
+  expect(mocks.confirm).not.toHaveBeenCalled();
 });
 
 it('previews the chosen backup before replacing data and rejects invalid files before asking', async () => {
