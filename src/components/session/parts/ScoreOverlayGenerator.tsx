@@ -7,7 +7,7 @@ import { useCommonTranslation } from '../../../i18n/common';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
-import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
+import { getPhotoNamePlateBackground, PHOTO_DARK_SURFACE } from '../../../utils/photoNamePlate';
 import { createColorReader } from '../../../utils/color';
 import { getPhotoPlayerItems } from './photoPlayerItems';
 
@@ -31,7 +31,6 @@ const PADDING_PX = 32;
 const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
-const LABEL_BACKGROUND = '#0f172a';
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime ?? data.date;
@@ -252,8 +251,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                                     {item.labels.map(label => (
                                                         <span key={label.id} data-score-photo-label={label.id} data-score-photo-label-color={label.color} style={{
                                                             maxWidth: '100%', minWidth: 0, padding: '2px 7px', borderRadius: 6,
-                                                            backgroundColor: LABEL_BACKGROUND, overflowWrap: 'anywhere',
-                                                            ...getPhotoPlayerNameStyles(label.color, LABEL_BACKGROUND, read),
+                                                            backgroundColor: PHOTO_DARK_SURFACE, overflowWrap: 'anywhere',
+                                                            ...getPhotoPlayerNameStyles(label.color, PHOTO_DARK_SURFACE, read),
                                                         }}>{label.text}</span>
                                                     ))}
                                                 </div>

@@ -8,6 +8,8 @@ const NAME_SURFACES = {
     light: { base: { r: 251, g: 250, b: 247, a: 1 }, wash: 0.045 },
     dark: { base: { r: 15, g: 23, b: 42, a: 1 }, wash: 0.12549 },
 } satisfies Record<string, { base: RgbaColor; wash: number }>;
+// Shared fixed dark backing for photo export elements that need consistent contrast.
+export const PHOTO_DARK_SURFACE = formatColor(NAME_SURFACES.dark.base);
 type NamePlateAppearance = keyof typeof NAME_SURFACES;
 
 /** Reuse the existing clearly-dark rule; the photo only selects a fixed style. */

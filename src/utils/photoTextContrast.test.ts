@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getPhotoResultPalette } from './photoResultPalette';
 import { parseColor } from './color';
-import { getPhotoNamePlateBackground } from './photoNamePlate';
+import { getPhotoNamePlateBackground, PHOTO_DARK_SURFACE } from './photoNamePlate';
 
 // Independently check the resulting sRGB colors, not just that a shadow property exists.
 const luminance = (color: string) => {
@@ -16,6 +16,27 @@ const luminance = (color: string) => {
 const contrast = (first: number, second: number) => (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 
 describe('photo name and surface contrast', () => {
+    it('keeps the fixed label backing and chosen inks independent of the app theme', () => {
+        const originalTheme = document.documentElement.getAttribute('data-theme');
+        try {
+            expect(parseColor(PHOTO_DARK_SURFACE)).toEqual({ r: 15, g: 23, b: 42, a: 1 });
+            for (const theme of ['dark', 'light', 'sage']) {
+                document.documentElement.setAttribute('data-theme', theme);
+                for (const ink of ['#111111', '#ffffff', '#facc15', '#fed7aa', '#ef4444', '#3b82f6', 'rgba(12,34,56,0.5)']) {
+                    const style = getPhotoPlayerNameStyles(ink, PHOTO_DARK_SURFACE);
+                    expect(style).toMatchObject({ color: ink, fontWeight: 700, WebkitTextStroke: 0, filter: 'none' });
+                    expect(style.textShadow).toBeTruthy();
+                    if (ink === '#111111' || ink === 'rgba(12,34,56,0.5)') {
+                        expect(style.textShadow).toContain('rgba(255,255,255,0.7)');
+                    }
+                }
+            }
+        } finally {
+            if (originalTheme === null) document.documentElement.removeAttribute('data-theme');
+            else document.documentElement.setAttribute('data-theme', originalTheme);
+        }
+    });
+
     it('scales the white-only scoreboard edge without changing selected ink or adding weight', () => {
         const original = '#ffffff';
         const style = getPhotoPlayerNameStyles(original, '#eee6d8');
