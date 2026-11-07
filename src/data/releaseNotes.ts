@@ -21,17 +21,17 @@ export interface ReleaseNote {
 }
 
 export const RELEASE_NOTES: ReleaseNote[] = [
-  // Pending: changes after main at 59dd1ab. Set the date before merging into main.
   {
+    date: '2026-11-07',
     items: [
       { kind: 'new', zh: '新增設定頁，集中介面設定、備份與匯入。',
         en: 'Settings brings appearance, language, backup and imports together.' },
-      { kind: 'new', zh: 'ZIP 備份含照片；還原會覆蓋本機資料。',
-        en: 'ZIP backups include photos; restoring replaces local data.' },
+      { kind: 'new', zh: 'ZIP 備份含照片；還原覆蓋本機資料，略過缺損項目。',
+        en: 'ZIP backups include photos. Restoring replaces local data and skips missing or damaged items.' },
       { kind: 'new', zh: '還原前預覽備份，本機紀錄較新時提醒。',
         en: 'Preview backups before restoring, with a warning about newer local records.' },
       { kind: 'new', zh: '設定頁新增更新日誌。', en: 'Update history is available in Settings.' },
-      { kind: 'new', zh: '歷史紀錄新增年月日與範圍篩選，套用至清單、統計與照片回顧。',
+      { kind: 'new', zh: '歷史清單、統計與照片回顧可依年月日或範圍篩選。',
         en: 'Filter history, statistics and photo recaps by day, month, year or range.' },
       { kind: 'new', zh: '照片回顧標示日期範圍與精選數量，單款可選多場照片。',
         en: 'Recaps show dates and selection counts; one-game views can use multiple plays.' },
@@ -39,6 +39,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Search keeps clear leading matches first, then prioritizes recently played games.' },
       { kind: 'improved', zh: '下一步改為向下，移除方向設定。',
         en: 'Next advances downward; the direction setting is removed.' },
+      { kind: 'improved', zh: '手機版系統資料檢視器加寬關聯名稱欄。',
+        en: 'Widened the relation name column in the mobile System Data Inspector.' },
       { kind: 'fixed', zh: '儲存遊戲紀錄後，才記住結束時的人數。',
         en: 'Remember the final player count only after saving to history.' },
       { kind: 'fixed', zh: '搜尋結果缺少人數資料時，不再預設為 4 人。',
@@ -47,6 +49,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       { kind: 'fixed', zh: '長確認訊息可捲動，按鈕保持可見。',
         en: 'Long confirmations scroll while buttons stay visible.' },
       { kind: 'fixed', zh: '首頁按鈕縮放時間距固定。', en: 'Home button spacing stays fixed while zoomed.' },
+      { kind: 'fixed', zh: '離開遊戲時取消未完成的雲端背景圖下載。',
+        en: 'Leaving a game cancels unfinished cloud background downloads.' },
     ],
   },
   // main: 235a6aa..59dd1ab (fast-forward on 2026-10-28).
