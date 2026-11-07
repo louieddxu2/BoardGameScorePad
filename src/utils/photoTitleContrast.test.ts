@@ -82,6 +82,22 @@ describe('photo title contrast', () => {
         expect(context.getImageData).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps selected label ink and its dark backing when the photo palette changes', async () => {
+        const { root, context } = setupPhoto();
+        const label = document.createElement('span');
+        label.dataset.scorePhotoLabel = 'wizard';
+        label.dataset.scorePhotoLabelColor = '#ffffff';
+        label.style.color = '#ffffff';
+        label.style.backgroundColor = '#0f172a';
+        root.append(label);
+        for (const brightness of [240, 20, 240]) {
+            context.getImageData.mockReturnValue({ data: pixels(brightness) });
+            await prepareScorePhotoTitle(root, new AbortController().signal);
+            expect(label.style.color).toBe('rgb(255, 255, 255)');
+            expect(label.style.backgroundColor).toBe('rgb(15, 23, 42)');
+        }
+    });
+
     it('refreshes each name against the sampled backing when photos change, without additional sampling', async () => {
         const { root, context } = setupPhoto();
         const name = document.createElement('span');

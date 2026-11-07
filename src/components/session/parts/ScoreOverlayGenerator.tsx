@@ -31,6 +31,7 @@ const PADDING_PX = 32;
 const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
+const LABEL_BACKGROUND = '#0f172a';
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
     const displayTime = data.endTime ?? data.date;
@@ -243,10 +244,20 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                     {items.map(item => (
                                         <div key={item.id} data-score-photo-item={item.id} style={{
                                             fontSize: 21, lineHeight: 1.35, overflowWrap: 'anywhere',
-                                            whiteSpace: 'pre-wrap', marginTop: 4, color: RESULT_TEXT,
+                                            whiteSpace: 'pre-wrap', marginTop: 8, color: RESULT_TEXT,
                                         }}>
-                                            <span style={{ color: `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})` }}>{item.name}：</span>
-                                            <span>{item.value}</span>
+                                            <span style={{ color: `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})` }}>{item.name}{item.labels ? '' : '：'}</span>
+                                            {item.labels ? (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 4, marginTop: 3 }}>
+                                                    {item.labels.map(label => (
+                                                        <span key={label.id} data-score-photo-label={label.id} data-score-photo-label-color={label.color} style={{
+                                                            maxWidth: '100%', minWidth: 0, padding: '2px 7px', borderRadius: 6,
+                                                            backgroundColor: LABEL_BACKGROUND, overflowWrap: 'anywhere',
+                                                            ...getPhotoPlayerNameStyles(label.color, LABEL_BACKGROUND, read),
+                                                        }}>{label.text}</span>
+                                                    ))}
+                                                </div>
+                                            ) : <span>{item.value}</span>}
                                         </div>
                                     ))}
                                 </div>

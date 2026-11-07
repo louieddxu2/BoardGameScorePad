@@ -51,7 +51,7 @@ describe('shared photo player items', () => {
     const { container } = renderOverlay({ ...baseData(players, ['p1'], 'HIGHEST_WINS'), columns });
     const cards = container.querySelectorAll('[data-score-photo-player]');
     expect(Array.from(cards[0].querySelectorAll('[data-score-photo-item]')).map(item => item.textContent))
-      .toEqual(['種族：精靈', '角色：法師 · 斥候', '等級：0']);
+      .toEqual(['種族精靈', '角色法師斥候', '等級：0']);
     expect(cards[1].querySelector('[data-score-photo-items]')).toBeNull();
   });
 
@@ -70,6 +70,63 @@ describe('shared photo player items', () => {
     const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: [...columns, ...extra] });
     expect(container.querySelectorAll('[data-score-photo-item]')).toHaveLength(15);
     expect(container.querySelector('[data-score-photo-item="auto-11"]')).toHaveTextContent('計算11：10');
+  });
+
+  it('preserves each selected label color, then falls back to column and grid defaults', () => {
+    const longLabel = 'A very long character label that needs to wrap without being cut off';
+    const selected: ScoreColumn = {
+      id: 'labels', name: '角色', inputType: 'clicker', formula: 'a1', isScoring: false,
+      showInPhoto: true, isMultiSelect: true, color: '#3b82f6', quickActions: [
+        { id: 'red', label: '法師', value: 0, color: '#ef4444' },
+        { id: 'white', label: longLabel, value: 0, color: '#ffffff' },
+        { id: 'alpha', label: '斥候', value: 0, color: 'rgba(12, 34, 56, 0.5)' },
+        { id: 'fallback', label: '遊俠', value: 0 },
+      ],
+    };
+    const noColor: ScoreColumn = { ...selected, id: 'default', color: undefined, isMultiSelect: false,
+      quickActions: [{ id: 'default-option', label: '精靈', value: 0 }] };
+    const player = { ...createPlayer('p1', 'Alice', 12), scores: {
+      labels: { parts: [0, 0, 0, 0], multiOptionIds: ['red', 'white', 'alpha', 'fallback'] },
+      default: { parts: [0], optionId: 'default-option' },
+    } };
+    const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: [selected, noColor] });
+    const labels = Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-label]'));
+    expect(labels.map(label => label.dataset.scorePhotoLabelColor)).toEqual([
+      '#ef4444', '#ffffff', 'rgba(12, 34, 56, 0.5)', '#3b82f6', 'rgb(var(--c-emerald-400))',
+    ]);
+    expect(labels[1]).toHaveTextContent(longLabel);
+    expect(labels[1]).toHaveStyle({ maxWidth: '100%', overflowWrap: 'anywhere', backgroundColor: '#0f172a' });
+    expect(labels[2].style.color).toBe('rgba(12, 34, 56, 0.5)');
+    expect(labels[2].style.textShadow).toContain('rgba(255,255,255,0.7)');
+  });
+
+  it.each(['standard', 'value_only', 'label_only'] as const)(
+    'shares selected labels in %s display mode and omits empty selections', renderMode => {
+      const column: ScoreColumn = { ...columns[1], renderMode };
+      const players: Player[] = [
+        { ...createPlayer('p1', 'Alice', 12), scores: { roles: scores.roles } },
+        { ...createPlayer('p2', 'Bob', 5), scores: {} },
+      ];
+      const { container } = renderOverlay({ ...baseData(players, ['p1'], 'HIGHEST_WINS'), columns: [column] });
+      const cards = container.querySelectorAll('[data-score-photo-player]');
+      expect(Array.from(cards[0].querySelectorAll('[data-score-photo-label]')).map(label => label.textContent))
+        .toEqual(['法師', '斥候']);
+      expect(cards[1].querySelector('[data-score-photo-items]')).toBeNull();
+    },
+  );
+
+  it('keeps every selected label when a player chooses many, including multiline labels', () => {
+    const actions = Array.from({ length: 20 }, (_, i) => ({ id: `tag-${i}`, label: i === 19 ? 'Long\nlabel' : `Tag ${i}`, value: 0 }));
+    const column: ScoreColumn = { ...columns[1], quickActions: actions };
+    const player: Player = { ...createPlayer('p1', 'Alice', 12), scores: {
+      roles: { parts: actions.map(() => 0), multiOptionIds: actions.map(action => action.id) },
+    } };
+    const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: [column] });
+    const labels = container.querySelectorAll<HTMLElement>('[data-score-photo-label]');
+    expect(labels).toHaveLength(20);
+    expect(labels[19].textContent).toBe('Long\nlabel');
+    expect(labels[0].parentElement).toHaveStyle({ flexWrap: 'wrap' });
+    expect(labels[0].closest<HTMLElement>('[data-score-photo-item]')).toHaveStyle({ whiteSpace: 'pre-wrap' });
   });
 });
 

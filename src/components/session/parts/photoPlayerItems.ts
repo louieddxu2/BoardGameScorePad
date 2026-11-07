@@ -5,18 +5,24 @@ import { formatDisplayNumber } from '../../../utils/scoreDisplay';
 export interface PhotoPlayerItem {
   id: string;
   name: string;
-  value: string;
+  value?: string;
+  labels?: Array<{ id: string; text: string; color: string }>;
 }
+
+// Match the live score grid's option / column / default color precedence.
+export const DEFAULT_PHOTO_LABEL_COLOR = 'rgb(var(--c-emerald-400))';
 
 /** Resolve values against the same column definitions and scoring context as the grid. */
 export function getPhotoPlayerItems(player: Player, columns: ScoreColumn[], players: Player[]): PhotoPlayerItem[] {
   const context = { allColumns: columns, playerScores: player.scores, allPlayers: players };
-  return columns.flatMap(column => {
+  return columns.flatMap<PhotoPlayerItem>(column => {
     if (!column.showInPhoto) return [];
     const score = player.scores[column.id];
     const options = resolveSelectedOptions(column, score);
     if (options.length) {
-      return [{ id: column.id, name: column.name, value: options.map(option => option.label).join(' · ') }];
+      return [{ id: column.id, name: column.name, labels: options.map(option => ({
+        id: option.id, text: option.label, color: option.color || column.color || DEFAULT_PHOTO_LABEL_COLOR,
+      })) }];
     }
     const parts = score?.parts ?? [];
     if (!column.isAuto && parts.length === 0) return [];
