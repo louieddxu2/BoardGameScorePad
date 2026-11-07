@@ -294,9 +294,10 @@ const HistoryReviewView: React.FC<HistoryReviewViewProps> = ({ record: initialRe
         date: record.startTime,
         endTime: record.endTime, // Pass endTime for accurate history timestamp
         players: record.players,
+        columns: record.snapshotTemplate?.columns,
         winners: winners,
         scoringRule: getRecordScoringRule(record),
-    }), [record.gameName, record.startTime, record.endTime, record.players, winners, record.scoringRule, record.snapshotTemplate?.defaultScoringRule]);
+    }), [record.gameName, record.startTime, record.endTime, record.players, winners, record.scoringRule, record.snapshotTemplate]);
 
     const handleScreenshotRequest = (mode: 'full' | 'simple') => {
         setShowShareMenu(false);

@@ -80,6 +80,7 @@ export interface ScoreColumn {
   // Display Control
   displayMode?: 'row' | 'overlay' | 'hidden';
   isShared?: boolean; // [New] Whether this value is shared by all players
+  showInPhoto?: boolean; // Include this item's value on shared photo player cards
 
 
   // Visual Mapping

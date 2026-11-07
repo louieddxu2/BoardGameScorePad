@@ -300,9 +300,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     gameName: session.name || template.name, // [Identity Upgrade] Use Session Name
     date: session.startTime,
     players: session.players,
+    columns: template.columns,
     winners: winners,
     scoringRule: session.scoringRule,
-  }), [session.name, template.name, session.startTime, session.players, winners, session.scoringRule]);
+  }), [session.name, template.name, session.startTime, session.players, template.columns, winners, session.scoringRule]);
 
   const handleScreenshotRequest = useCallback((mode: 'full' | 'simple') => {
     const measuredLayout = measureSessionScreenshotLayout(template.columns);

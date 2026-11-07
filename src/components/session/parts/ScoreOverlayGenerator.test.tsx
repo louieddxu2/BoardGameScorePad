@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import { LanguageContext } from '../../../i18n';
-import { Player } from '../../../types';
+import { Player, ScoreColumn } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
 import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
@@ -30,6 +30,47 @@ const baseData = (players: Player[], winners: string[], scoringRule: OverlayData
   players,
   winners,
   scoringRule,
+});
+
+describe('shared photo player items', () => {
+  const columns: ScoreColumn[] = [
+    { id: 'race', name: '種族', inputType: 'clicker', formula: 'a1', isScoring: false, showInPhoto: true,
+      quickActions: [{ id: 'elf', label: '精靈', value: 0 }, { id: 'dwarf', label: '矮人', value: 0 }] },
+    { id: 'roles', name: '角色', inputType: 'clicker', formula: 'a1', isScoring: false, showInPhoto: true,
+      isMultiSelect: true, quickActions: [{ id: 'mage', label: '法師', value: 0 }, { id: 'scout', label: '斥候', value: 0 }] },
+    { id: 'level', name: '等級', inputType: 'keypad', formula: 'a1', isScoring: false, showInPhoto: true },
+    { id: 'empty', name: '空白', inputType: 'keypad', formula: 'a1', isScoring: false, showInPhoto: true },
+    { id: 'hidden', name: '不分享', inputType: 'keypad', formula: 'a1', isScoring: true },
+  ];
+  const scores = { race: { parts: [0], optionId: 'elf' }, roles: { parts: [0, 0], multiOptionIds: ['mage', 'scout'] },
+    level: { parts: [0] }, hidden: { parts: [5] } };
+
+  it('shows configured values in order, including zero, and masks anonymous players', () => {
+    const players = [{ ...createPlayer('p1', 'Alice', 10), scores },
+      { ...createPlayer('p2', 'Bob', 5), scores, isAnonymous: true }];
+    const { container } = renderOverlay({ ...baseData(players, ['p1'], 'HIGHEST_WINS'), columns });
+    const cards = container.querySelectorAll('[data-score-photo-player]');
+    expect(Array.from(cards[0].querySelectorAll('[data-score-photo-item]')).map(item => item.textContent))
+      .toEqual(['種族：精靈', '角色：法師 · 斥候', '等級：0']);
+    expect(cards[1].querySelector('[data-score-photo-items]')).toBeNull();
+  });
+
+  it('keeps cooperative results shared when the only input is a non-scoring photo item', () => {
+    const player = { ...createPlayer('p1', 'Alice', 0), scores: { race: scores.race } };
+    const { container, getByText } = renderOverlay({ ...baseData([player], ['p1'], 'COOP'), columns });
+    expect(container.querySelector('[data-score-photo-shared-result]')).toBeInTheDocument();
+    expect(getByText('精靈')).toBeInTheDocument();
+  });
+
+  it('calculates automatic items and keeps all configured rows in the output', () => {
+    const extra: ScoreColumn[] = Array.from({ length: 12 }, (_, i) => ({ id: `auto-${i}`, name: `計算${i}`,
+      inputType: 'auto', isAuto: true, formula: 'x1*2', variableMap: { x1: { id: 'hidden', name: '不分享' } },
+      isScoring: true, showInPhoto: true }));
+    const player = { ...createPlayer('p1', 'Alice', 10), scores };
+    const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: [...columns, ...extra] });
+    expect(container.querySelectorAll('[data-score-photo-item]')).toHaveLength(15);
+    expect(container.querySelector('[data-score-photo-item="auto-11"]')).toHaveTextContent('計算11：10');
+  });
 });
 
 describe('ScoreOverlayGenerator zero-score outcomes', () => {

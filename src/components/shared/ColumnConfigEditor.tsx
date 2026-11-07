@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ScoreColumn, InputMethod, MappingRule } from '../../types';
-import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff, Users } from 'lucide-react';
+import { X, Ruler, Calculator, ListPlus, Settings, Save, Trash2, Crop, LayoutList, Layers, Sigma, Sparkles, Settings2, Info, EyeOff, Users, Image } from 'lucide-react';
 import { COLORS } from '../../colors';
 import { isColorDark } from '../../utils/ui';
 import { useKeyboardStatus } from '../../hooks/useVisualViewportOffset';
@@ -467,6 +467,19 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
                                     >
                                         <Users size={20} />
                                         <span className="text-[10px]">{t('col_shared_var' as any)}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-pressed={!!editedCol.showInPhoto}
+                                        onClick={() => {
+                                            const enabled = !editedCol.showInPhoto;
+                                            setEditedCol(prev => ({ ...prev, showInPhoto: enabled }));
+                                            setHelpText(enabled ? 'col_help_photo_on' : 'col_help_photo_off');
+                                        }}
+                                        className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-colors ${editedCol.showInPhoto ? 'text-brand-primary border-brand-primary/50 bg-brand-primary/20' : 'text-txt-secondary border-surface-border bg-modal-bg hover:text-txt-title'}`}
+                                    >
+                                        <Image size={20} />
+                                        <span className="text-[10px]">{t('col_photo')}</span>
                                     </button>
                                 </div>
                                 <div className="bg-modal-bg/50 rounded py-1 px-2 text-center text-[10px] text-txt-secondary border border-surface-border/50 flex items-center justify-center gap-1">

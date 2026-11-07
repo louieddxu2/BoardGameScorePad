@@ -104,6 +104,7 @@ export const migrateColumn = (oldCol: any): ScoreColumn => {
     isAuto: oldCol.isAuto,
     variableMap: oldCol.variableMap,
     isShared: oldCol.isShared,
+    showInPhoto: oldCol.showInPhoto,
     isMultiSelect: oldCol.isMultiSelect
   };
   return newCol;

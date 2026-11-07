@@ -1,5 +1,5 @@
 import React, { forwardRef, useMemo } from 'react';
-import { Player, ScoringRule } from '../../../types';
+import { Player, ScoreColumn, ScoringRule } from '../../../types';
 import { Crown } from 'lucide-react';
 import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
@@ -9,12 +9,14 @@ import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
 import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
 import { createColorReader } from '../../../utils/color';
+import { getPhotoPlayerItems } from './photoPlayerItems';
 
 export interface OverlayData {
     gameName: string;
     date: number;
     endTime?: number;
     players: (Player & { isAnonymous?: boolean })[];
+    columns?: ScoreColumn[];
     winners: string[];
     scoringRule?: ScoringRule;
 }
@@ -35,6 +37,10 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const { t, language } = useSessionTranslation();
     const { t: tCommon } = useCommonTranslation();
     const stickerIndices = useMemo(() => getPlayerStickerIndices(data.players.map(player => player.id)), [data.players]);
+    const photoItems = useMemo(() => new Map(data.players.map(player => [player.id,
+        player.isAnonymous ? [] : getPhotoPlayerItems(player, data.columns ?? [], data.players),
+    ])), [data.players, data.columns]);
+    const hasPhotoItems = Array.from(photoItems.values()).some(items => items.length > 0);
     const scoringRule = data.scoringRule || 'HIGHEST_WINS';
     const isCoop = scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE';
     // Legacy *_NO_SCORE identifiers mean no win/loss, not disabled score input.
@@ -47,10 +53,11 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     // totals/bonuses also preserve imported records without per-cell inputs.
     const shareTeamResult = useMemo(() => isCoop && data.players.length > 0
         && !data.players.some(player => player.totalScore !== 0 || (player.bonusScore ?? 0) !== 0
-            || Object.values(player.scores).some(value => value != null && (
+            || Object.entries(player.scores).some(([id, value]) =>
+                !data.columns?.some(column => column.id === id && column.showInPhoto && !column.isScoring) && value != null && (
                 !Array.isArray(value.parts) || value.parts.length > 0
                 || !!value.optionId || (value.multiOptionIds?.length ?? 0) > 0
-            ))), [data.players, isCoop]);
+            ))), [data.columns, data.players, isCoop]);
     const isScoredOutcomeMode = scoringRule === 'HIGHEST_WINS'
         || scoringRule === 'LOWEST_WINS';
     const showOutcomeForZeroScores = isScoredOutcomeMode
@@ -148,6 +155,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     </div>
                 )}
                 {data.players.map(p => {
+                    const items = photoItems.get(p.id) ?? [];
                     const isWinner = !hasNoOutcome && data.winners.includes(p.id);
                     const displayScore = showOutcomeForZeroScores
                         ? (isWinner ? t('screenshot_outcome_win') : t('screenshot_outcome_loss'))
@@ -162,7 +170,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         <div
                             key={p.id}
                             data-score-photo-player={p.id}
-                            className={`flex flex-col items-center justify-between${shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border overflow-hidden'}`}
+                            className={`flex flex-col items-center${hasPhotoItems ? '' : ' justify-between'}${shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border overflow-hidden'}`}
                             style={{
                                 width: playerWidth, minWidth: 0, borderRadius: 12,
                                 padding: shareTeamResult ? '8px 12px 12px' : 0, gap: shareTeamResult ? 6 : 0,
@@ -227,6 +235,22 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             >
                                 {displayScore}
                             </span>}
+                            {items.length > 0 && (
+                                <div data-score-photo-items="true" style={{
+                                    width: '100%', padding: '8px 12px 12px', textAlign: 'center',
+                                    borderTop: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                                }}>
+                                    {items.map(item => (
+                                        <div key={item.id} data-score-photo-item={item.id} style={{
+                                            fontSize: 21, lineHeight: 1.35, overflowWrap: 'anywhere',
+                                            whiteSpace: 'pre-wrap', marginTop: 4, color: RESULT_TEXT,
+                                        }}>
+                                            <span style={{ color: `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})` }}>{item.name}：</span>
+                                            <span>{item.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     );
                 })}

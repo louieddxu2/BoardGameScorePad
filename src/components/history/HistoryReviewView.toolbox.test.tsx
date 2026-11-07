@@ -51,7 +51,11 @@ vi.mock('../session/modals/ScreenshotModal', async () => {
     },
   };
 });
-vi.mock('../session/modals/PhotoGalleryModal', () => ({ default: () => null }));
+vi.mock('../session/modals/PhotoGalleryModal', () => ({
+  default: ({ overlayData }: { overlayData?: { columns?: Array<{ id: string; showInPhoto?: boolean }> } }) => (
+    <div data-testid="photo-columns">{JSON.stringify(overlayData?.columns ?? [])}</div>
+  ),
+}));
 vi.mock('./modals/HistorySettingsModal', () => ({ default: () => null }));
 vi.mock('./HistoryPhotoStrip', () => ({ default: () => null }));
 
@@ -136,6 +140,14 @@ describe('HistoryReviewView toolbox browser history', () => {
       window.dispatchEvent(new PopStateEvent('popstate', { state: entries[historyIndex] }));
     });
   };
+
+  it('passes the historical template columns to photo sharing', () => {
+    const record = makeRecord(1);
+    record.snapshotTemplate.columns[0].showInPhoto = true;
+    renderReview(record);
+    expect(JSON.parse(screen.getByTestId('photo-columns').textContent || '[]'))
+      .toMatchObject([{ id: 'column-0', showInPhoto: true }]);
+  });
 
   it.each(['button', 'swipe'] as const)('adds one toolbox entry for %s and handles immediate Back without exiting the review', source => {
     const { onExit, scroller } = renderReview();

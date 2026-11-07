@@ -9,6 +9,7 @@ describe('Data Migration Tests', () => {
                 id: 'col-3',
                 name: 'Full Column',
                 isScoring: false,
+                showInPhoto: true,
                 displayMode: 'overlay',
                 color: '#ff0000'
             };
@@ -16,6 +17,7 @@ describe('Data Migration Tests', () => {
             expect(migrated.id).toBe('col-3');
             expect(migrated.name).toBe('Full Column');
             expect(migrated.isScoring).toBe(false);
+            expect(migrated.showInPhoto).toBe(true);
             expect(migrated.displayMode).toBe('overlay');
             expect(migrated.color).toBe('#ff0000');
         });
