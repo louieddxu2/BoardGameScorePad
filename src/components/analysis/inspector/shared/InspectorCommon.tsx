@@ -38,7 +38,7 @@ export const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }
     }, [selectedItem, isBGG]);
 
     return (
-        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto p-4 bg-app-bg">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-y-auto px-2.5 py-4 sm:px-4 bg-app-bg">
             {selectedItem ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
                     <div className="flex items-center gap-3 mb-4 pb-4 border-b border-surface-border">
@@ -141,7 +141,7 @@ export const InspectorDetailPanel = ({ selectedItem, icon: Icon, isBGG = false }
                                     <span>{t('relations_analysis')}</span>
                                     <span className="text-[9px] bg-brand-primary/20 px-1.5 rounded text-brand-primary">{t('filtered')}</span>
                                 </div>
-                                <div className="p-3">
+                                <div className="px-2 py-3 sm:px-3">
                                     <MetaFriendlyView meta={selectedItem.meta} />
                                 </div>
                             </div>

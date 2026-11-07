@@ -9,6 +9,8 @@ import { getLifecycleBucketLabel } from './inspector/shared/lifecycleLabels';
 import { RelationMapper } from '../../services/relationship/RelationMapper';
 import { RankVotingPolicy } from '../../services/relationship/RankVotingPolicy';
 
+const relationColumns = 'grid grid-cols-[minmax(0,1fr)_2rem_2.75rem] gap-x-1 sm:grid-cols-[minmax(0,1fr)_3.5rem_4.5rem] sm:gap-x-2';
+
 const CollapsibleSection = ({ icon, title, count, confidence, children }: { icon: React.ReactNode, title: string, count: number, confidence?: number, children?: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(true);
     const t = useInspectorTranslation();
@@ -131,20 +133,20 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
 
         return (
             <CollapsibleSection icon={icon} title={title} count={validItems.length} confidence={confidence}>
-                <div className="space-y-1 pl-2">
-                    <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_4.5rem] gap-2 px-1 pb-1 text-[9px] font-bold uppercase text-txt-muted border-b border-surface-border">
+                <div className="space-y-1 sm:pl-2">
+                    <div className={`${relationColumns} pb-1 text-[9px] font-bold uppercase text-txt-muted border-b border-surface-border`}>
                         <span>{t('relation_item')}</span>
                         <span className="text-right">{t('relation_count')}</span>
                         <span className="text-right">{t('rank_vote_weight')}</span>
                     </div>
                     {validItems.map((item: any) => (
-                        <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_3.5rem_4.5rem] gap-2 items-center text-xs py-1 border-b border-surface-border/50 last:border-0">
-                            <div className="flex items-center gap-2 truncate pr-2" title={`${t('relation_rank')} ${item.rank + 1}`}>
-                                <span className="w-5 shrink-0 text-[9px] font-mono text-txt-muted">#{item.rank + 1}</span>
-                                {resolveFn(item.id, item)}
+                        <div key={item.id} className={`${relationColumns} items-center text-xs py-1 border-b border-surface-border/50 last:border-0`}>
+                            <div className="flex min-w-0 items-center gap-1 sm:gap-2 sm:pr-2" title={`${t('relation_rank')} ${item.rank + 1}`}>
+                                <span className="shrink-0 text-[9px] font-mono text-txt-muted sm:w-5">#{item.rank + 1}</span>
+                                <div className="min-w-0 truncate">{resolveFn(item.id, item)}</div>
                             </div>
-                            <span className="justify-self-end font-mono text-brand-primary font-bold bg-brand-primary/10 px-1.5 rounded">{item.count}</span>
-                            <span className="justify-self-end font-mono text-status-warning font-bold bg-status-warning/10 px-1.5 rounded">
+                            <span className="justify-self-end font-mono text-brand-primary font-bold bg-brand-primary/10 px-0.5 sm:px-1.5 rounded">{item.count}</span>
+                            <span className="justify-self-end font-mono text-status-warning font-bold bg-status-warning/10 px-0.5 sm:px-1.5 rounded">
                                 {item.rank < rankWeights.length ? rankWeights[item.rank].toFixed(2) : '—'}
                             </span>
                         </div>
@@ -177,11 +179,11 @@ const MetaFriendlyView = ({ meta }: { meta: any }) => {
             ))}
 
             {renderCategory('colors', <Palette size={12} className="text-brand-secondary" />, t('rel_colors'), (id) => (
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: id === 'transparent' ? 'transparent' : id }}>
+                <div className="flex items-center gap-1 sm:gap-2">
+                    <div className="w-3 h-3 shrink-0 rounded-full border border-white/20" style={{ backgroundColor: id === 'transparent' ? 'transparent' : id }}>
                         {id === 'transparent' && <div className="w-full h-full border border-surface-border rounded-full" />}
                     </div>
-                    <span className="text-txt-muted">{id}</span>
+                    <span className="truncate text-txt-muted">{id}</span>
                 </div>
             ))}
 
