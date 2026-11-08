@@ -3,6 +3,7 @@ import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle }
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { parseColor } from './color';
 import { getPhotoPlayerNameStyles } from './photoTextContrast';
+import { SOLID_TEXT_COLORS } from './colorContrast';
 import { getPhotoNamePlateBackground } from './photoNamePlate';
 
 const pixels = (...brightness: number[]) => new Uint8ClampedArray(
@@ -82,19 +83,25 @@ describe('photo title contrast', () => {
         expect(context.getImageData).toHaveBeenCalledTimes(2);
     });
 
-    it('keeps selected label ink and its dark backing when the photo palette changes', async () => {
+    it('keeps the selected translucent label background while adapting ink to the sampled card', async () => {
         const { root, context } = setupPhoto();
         const label = document.createElement('span');
         label.dataset.scorePhotoLabel = 'wizard';
-        label.dataset.scorePhotoLabelColor = '#ffffff';
-        label.style.color = '#ffffff';
-        label.style.backgroundColor = '#0f172a';
+        label.dataset.scorePhotoLabelColor = 'rgba(10, 20, 30, 0.1)';
+        label.style.backgroundColor = 'rgba(10, 20, 30, 0.1)';
         root.append(label);
-        for (const brightness of [240, 20, 240]) {
-            context.getImageData.mockReturnValue({ data: pixels(brightness) });
-            await prepareScorePhotoTitle(root, new AbortController().signal);
-            expect(label.style.color).toBe('rgb(255, 255, 255)');
-            expect(label.style.backgroundColor).toBe('rgb(15, 23, 42)');
+        document.documentElement.style.setProperty('--c-slate-900', '15 23 42');
+        document.documentElement.style.setProperty('--c-slate-50', '248 250 252');
+        try {
+            for (const brightness of [240, 20, 240]) {
+                context.getImageData.mockReturnValue({ data: pixels(brightness) });
+                await prepareScorePhotoTitle(root, new AbortController().signal);
+                expect(label.style.color).toBe(brightness === 20 ? SOLID_TEXT_COLORS.light : SOLID_TEXT_COLORS.dark);
+                expect(label.style.backgroundColor).toBe('rgba(10, 20, 30, 0.1)');
+            }
+        } finally {
+            document.documentElement.style.removeProperty('--c-slate-900');
+            document.documentElement.style.removeProperty('--c-slate-50');
         }
     });
 

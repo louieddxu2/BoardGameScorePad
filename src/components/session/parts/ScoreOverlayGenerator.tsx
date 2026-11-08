@@ -5,9 +5,9 @@ import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
-import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
+import { getPhotoLabelTextColor, getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
-import { getPhotoNamePlateBackground, PHOTO_DARK_SURFACE } from '../../../utils/photoNamePlate';
+import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
 import { createColorReader } from '../../../utils/color';
 import { getPhotoPlayerItems } from './photoPlayerItems';
 
@@ -242,21 +242,28 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 }}>
                                     {items.map(item => (
                                         <div key={item.id} data-score-photo-item={item.id} style={{
-                                            fontSize: 21, lineHeight: 1.35, overflowWrap: 'anywhere',
-                                            whiteSpace: 'pre-wrap', marginTop: 8, color: RESULT_TEXT,
+                                            border: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                                            borderRadius: 8, textAlign: 'left', overflowWrap: 'anywhere',
+                                            whiteSpace: 'pre-wrap', marginTop: 10, color: RESULT_TEXT,
                                         }}>
-                                            <span style={{ color: `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})` }}>{item.name}{item.labels ? '' : '：'}</span>
+                                            <div data-score-photo-item-name="true" style={{
+                                                display: 'inline-block', maxWidth: '100%', padding: '3px 8px',
+                                                borderRight: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                                                borderBottom: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                                                borderBottomRightRadius: 7, fontSize: 24, lineHeight: 1.25,
+                                            }}>{item.name}</div>
                                             {item.labels ? (
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 4, marginTop: 3 }}>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, padding: '8px' }}>
                                                     {item.labels.map(label => (
                                                         <span key={label.id} data-score-photo-label={label.id} data-score-photo-label-color={label.color} style={{
-                                                            maxWidth: '100%', minWidth: 0, padding: '2px 7px', borderRadius: 6,
-                                                            backgroundColor: PHOTO_DARK_SURFACE, overflowWrap: 'anywhere',
-                                                            ...getPhotoPlayerNameStyles(label.color, PHOTO_DARK_SURFACE, read),
+                                                            maxWidth: '100%', minWidth: 0, padding: '4px 9px', borderRadius: 8,
+                                                            border: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                                                            backgroundColor: label.color, color: getPhotoLabelTextColor(label.color, PHOTO_RESULT_FALLBACK.card, read),
+                                                            fontSize: 30, fontWeight: 700, lineHeight: 1.25, textAlign: 'center', overflowWrap: 'anywhere',
                                                         }}>{label.text}</span>
                                                     ))}
                                                 </div>
-                                            ) : <span>{item.value}</span>}
+                                            ) : <div style={{ padding: '6px 8px 10px', textAlign: 'center', fontSize: 30, lineHeight: 1.25 }}>{item.value}</div>}
                                         </div>
                                     ))}
                                 </div>

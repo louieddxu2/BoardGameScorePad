@@ -1,5 +1,5 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
+import { getPhotoLabelTextColor, getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
 import { createColorReader } from './color';
 import { getPhotoNamePlateAppearance, getPhotoNamePlateBackground } from './photoNamePlate';
 
@@ -112,6 +112,10 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     // Photo brightness selects a fixed scoreboard style, never the name plate's hue.
     const read = createColorReader();
     const nameAppearance = getPhotoNamePlateAppearance(palette.identity, read);
+    for (const label of root.querySelectorAll<HTMLElement>('[data-score-photo-label]')) {
+        const background = label.dataset.scorePhotoLabelColor;
+        if (background) label.style.color = getPhotoLabelTextColor(background, palette.card, read);
+    }
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {
             name.style.fontWeight = String(getPhotoPlayerNameStyles(palette.text, palette.identity, read).fontWeight);

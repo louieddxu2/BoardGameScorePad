@@ -9,8 +9,8 @@ export interface PhotoPlayerItem {
   labels?: Array<{ id: string; text: string; color: string }>;
 }
 
-// Match the live score grid's option / column / default color precedence.
-export const DEFAULT_PHOTO_LABEL_COLOR = 'rgb(var(--c-emerald-400))';
+// Match the input button's option / column / default background precedence.
+export const DEFAULT_PHOTO_LABEL_COLOR = 'rgb(var(--c-white))';
 
 /** Resolve values against the same column definitions and scoring context as the grid. */
 export function getPhotoPlayerItems(player: Player, columns: ScoreColumn[], players: Player[]): PhotoPlayerItem[] {

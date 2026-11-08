@@ -2,6 +2,13 @@ import type { CSSProperties } from 'react';
 import { readColor, type ColorReader } from './color';
 import { getPhotoNamePlateAppearance } from './photoNamePlate';
 import { getContrastTextStyles } from './ui';
+import { getSolidTextChoice, SOLID_TEXT_COLORS } from './colorContrast';
+
+/** Match input buttons, compositing translucent backgrounds over the photo card. */
+export const getPhotoLabelTextColor = (
+    background: string, backdrop: string, read: ColorReader = readColor,
+): string => getSolidTextChoice(background, { backdrop, colors: SOLID_TEXT_COLORS, read }) === 'dark'
+    ? SOLID_TEXT_COLORS.dark : SOLID_TEXT_COLORS.light;
 
 /** Blur-free outlines survive image export and protect every edge of a glyph. */
 export const getPhotoTextOutline = (color: string, softShadow: string, width = 2): string => [

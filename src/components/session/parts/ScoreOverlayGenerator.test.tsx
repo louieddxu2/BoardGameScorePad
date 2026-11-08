@@ -51,7 +51,7 @@ describe('shared photo player items', () => {
     const { container } = renderOverlay({ ...baseData(players, ['p1'], 'HIGHEST_WINS'), columns });
     const cards = container.querySelectorAll('[data-score-photo-player]');
     expect(Array.from(cards[0].querySelectorAll('[data-score-photo-item]')).map(item => item.textContent))
-      .toEqual(['種族精靈', '角色法師斥候', '等級：0']);
+      .toEqual(['種族精靈', '角色法師斥候', '等級0']);
     expect(cards[1].querySelector('[data-score-photo-items]')).toBeNull();
   });
 
@@ -69,10 +69,10 @@ describe('shared photo player items', () => {
     const player = { ...createPlayer('p1', 'Alice', 10), scores };
     const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: [...columns, ...extra] });
     expect(container.querySelectorAll('[data-score-photo-item]')).toHaveLength(15);
-    expect(container.querySelector('[data-score-photo-item="auto-11"]')).toHaveTextContent('計算11：10');
+    expect(container.querySelector('[data-score-photo-item="auto-11"]')).toHaveTextContent('計算1110');
   });
 
-  it('preserves each selected label color, then falls back to column and grid defaults', () => {
+  it('preserves selected button backgrounds, then falls back to column and button defaults', () => {
     const longLabel = 'A very long character label that needs to wrap without being cut off';
     const selected: ScoreColumn = {
       id: 'labels', name: '角色', inputType: 'clicker', formula: 'a1', isScoring: false,
@@ -92,12 +92,14 @@ describe('shared photo player items', () => {
     const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: [selected, noColor] });
     const labels = Array.from(container.querySelectorAll<HTMLElement>('[data-score-photo-label]'));
     expect(labels.map(label => label.dataset.scorePhotoLabelColor)).toEqual([
-      '#ef4444', '#ffffff', 'rgba(12, 34, 56, 0.5)', '#3b82f6', 'rgb(var(--c-emerald-400))',
+      '#ef4444', '#ffffff', 'rgba(12, 34, 56, 0.5)', '#3b82f6', 'rgb(var(--c-white))',
     ]);
     expect(labels[1]).toHaveTextContent(longLabel);
-    expect(labels[1]).toHaveStyle({ maxWidth: '100%', overflowWrap: 'anywhere', backgroundColor: '#0f172a' });
-    expect(labels[2].style.color).toBe('rgba(12, 34, 56, 0.5)');
-    expect(labels[2].style.textShadow).toContain('rgba(255,255,255,0.7)');
+    expect(labels[1]).toHaveStyle({ maxWidth: '100%', overflowWrap: 'anywhere', backgroundColor: '#ffffff', fontSize: '30px' });
+    expect(labels[2].style.backgroundColor).toBe('rgba(12, 34, 56, 0.5)');
+    const title = labels[0].closest('[data-score-photo-item]')?.querySelector('[data-score-photo-item-name]');
+    expect(title).toHaveTextContent('角色');
+    expect(title).toHaveStyle({ fontSize: '24px' });
   });
 
   it.each(['standard', 'value_only', 'label_only'] as const)(
