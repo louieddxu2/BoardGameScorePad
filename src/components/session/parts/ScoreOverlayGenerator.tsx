@@ -30,6 +30,7 @@ const GENERATOR_WIDTH = 1080;
 const PADDING_PX = 32;
 const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
+const MAX_PLAYER_WIDTH_WITH_ITEMS = 320;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
 
 const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorProps>(({ imageSrc, data }, ref) => {
@@ -69,7 +70,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const numRows = Math.max(1, Math.ceil(data.players.length / 4));
     const targetCols = Math.max(1, Math.ceil(data.players.length / numRows));
     const innerWidth = GENERATOR_WIDTH - PADDING_PX * 2;
-    const playerWidth = Math.min(MAX_PLAYER_WIDTH, Math.floor((innerWidth - (targetCols - 1) * GAP_PX) / targetCols));
+    const playerWidth = Math.min(hasPhotoItems ? MAX_PLAYER_WIDTH_WITH_ITEMS : MAX_PLAYER_WIDTH,
+        Math.floor((innerWidth - (targetCols - 1) * GAP_PX) / targetCols));
     // Bound the whole group as well, so five compact cards still wrap as 3+2.
     const resultsWidth = targetCols * playerWidth + (targetCols - 1) * GAP_PX + PADDING_PX * 2;
     const read = createColorReader();
@@ -244,27 +246,27 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                         <div key={item.id} data-score-photo-item={item.id} style={{
                                             display: 'block', width: '100%', boxSizing: 'border-box',
                                             textAlign: 'center', overflowWrap: 'anywhere',
-                                            whiteSpace: 'pre-wrap', marginTop: 16, color: RESULT_TEXT,
+                                            whiteSpace: 'pre-wrap', marginTop: 8, color: RESULT_TEXT,
+                                            fontSize: 28, lineHeight: 1.7,
                                         }}>
-                                            <div data-score-photo-item-name={item.color ? 'custom' : 'default'}
+                                            <span data-score-photo-item-name={item.color ? 'custom' : 'default'}
                                                 data-score-photo-item-name-color={item.color} style={{
-                                                display: 'block', width: '100%', boxSizing: 'border-box', padding: '2px 0',
-                                                fontSize: 30, lineHeight: 1.25, textAlign: 'center', overflowWrap: 'anywhere',
+                                                overflowWrap: 'anywhere',
                                                 ...(item.color ? getPhotoPlayerNameStyles(item.color, PHOTO_RESULT_FALLBACK.card, read) : { color: RESULT_TEXT }),
-                                            }}>{item.name}</div>
+                                            }}>{item.name}</span>
                                             {item.labels ? (
-                                                <div style={{ display: 'block', width: '100%', boxSizing: 'border-box', paddingTop: 6 }}>
+                                                <>
                                                     {item.labels.map(label => (
                                                         <span key={label.id} data-score-photo-label={label.id} data-score-photo-label-color={label.color} style={{
-                                                            display: 'block', width: '100%', boxSizing: 'border-box', marginBottom: 6,
-                                                            padding: '4px 9px', borderRadius: 8,
+                                                            marginLeft: 5, padding: '3px 6px', borderRadius: 8,
+                                                            boxDecorationBreak: 'clone', WebkitBoxDecorationBreak: 'clone',
                                                             border: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
                                                             backgroundColor: label.color, color: getPhotoLabelTextColor(label.color, PHOTO_RESULT_FALLBACK.card, read),
-                                                            fontSize: 30, fontWeight: 700, lineHeight: 1.25, textAlign: 'center', overflowWrap: 'anywhere',
+                                                            fontWeight: 700, overflowWrap: 'anywhere',
                                                         }}>{label.text}</span>
                                                     ))}
-                                                </div>
-                                            ) : <div style={{ padding: '6px 8px 10px', textAlign: 'center', fontSize: 30, lineHeight: 1.25 }}>{item.value}</div>}
+                                                </>
+                                            ) : <span style={{ marginLeft: 5 }}>{item.value}</span>}
                                         </div>
                                     ))}
                                 </div>

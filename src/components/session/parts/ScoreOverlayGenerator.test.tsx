@@ -62,6 +62,20 @@ describe('shared photo player items', () => {
     expect(getByText('精靈')).toBeInTheDocument();
   });
 
+  it.each([
+    { count: 2, width: '320px', groupWidth: '720px' },
+    { count: 4, width: '242px', groupWidth: '1080px' },
+    { count: 5, width: '320px', groupWidth: '1056px' },
+  ])('uses available width for item rows with $count players', ({ count, width, groupWidth }) => {
+    const players = Array.from({ length: count }, (_, index) => ({
+      ...createPlayer(`p${index}`, `Player ${index}`, 10),
+      scores: index === 0 ? { race: scores.race } : {} as Record<string, typeof scores.race>,
+    }));
+    const { container } = renderOverlay({ ...baseData(players, ['p0'], 'HIGHEST_WINS'), columns });
+    expect(container.querySelector('[data-score-photo-results]')).toHaveStyle({ width: groupWidth });
+    for (const card of container.querySelectorAll('[data-score-photo-player]')) expect(card).toHaveStyle({ width });
+  });
+
   it('uses each item color for its name and leaves uncolored names on the result palette', () => {
     const colored: ScoreColumn[] = [
       { ...columns[0], color: 'rgba(12, 34, 56, 0.5)' },
@@ -110,11 +124,13 @@ describe('shared photo player items', () => {
       '#ef4444', '#ffffff', 'rgba(12, 34, 56, 0.5)', '#3b82f6', 'rgb(var(--c-white))',
     ]);
     expect(labels[1]).toHaveTextContent(longLabel);
-    expect(labels[1]).toHaveStyle({ display: 'block', width: '100%', overflowWrap: 'anywhere', backgroundColor: '#ffffff', fontSize: '30px' });
+    expect(labels[1]).toHaveStyle({ overflowWrap: 'anywhere', backgroundColor: '#ffffff' });
     expect(labels[2].style.backgroundColor).toBe('rgba(12, 34, 56, 0.5)');
     const title = labels[0].closest('[data-score-photo-item]')?.querySelector('[data-score-photo-item-name]');
     expect(title).toHaveTextContent('角色');
-    expect(title).toHaveStyle({ display: 'block', width: '100%', textAlign: 'center', fontSize: '30px' });
+    expect(title?.tagName).toBe('SPAN');
+    expect(title?.parentElement).toBe(labels[0].parentElement);
+    expect(title?.parentElement).toHaveStyle({ fontSize: '28px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' });
     expect(title).toHaveAttribute('data-score-photo-item-name-color', '#3b82f6');
     expect(title).toHaveStyle({ color: '#3b82f6' });
   });
