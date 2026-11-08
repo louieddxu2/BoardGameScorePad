@@ -242,21 +242,22 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                                 }}>
                                     {items.map(item => (
                                         <div key={item.id} data-score-photo-item={item.id} style={{
-                                            border: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
-                                            borderRadius: 8, textAlign: 'left', overflowWrap: 'anywhere',
-                                            whiteSpace: 'pre-wrap', marginTop: 10, color: RESULT_TEXT,
+                                            display: 'block', width: '100%', boxSizing: 'border-box',
+                                            textAlign: 'center', overflowWrap: 'anywhere',
+                                            whiteSpace: 'pre-wrap', marginTop: 16, color: RESULT_TEXT,
                                         }}>
-                                            <div data-score-photo-item-name="true" style={{
-                                                display: 'inline-block', maxWidth: '100%', padding: '3px 8px',
-                                                borderRight: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
-                                                borderBottom: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
-                                                borderBottomRightRadius: 7, fontSize: 24, lineHeight: 1.25,
+                                            <div data-score-photo-item-name={item.color ? 'custom' : 'default'}
+                                                data-score-photo-item-name-color={item.color} style={{
+                                                display: 'block', width: '100%', boxSizing: 'border-box', padding: '2px 0',
+                                                fontSize: 30, lineHeight: 1.25, textAlign: 'center', overflowWrap: 'anywhere',
+                                                ...(item.color ? getPhotoPlayerNameStyles(item.color, PHOTO_RESULT_FALLBACK.card, read) : { color: RESULT_TEXT }),
                                             }}>{item.name}</div>
                                             {item.labels ? (
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 6, padding: '8px' }}>
+                                                <div style={{ display: 'block', width: '100%', boxSizing: 'border-box', paddingTop: 6 }}>
                                                     {item.labels.map(label => (
                                                         <span key={label.id} data-score-photo-label={label.id} data-score-photo-label-color={label.color} style={{
-                                                            maxWidth: '100%', minWidth: 0, padding: '4px 9px', borderRadius: 8,
+                                                            display: 'block', width: '100%', boxSizing: 'border-box', marginBottom: 6,
+                                                            padding: '4px 9px', borderRadius: 8,
                                                             border: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
                                                             backgroundColor: label.color, color: getPhotoLabelTextColor(label.color, PHOTO_RESULT_FALLBACK.card, read),
                                                             fontSize: 30, fontWeight: 700, lineHeight: 1.25, textAlign: 'center', overflowWrap: 'anywhere',

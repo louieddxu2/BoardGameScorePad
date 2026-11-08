@@ -62,6 +62,21 @@ describe('shared photo player items', () => {
     expect(getByText('精靈')).toBeInTheDocument();
   });
 
+  it('uses each item color for its name and leaves uncolored names on the result palette', () => {
+    const colored: ScoreColumn[] = [
+      { ...columns[0], color: 'rgba(12, 34, 56, 0.5)' },
+      { ...columns[2], color: '#ef4444' },
+      columns[1],
+    ];
+    const player = { ...createPlayer('p1', 'Alice', 10), scores };
+    const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: colored });
+    const titles = container.querySelectorAll<HTMLElement>('[data-score-photo-item-name]');
+    expect(titles[0].style.color).toBe('rgba(12, 34, 56, 0.5)');
+    expect(titles[1]).toHaveStyle({ color: '#ef4444' });
+    expect(titles[2]).toHaveAttribute('data-score-photo-item-name', 'default');
+    expect(titles[2].style.color).toBe('var(--photo-result-text, #f8fafc)');
+  });
+
   it('calculates automatic items and keeps all configured rows in the output', () => {
     const extra: ScoreColumn[] = Array.from({ length: 12 }, (_, i) => ({ id: `auto-${i}`, name: `計算${i}`,
       inputType: 'auto', isAuto: true, formula: 'x1*2', variableMap: { x1: { id: 'hidden', name: '不分享' } },
@@ -95,11 +110,13 @@ describe('shared photo player items', () => {
       '#ef4444', '#ffffff', 'rgba(12, 34, 56, 0.5)', '#3b82f6', 'rgb(var(--c-white))',
     ]);
     expect(labels[1]).toHaveTextContent(longLabel);
-    expect(labels[1]).toHaveStyle({ maxWidth: '100%', overflowWrap: 'anywhere', backgroundColor: '#ffffff', fontSize: '30px' });
+    expect(labels[1]).toHaveStyle({ display: 'block', width: '100%', overflowWrap: 'anywhere', backgroundColor: '#ffffff', fontSize: '30px' });
     expect(labels[2].style.backgroundColor).toBe('rgba(12, 34, 56, 0.5)');
     const title = labels[0].closest('[data-score-photo-item]')?.querySelector('[data-score-photo-item-name]');
     expect(title).toHaveTextContent('角色');
-    expect(title).toHaveStyle({ fontSize: '24px' });
+    expect(title).toHaveStyle({ display: 'block', width: '100%', textAlign: 'center', fontSize: '30px' });
+    expect(title).toHaveAttribute('data-score-photo-item-name-color', '#3b82f6');
+    expect(title).toHaveStyle({ color: '#3b82f6' });
   });
 
   it.each(['standard', 'value_only', 'label_only'] as const)(
@@ -127,7 +144,7 @@ describe('shared photo player items', () => {
     const labels = container.querySelectorAll<HTMLElement>('[data-score-photo-label]');
     expect(labels).toHaveLength(20);
     expect(labels[19].textContent).toBe('Long\nlabel');
-    expect(labels[0].parentElement).toHaveStyle({ flexWrap: 'wrap' });
+    expect(labels[0].parentElement).toHaveStyle({ display: 'block', width: '100%' });
     expect(labels[0].closest<HTMLElement>('[data-score-photo-item]')).toHaveStyle({ whiteSpace: 'pre-wrap' });
   });
 });

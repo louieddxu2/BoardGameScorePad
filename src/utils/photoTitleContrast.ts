@@ -116,6 +116,13 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         const background = label.dataset.scorePhotoLabelColor;
         if (background) label.style.color = getPhotoLabelTextColor(background, palette.card, read);
     }
+    for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-item-name="custom"]')) {
+        const color = name.dataset.scorePhotoItemNameColor;
+        if (!color) continue;
+        const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, palette.card, read);
+        Object.assign(name.style, styles);
+        name.style.setProperty('-webkit-text-stroke', String(WebkitTextStroke ?? ''));
+    }
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {
             name.style.fontWeight = String(getPhotoPlayerNameStyles(palette.text, palette.identity, read).fontWeight);

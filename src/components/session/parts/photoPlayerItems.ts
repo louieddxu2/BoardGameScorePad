@@ -5,6 +5,7 @@ import { formatDisplayNumber } from '../../../utils/scoreDisplay';
 export interface PhotoPlayerItem {
   id: string;
   name: string;
+  color?: string;
   value?: string;
   labels?: Array<{ id: string; text: string; color: string }>;
 }
@@ -20,7 +21,7 @@ export function getPhotoPlayerItems(player: Player, columns: ScoreColumn[], play
     const score = player.scores[column.id];
     const options = resolveSelectedOptions(column, score);
     if (options.length) {
-      return [{ id: column.id, name: column.name, labels: options.map(option => ({
+      return [{ id: column.id, name: column.name, color: column.color, labels: options.map(option => ({
         id: option.id, text: option.label, color: option.color || column.color || DEFAULT_PHOTO_LABEL_COLOR,
       })) }];
     }
@@ -28,6 +29,6 @@ export function getPhotoPlayerItems(player: Player, columns: ScoreColumn[], play
     if (!column.isAuto && parts.length === 0) return [];
     const error = getAutoColumnError(column, context);
     const value = error ? 'ERR' : formatDisplayNumber(calculateColumnScore(column, parts, context, score));
-    return [{ id: column.id, name: column.name, value }];
+    return [{ id: column.id, name: column.name, color: column.color, value }];
   });
 }

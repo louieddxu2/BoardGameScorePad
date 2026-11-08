@@ -105,6 +105,23 @@ describe('photo title contrast', () => {
         }
     });
 
+    it('keeps a selected item-name color and updates its outline for each photo card', async () => {
+        const { root, context } = setupPhoto();
+        const name = document.createElement('span');
+        name.dataset.scorePhotoItemName = 'custom';
+        name.dataset.scorePhotoItemNameColor = 'rgba(12, 34, 56, 0.5)';
+        root.append(name);
+        for (const brightness of [240, 20, 240]) {
+            context.getImageData.mockReturnValue({ data: pixels(brightness) });
+            await prepareScorePhotoTitle(root, new AbortController().signal);
+            const palette = getPhotoResultPalette(pixels(brightness));
+            const expected = getPhotoPlayerNameStyles(name.dataset.scorePhotoItemNameColor!, palette.card);
+            expect(name.style.color).toBe('rgba(12, 34, 56, 0.5)');
+            expect(name.style.fontWeight).toBe(String(expected.fontWeight));
+            expect(name.style.textShadow).toBe(expected.textShadow?.trim());
+        }
+    });
+
     it('refreshes each name against the sampled backing when photos change, without additional sampling', async () => {
         const { root, context } = setupPhoto();
         const name = document.createElement('span');
