@@ -257,6 +257,36 @@ describe('useGameOptionAggregator recency', () => {
     expect(getRecentOptions(result.current, 5)).toMatchObject([{
       savedGameId: 'newer', templateId: 'board-123'
     }]);
+    expect(result.current).toHaveLength(1);
+    expect(result.current[0]._searchTokens).toEqual(expect.arrayContaining(['Recent Alias', 'Older Alias', 'Board Title']));
+  });
+
+  it.each([false, true])('merges same-BGG saved aliases before search, regardless of order (reverse: %s)', reverse => {
+    const savedGames: SavedListItem[] = [
+      { id: 'chinese', name: '邏輯與知識', bggId: '410238', lastUsed: 2000, usageCount: 2 },
+      { id: 'english', name: 'Logic & lore', bggId: ' 410238 ', lastUsed: 1000, usageCount: 1, ...{ altName: 'Local alias' } },
+    ];
+    const bggGames = [{ id: '410238', name: 'Logic & Lore', altNames: ['邏輯與知識'],
+      _searchName: 'Logic & Lore', _altNames: '邏輯與知識', minPlayers: 2, maxPlayers: 2 }];
+    const { result } = renderHook(() => useGameOptionAggregator([], reverse ? [...savedGames].reverse() : savedGames, bggGames));
+
+    expect(result.current).toHaveLength(1);
+    expect(result.current[0]).toMatchObject({ savedGameId: 'chinese', bggId: '410238', lastUsed: 2000, minPlayers: 2 });
+    expect(result.current[0]._searchTokens).toEqual(expect.arrayContaining(['邏輯與知識', 'Logic & lore', 'Local alias', 'Logic & Lore']));
+    expect(savedGames[0].name).toBe('邏輯與知識');
+    expect(savedGames[1].name).toBe('Logic & lore');
+  });
+
+  it('merges verified equal IDs while name-only identity sources are still loading', () => {
+    const games: SavedListItem[] = [
+      { id: 'one', name: 'First', bggId: '123', lastUsed: 20, usageCount: 1 },
+      { id: 'two', name: 'Second', bggId: '123', lastUsed: 10, usageCount: 1 },
+      { id: 'unknown', name: 'First', lastUsed: 30, usageCount: 1 },
+    ];
+    const { result } = renderHook(() => useGameOptionAggregator([], games, [], [], false));
+    expect(result.current).toHaveLength(2);
+    expect(result.current.find(option => option.bggId === '123')?._searchTokens).toEqual(expect.arrayContaining(['First', 'Second']));
+    expect(result.current.find(option => option.savedGameId === 'unknown')).toMatchObject({ ambiguousName: true, nameMatchPending: true });
   });
 
   it('keeps the most recently played same-name saved game regardless of usage-count order', () => {

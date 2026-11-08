@@ -49,6 +49,24 @@ describe('useGameOptionsQuery', () => {
     expect(result.current.allOptions).toBe(first);
   });
 
+  it('shows one searchable option for saved aliases sharing a BGG ID', () => {
+    fixtures.savedGames = [
+      { id: 'zh', name: '邏輯與知識', bggId: '410238', lastUsed: 5000, usageCount: 2 },
+      { id: 'en', name: 'Logic & lore', bggId: '410238', lastUsed: 1000, usageCount: 1 },
+    ];
+    fixtures.bggGames = [{ id: '410238', name: 'Logic & Lore', altNames: ['邏輯與知識'],
+      _searchName: 'Logic & Lore', _altNames: '邏輯與知識', minPlayers: 2, maxPlayers: 2 }];
+    const pinnedIds: string[] = [];
+    const { result, rerender } = renderHook(({ query }) => useGameOptionsQuery(query, pinnedIds), {
+      initialProps: { query: 'Logic & lore' },
+    });
+    expect(result.current.gameOptions).toHaveLength(1);
+    expect(result.current.gameOptions[0]).toMatchObject({ savedGameId: 'zh', bggId: '410238', minPlayers: 2 });
+    rerender({ query: '邏輯與知識' });
+    expect(result.current.gameOptions).toHaveLength(1);
+    expect(result.current.gameOptions[0]).toMatchObject({ savedGameId: 'zh', bggId: '410238' });
+  });
+
   it.each([true, false])('preserves game identity when a matching alias changes its label (has board: %s)', hasBoard => {
     const name = 'Agricola (Revised Edition)';
     if (hasBoard) {

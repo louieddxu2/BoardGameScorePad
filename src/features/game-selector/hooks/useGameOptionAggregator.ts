@@ -315,8 +315,29 @@ export const useGameOptionAggregator = (
         }
     });
 
-    // Return unique values
-    return Array.from(new Set([...nameMap.values(), ...conflictingOptions]));
+    // Multiple saved names may point at the same BGG game. The ID index chooses
+    // the most recent saved entry (and receives its board and catalog metadata),
+    // but nameMap still contains the other entries. Collapse only known equal
+    // IDs here, keeping every name searchable without changing stored records.
+    const options = Array.from(new Set([...nameMap.values(), ...conflictingOptions]));
+    const available = new Set(options);
+    const mergedByBggId = new Map<string, GameOption>();
+    const result: GameOption[] = [];
+    for (const option of options) {
+      const id = getBggKey(option.bggId);
+      if (!id) { result.push(option); continue; }
+      let merged = mergedByBggId.get(id);
+      if (!merged) {
+        const indexed = bggIdMap.get(id);
+        merged = indexed && available.has(indexed) ? indexed : option;
+        mergedByBggId.set(id, merged);
+        result.push(merged);
+      }
+      for (const name of [option.displayName, option.cleanName, option.bggName, ...option._searchTokens]) {
+        if (name && !merged._searchTokens.includes(name)) merged._searchTokens.push(name);
+      }
+    }
+    return result;
   }, [templates, savedGames, bggGames, pinnedIds, allowNameOnlyMatches, hiddenTemplateIdentities]);
 
   return allOptions;
