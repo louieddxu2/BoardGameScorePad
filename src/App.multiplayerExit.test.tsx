@@ -31,6 +31,9 @@ vi.mock('peerjs', async importOriginal => {
   return { ...actual, default: fixtures.network.Peer };
 });
 
+// These cases provide their own local boards, including an intentionally missing one.
+vi.mock('./utils/dbMigration', () => ({ migrateFromLocalStorage: async () => undefined }));
+
 vi.mock('./db', async importOriginal => {
   const { default: Dexie } = await import('dexie');
   const { indexedDB, IDBKeyRange } = await import('fake-indexeddb');
@@ -78,7 +81,6 @@ beforeEach(async () => {
   localStorage.clear();
   sessionStorage.clear();
   localStorage.setItem('app_language', 'en');
-  localStorage.setItem('sm_builtin_data_version', '20');
   _resetActiveCountForTesting();
   fixtures.network!.errors.length = 0;
   fixtures.network!.packets.length = 0;
