@@ -237,7 +237,17 @@ export class HistoryBatchProcessor {
 
                 // 3. Try Name
                 const key = `${type}:${lowerName}`;
-                if (mapByName.has(key)) return mapByName.get(key)!;
+                const nameMatch = mapByName.get(key);
+                if (nameMatch) {
+                    // Match EntityService: a name match missing a BGG ID adopts this record's ID,
+                    // so later records with that ID resolve to the same game.
+                    if (type === 'game' && bggId && !nameMatch.bggId) {
+                        nameMatch.bggId = bggId;
+                        mapByBggId.set(bggId, nameMatch);
+                        markDirty(nameMatch, type);
+                    }
+                    return nameMatch;
+                }
 
                 // 4. Create New (Cache Miss)
                 const newId = preferredId || generateId(DATA_LIMITS.ID_LENGTH.DEFAULT);

@@ -103,7 +103,7 @@ vi.mock('../../utils/idGenerator', () => ({ generateId: vi.fn(() => 'generated-i
 
 import { HistoryBatchProcessor } from './HistoryBatchProcessor';
 
-function historyRecord(id: string, endTime: number): HistoryRecord {
+function historyRecord(id: string, endTime: number, overrides: Partial<HistoryRecord> = {}): HistoryRecord {
     return {
         id,
         templateId: 'template-a',
@@ -112,7 +112,8 @@ function historyRecord(id: string, endTime: number): HistoryRecord {
         endTime,
         players: [],
         winnerIds: [],
-        snapshotTemplate: {} as HistoryRecord['snapshotTemplate']
+        snapshotTemplate: {} as HistoryRecord['snapshotTemplate'],
+        ...overrides
     };
 }
 
@@ -145,5 +146,16 @@ describe('HistoryBatchProcessor lifecycle replay', () => {
         expect(lifecycleItem('game_play_stage:first')).toMatchObject({ usageCount: 1 });
         expect(lifecycleItem('game_play_stage:second')).toMatchObject({ usageCount: 1 });
         expect(lifecycleItem('game_recency:within_1_day')).toMatchObject({ usageCount: 1 });
+    });
+
+    it('adds a BGG ID to a same-name game so later aliases with that ID merge into it', async () => {
+        await new HistoryBatchProcessor().run([
+            historyRecord('no-bgg', 150),
+            historyRecord('with-bgg', 200, { bggId: '123' }),
+            historyRecord('alias', 250, { gameName: 'Azul Alias', bggId: '123' })
+        ]);
+
+        expect(testDb.tables.savedGames.rows).toHaveLength(1);
+        expect(testDb.tables.savedGames.rows[0]).toMatchObject({ id: 'game-azul', bggId: '123', usageCount: 3 });
     });
 });
