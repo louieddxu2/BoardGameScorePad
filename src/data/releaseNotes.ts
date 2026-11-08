@@ -24,8 +24,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-08',
     items: [
-      { kind: 'fixed', zh: '修正「和諧之森」河流 A 面的計分級距，只有 1 個水板塊時為 0 分。',
-        en: 'Fixed river scoring on Side A of Harmonies. A single water token now scores 0 points.' },
+      { kind: 'fixed', zh: '修正「和諧之森」河流 A 面計分。1 個水板塊不計分，各得分級距所需的水板塊數都增加 1 個。',
+        en: 'Fixed Side A river scoring in Harmonies. One water token scores 0 points, and each scoring tier now requires one more water token.' },
     ],
   },
   {
