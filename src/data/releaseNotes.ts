@@ -22,6 +22,13 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    date: '2026-11-08',
+    items: [
+      { kind: 'fixed', zh: '修正「和諧之森」河流 A 面計分。1 個水板塊不計分，各得分級距所需的水板塊數都增加 1 個。',
+        en: 'Fixed Side A river scoring in Harmonies. One water token scores 0 points, and each scoring tier now requires one more water token.' },
+    ],
+  },
+  {
     date: '2026-11-07',
     items: [
       { kind: 'new', zh: '新增設定頁，集中介面設定、備份與匯入。',
