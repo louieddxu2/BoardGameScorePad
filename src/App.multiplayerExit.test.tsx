@@ -10,6 +10,7 @@ import { _resetActiveCountForTesting } from './hooks/useModalBackHandler';
 import { applyScoreInputValue } from './components/session/scoreInputUpdate';
 import { DEFAULT_TEMPLATES } from './data/templates';
 import { migrateTemplate } from './utils/dataMigration';
+import { migrateFromLocalStorage } from './utils/dbMigration';
 import { multiplayerLocalStore } from './features/multiplayer/multiplayerLocalStore';
 import { createMultiplayerHostRoomRuntime } from './features/multiplayer/multiplayerRoomRuntime';
 import { createMultiplayerP2PRuntimeTransport } from './features/multiplayer/multiplayerP2PRuntimeTransport';
@@ -78,11 +79,11 @@ beforeEach(async () => {
   localStorage.clear();
   sessionStorage.clear();
   localStorage.setItem('app_language', 'en');
-  localStorage.setItem('sm_builtin_data_version', '20');
   _resetActiveCountForTesting();
   fixtures.network!.errors.length = 0;
   fixtures.network!.packets.length = 0;
   await db.open();
+  await migrateFromLocalStorage();
   window.history.replaceState({}, '', '/?room=exit-test-room');
 });
 
@@ -131,6 +132,7 @@ const createTouchTap = () => {
 
 async function openFourDeviceRoom(tap: (element: Element) => void, extraFormula?: 'a1+next' | 'a1×a2+next') {
   const builtin = migrateTemplate(structuredClone(DEFAULT_TEMPLATES.find(row => row.id === 'Built-in-Sweet-Lands')!));
+  await db.builtins.delete(builtin.id);
   const extraColumn = extraFormula ? [{ id: 'exit-draft', name: 'Exit draft', formula: extraFormula,
     inputType: 'keypad' as const, isScoring: true,
     ...(extraFormula.includes('×') ? { subUnits: ['A', 'B'] as [string, string] } : {}) }] : [];
