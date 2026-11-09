@@ -1,5 +1,5 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoLabelTextColor, getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
+import { getPhotoLabelTextStyles, getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
 import { createColorReader } from './color';
 import { getPhotoNamePlateAppearance, getPhotoNamePlateBackground } from './photoNamePlate';
 
@@ -114,14 +114,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     const nameAppearance = getPhotoNamePlateAppearance(palette.identity, read);
     for (const label of root.querySelectorAll<HTMLElement>('[data-score-photo-label]')) {
         const background = label.dataset.scorePhotoLabelColor;
-        if (background) label.style.color = getPhotoLabelTextColor(background, palette.card, read);
-    }
-    for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-item-name="custom"]')) {
-        const color = name.dataset.scorePhotoItemNameColor;
-        if (!color) continue;
-        const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, palette.card, read);
-        Object.assign(name.style, styles);
-        name.style.setProperty('-webkit-text-stroke', String(WebkitTextStroke ?? ''));
+        if (background) Object.assign(label.style, getPhotoLabelTextStyles(background, palette.card, read));
     }
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {

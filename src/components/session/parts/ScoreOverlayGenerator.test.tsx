@@ -49,10 +49,14 @@ describe('shared photo player items', () => {
     const players = [{ ...createPlayer('p1', 'Alice', 10), scores },
       { ...createPlayer('p2', 'Bob', 5), scores, isAnonymous: true }];
     const { container } = renderOverlay({ ...baseData(players, ['p1'], 'HIGHEST_WINS'), columns });
-    const cards = container.querySelectorAll('[data-score-photo-player]');
-    expect(Array.from(cards[0].querySelectorAll('[data-score-photo-item]')).map(item => item.textContent))
-      .toEqual(['種族精靈', '角色法師斥候', '等級0']);
-    expect(cards[1].querySelector('[data-score-photo-items]')).toBeNull();
+    const group = container.querySelector('[data-score-photo-player-group]')!;
+    expect(Array.from(group.querySelectorAll('[data-score-photo-item-name]')).map(item => item.textContent))
+      .toEqual(['種族', '角色', '等級']);
+    expect(Array.from(group.querySelectorAll('[data-score-photo-item][data-score-photo-item-player="p1"]')).map(item => item.textContent))
+      .toEqual(['精靈', '法師斥候', '0']);
+    expect(group.querySelectorAll('[data-score-photo-item-player="p2"]:empty')).toHaveLength(3);
+    expect(group).not.toHaveTextContent('空白');
+    expect(group).not.toHaveTextContent('不分享');
   });
 
   it('keeps cooperative results shared when the only input is a non-scoring photo item', () => {
@@ -63,9 +67,9 @@ describe('shared photo player items', () => {
   });
 
   it.each([
-    { count: 2, width: '320px', groupWidth: '720px' },
-    { count: 4, width: '242px', groupWidth: '1080px' },
-    { count: 5, width: '320px', groupWidth: '1056px' },
+    { count: 2, width: '320px', groupWidth: '864px' },
+    { count: 4, width: '206px', groupWidth: '1080px' },
+    { count: 5, width: '280px', groupWidth: '1080px' },
   ])('uses available width for item rows with $count players', ({ count, width, groupWidth }) => {
     const players = Array.from({ length: count }, (_, index) => ({
       ...createPlayer(`p${index}`, `Player ${index}`, 10),
@@ -76,7 +80,7 @@ describe('shared photo player items', () => {
     for (const card of container.querySelectorAll('[data-score-photo-player]')) expect(card).toHaveStyle({ width });
   });
 
-  it('uses each item color for its name and leaves uncolored names on the result palette', () => {
+  it('puts item names on a neutral backing while preserving selected foreground colors', () => {
     const colored: ScoreColumn[] = [
       { ...columns[0], color: 'rgba(12, 34, 56, 0.5)' },
       { ...columns[2], color: '#ef4444' },
@@ -87,8 +91,34 @@ describe('shared photo player items', () => {
     const titles = container.querySelectorAll<HTMLElement>('[data-score-photo-item-name]');
     expect(titles[0].style.color).toBe('rgba(12, 34, 56, 0.5)');
     expect(titles[1]).toHaveStyle({ color: '#ef4444' });
-    expect(titles[2]).toHaveAttribute('data-score-photo-item-name', 'default');
-    expect(titles[2].style.color).toBe('var(--photo-result-text, #f8fafc)');
+    expect(titles[2]).toHaveStyle({ color: '#f8fafc' });
+    for (const title of titles) expect(title).toHaveStyle({ backgroundColor: '#29333d' });
+  });
+
+  it('repeats personal headings after wrapping and displays shared values once below all players', () => {
+    const map: ScoreColumn = { ...columns[2], id: 'map', name: '地圖', isShared: true };
+    const players = Array.from({ length: 5 }, (_, index) => ({
+      ...createPlayer(`p${index}`, `Player ${index}`, 10),
+      isAnonymous: index === 0,
+      scores: { map: { parts: [index === 0 ? 99 : 7] },
+        ...(index === 1 || index === 2 || index === 4 ? { race: scores.race } : {}) },
+    }));
+    const data = { ...baseData(players, ['p1'], 'HIGHEST_WINS'), columns: [map, ...columns] };
+    const { container } = renderOverlay(data);
+    const groups = Array.from(container.querySelectorAll('[data-score-photo-player-group]'));
+    expect(groups.map(group => group.querySelectorAll('[data-score-photo-player]').length)).toEqual([3, 2]);
+    expect(groups.map(group => Array.from(group.querySelectorAll('[data-score-photo-item-name]'), title => title.textContent)))
+      .toEqual([['種族'], ['種族']]);
+    expect(groups[0].querySelector('[data-score-photo-item-player="p0"]')).toBeEmptyDOMElement();
+    expect(groups[1].querySelector('[data-score-photo-item-player="p4"]')).toHaveTextContent('精靈');
+    const shared = container.querySelector('[data-score-photo-shared-items]')!;
+    expect(shared.previousElementSibling).toBe(groups[1]);
+    expect(shared).toHaveStyle({ gridTemplateColumns: '128px minmax(0, 1fr)' });
+    expect(shared.querySelector('[data-score-photo-item-name]')).toHaveTextContent('地圖');
+    expect(shared.querySelector('[data-score-photo-item="map"]')).toHaveTextContent(/^7$/);
+    expect(container.querySelectorAll('[data-score-photo-item="map"]')).toHaveLength(1);
+    const masked = renderOverlay({ ...data, players: players.map(player => ({ ...player, isAnonymous: true })) });
+    expect(masked.container.querySelector('[data-score-photo-shared-items]')).toBeNull();
   });
 
   it('calculates automatic items and keeps all configured rows in the output', () => {
@@ -98,7 +128,7 @@ describe('shared photo player items', () => {
     const player = { ...createPlayer('p1', 'Alice', 10), scores };
     const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: [...columns, ...extra] });
     expect(container.querySelectorAll('[data-score-photo-item]')).toHaveLength(15);
-    expect(container.querySelector('[data-score-photo-item="auto-11"]')).toHaveTextContent('計算1110');
+    expect(container.querySelector('[data-score-photo-item="auto-11"]')).toHaveTextContent(/^10$/);
   });
 
   it('preserves selected button backgrounds, then falls back to column and button defaults', () => {
@@ -126,13 +156,9 @@ describe('shared photo player items', () => {
     expect(labels[1]).toHaveTextContent(longLabel);
     expect(labels[1]).toHaveStyle({ overflowWrap: 'anywhere', backgroundColor: '#ffffff' });
     expect(labels[2].style.backgroundColor).toBe('rgba(12, 34, 56, 0.5)');
-    const title = labels[0].closest('[data-score-photo-item]')?.querySelector('[data-score-photo-item-name]');
-    expect(title).toHaveTextContent('角色');
-    expect(title?.tagName).toBe('SPAN');
-    expect(title?.parentElement).toBe(labels[0].parentElement);
-    expect(title?.parentElement).toHaveStyle({ fontSize: '28px', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' });
-    expect(title).toHaveAttribute('data-score-photo-item-name-color', '#3b82f6');
-    expect(title).toHaveStyle({ color: '#3b82f6' });
+    const cell = labels[0].closest('[data-score-photo-item]');
+    expect(cell?.previousElementSibling).toHaveTextContent('角色');
+    expect(cell).toHaveStyle({ display: 'flex', flexWrap: 'wrap', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' });
   });
 
   it.each(['standard', 'value_only', 'label_only'] as const)(
@@ -143,10 +169,10 @@ describe('shared photo player items', () => {
         { ...createPlayer('p2', 'Bob', 5), scores: {} },
       ];
       const { container } = renderOverlay({ ...baseData(players, ['p1'], 'HIGHEST_WINS'), columns: [column] });
-      const cards = container.querySelectorAll('[data-score-photo-player]');
-      expect(Array.from(cards[0].querySelectorAll('[data-score-photo-label]')).map(label => label.textContent))
+      const populated = container.querySelector('[data-score-photo-item-player="p1"]')!;
+      expect(Array.from(populated.querySelectorAll('[data-score-photo-label]')).map(label => label.textContent))
         .toEqual(['法師', '斥候']);
-      expect(cards[1].querySelector('[data-score-photo-items]')).toBeNull();
+      expect(container.querySelector('[data-score-photo-item-player="p2"]')).toBeEmptyDOMElement();
     },
   );
 
@@ -160,7 +186,7 @@ describe('shared photo player items', () => {
     const labels = container.querySelectorAll<HTMLElement>('[data-score-photo-label]');
     expect(labels).toHaveLength(20);
     expect(labels[19].textContent).toBe('Long\nlabel');
-    expect(labels[0].parentElement).toHaveStyle({ display: 'block', width: '100%' });
+    expect(labels[0].parentElement).toHaveStyle({ display: 'flex', flexWrap: 'wrap' });
     expect(labels[0].closest<HTMLElement>('[data-score-photo-item]')).toHaveStyle({ whiteSpace: 'pre-wrap' });
   });
 });

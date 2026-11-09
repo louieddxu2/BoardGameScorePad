@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getPhotoLabelTextColor, getPhotoPlayerNameStyles } from './photoTextContrast';
+import { getPhotoLabelTextStyles, getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getPhotoResultPalette } from './photoResultPalette';
 import { parseColor } from './color';
 import { getPhotoNamePlateBackground } from './photoNamePlate';
@@ -17,13 +17,20 @@ const luminance = (color: string) => {
 const contrast = (first: number, second: number) => (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 
 describe('photo name and surface contrast', () => {
-    it('chooses input-button text colors against opaque and translucent label backgrounds', () => {
-        const variables: Record<string, string> = { '--c-slate-900': '15 23 42', '--c-slate-50': '248 250 252' };
+    it('uses dark text on light photo badges and edged white text on midtone colors', () => {
+        const variables: Record<string, string> = { '--c-white': '255 255 255' };
         const read = (color: string) => parseColor(color, name => variables[name]);
-        expect(getPhotoLabelTextColor('#ffffff', '#334155', read)).toBe(SOLID_TEXT_COLORS.dark);
-        expect(getPhotoLabelTextColor('#111111', '#ffffff', read)).toBe(SOLID_TEXT_COLORS.light);
-        expect(getPhotoLabelTextColor('rgba(0,0,0,0.1)', '#ffffff', read)).toBe(SOLID_TEXT_COLORS.dark);
-        expect(getPhotoLabelTextColor('rgba(0,0,0,0.1)', '#111111', read)).toBe(SOLID_TEXT_COLORS.light);
+        for (const background of ['rgb(var(--c-white))', '#bfdbfe', '#fef3c7', '#e2e8f0']) {
+            expect(getPhotoLabelTextStyles(background, '#334155', read)).toEqual({ color: SOLID_TEXT_COLORS.dark, textShadow: 'none' });
+        }
+        for (const background of ['#3b82f6', '#f97316', '#ef4444']) {
+            const ink = getPhotoLabelTextStyles(background, '#334155', read);
+            expect(ink.color).toBe(SOLID_TEXT_COLORS.light);
+            expect(ink.textShadow).toContain('1px 0 0 rgba(15,23,42,0.9)');
+        }
+        expect(getPhotoLabelTextStyles('#111111', '#ffffff', read)).toEqual({ color: SOLID_TEXT_COLORS.light, textShadow: 'none' });
+        expect(getPhotoLabelTextStyles('rgba(0,0,0,0.1)', '#ffffff', read).color).toBe(SOLID_TEXT_COLORS.dark);
+        expect(getPhotoLabelTextStyles('rgba(0,0,0,0.1)', '#111111', read).color).toBe(SOLID_TEXT_COLORS.light);
     });
 
     it('scales the white-only scoreboard edge without changing selected ink or adding weight', () => {
