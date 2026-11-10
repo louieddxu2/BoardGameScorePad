@@ -172,6 +172,9 @@ describe('shared photo player items', () => {
     const group = container.querySelector('[data-score-photo-player-group]')!;
     expect(group).toHaveStyle({ gridTemplateColumns: '120px repeat(4, 224px)' });
     expect(group.firstElementChild).toHaveTextContent('總分');
+    for (const identity of group.querySelectorAll('[data-score-photo-identity]')) {
+      expect(identity).toHaveStyle({ maxWidth: '100%', padding: '10px 44px 6px' });
+    }
     const labels = Array.from(group.querySelectorAll('[data-score-photo-label]'));
     expect(labels.map(label => label.textContent)).toEqual(names);
     expect(labels.map(label => (label as HTMLElement).style.width)).toEqual(['114px', '204px', '144px', '114px']);

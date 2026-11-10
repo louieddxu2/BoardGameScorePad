@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getPhotoColumnNameStyles, getPhotoPlayerNameStyles } from './photoTextContrast';
-import { PHOTO_RESULT_FALLBACK } from './photoResultPalette';
+import { getPhotoColumnNameStyles, getPhotoOptionStyles, getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getQuickActionTextStyles } from './quickActionColors';
-import { getPhotoResultPalette } from './photoResultPalette';
-import { parseColor } from './color';
+import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
+import { parseColor, withColorOpacity } from './color';
 import { getPhotoNamePlateBackground } from './photoNamePlate';
-import { SOLID_TEXT_COLORS } from './colorContrast';
+import { compositeColors, contrastAfterRounding, SOLID_TEXT_COLORS } from './colorContrast';
 
 // Independently check the resulting sRGB colors, not just that a shadow property exists.
 const luminance = (color: string) => {
@@ -23,10 +22,10 @@ describe('photo name and surface contrast', () => {
         const ink = 'rgba(239, 68, 68, 0.8)';
         const styles = getPhotoColumnNameStyles(ink, '#565b5f');
         expect(styles).toMatchObject({ color: ink, fontWeight: 600 });
-        expect(styles.textShadow).toContain(`0.75px 0 0 ${PHOTO_RESULT_FALLBACK.text}`);
+        expect(styles.textShadow).toContain(`0.75px 0 0 ${withColorOpacity(PHOTO_RESULT_FALLBACK.text, 0.72)}`);
     });
 
-    it('uses dark text on light photo badges and edged white text on midtone colors', () => {
+    it('uses dark text on light option backgrounds and edged white text on midtones', () => {
         const variables: Record<string, string> = { '--c-white': '255 255 255' };
         const read = (color: string) => parseColor(color, name => variables[name]);
         for (const background of ['rgb(var(--c-white))', '#bfdbfe', '#fef3c7', '#e2e8f0']) {
@@ -40,6 +39,20 @@ describe('photo name and surface contrast', () => {
         expect(getQuickActionTextStyles('#111111', '#ffffff', read)).toEqual({ color: SOLID_TEXT_COLORS.light, textShadow: 'none' });
         expect(getQuickActionTextStyles('rgba(0,0,0,0.1)', '#ffffff', read).color).toBe(SOLID_TEXT_COLORS.dark);
         expect(getQuickActionTextStyles('rgba(0,0,0,0.1)', '#111111', read).color).toBe(SOLID_TEXT_COLORS.light);
+    });
+
+    it('shades white photo badge text areas to a readable contrast while exposing the original color at the edge', () => {
+        const backdrop = '#474b4e';
+        for (const background of ['#f97316', '#3b82f6', '#f59e0b']) {
+            const styles = getPhotoOptionStyles(background, backdrop);
+            expect(styles).toMatchObject({ color: SOLID_TEXT_COLORS.light, textShadow: 'none' });
+            expect(styles.backgroundImage).toContain('transparent 6px');
+            const opacity = Number(styles.backgroundImage.match(/--c-black\) \/ ([\d.]+)/)?.[1]);
+            const shaded = compositeColors({ ...parseColor('black')!, a: opacity }, parseColor(background)!);
+            expect(contrastAfterRounding(parseColor(PHOTO_RESULT_FALLBACK.text)!, shaded)).toBeGreaterThanOrEqual(4.6);
+        }
+        expect(getPhotoOptionStyles('#ffffff', backdrop)).toMatchObject({ color: SOLID_TEXT_COLORS.dark, backgroundImage: 'none' });
+        expect(getPhotoOptionStyles('#6b7280', backdrop)).toMatchObject({ color: SOLID_TEXT_COLORS.light, backgroundImage: 'none' });
     });
 
     it('scales the white-only scoreboard edge without changing selected ink or adding weight', () => {

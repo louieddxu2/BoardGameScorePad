@@ -1,8 +1,7 @@
 import type { CSSProperties } from 'react';
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoColumnNameStyles, getPhotoPlayerNameStyles } from './photoTextContrast';
+import { getPhotoColumnNameStyles, getPhotoOptionStyles, getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getTextOutline } from './colorContrast';
-import { getQuickActionTextStyles } from './quickActionColors';
 import { createColorReader } from './color';
 import { getPhotoNamePlateAppearance, getPhotoNamePlateBackground } from './photoNamePlate';
 
@@ -124,7 +123,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     const nameAppearance = getPhotoNamePlateAppearance(palette.identity, read);
     for (const label of root.querySelectorAll<HTMLElement>('[data-score-photo-label]')) {
         const background = label.dataset.scorePhotoLabelColor;
-        if (background) Object.assign(label.style, getQuickActionTextStyles(background, palette.background, read));
+        if (background) Object.assign(label.style, getPhotoOptionStyles(background, palette.background, read));
     }
     for (const heading of root.querySelectorAll<HTMLElement>('[data-score-photo-item-name-color]')) {
         const color = heading.dataset.scorePhotoItemNameColor;

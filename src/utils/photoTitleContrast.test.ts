@@ -105,6 +105,25 @@ describe('photo title contrast', () => {
         }
     });
 
+    it('refreshes the shading of a translucent badge when the photo brightness changes', async () => {
+        const { root, context } = setupPhoto();
+        const label = document.createElement('span');
+        const color = 'rgba(249, 115, 22, 0.6)';
+        label.dataset.scorePhotoLabel = 'faction';
+        label.dataset.scorePhotoLabelColor = color;
+        label.style.backgroundColor = color;
+        root.append(label);
+
+        for (const brightness of [240, 20, 240]) {
+            context.getImageData.mockReturnValue({ data: pixels(brightness) });
+            await prepareScorePhotoTitle(root, new AbortController().signal);
+            expect(label.style.backgroundColor).toBe(color);
+            expect(label.style.color).toBe(SOLID_TEXT_COLORS.light);
+            expect(label.style.backgroundImage.startsWith('linear-gradient(')).toBe(brightness === 240);
+            if (brightness === 20) expect(label.style.backgroundImage).toBe('none');
+        }
+    });
+
     it('adapts custom column ink protection to the sampled result background', async () => {
         const { root, context } = setupPhoto();
         const heading = document.createElement('div');

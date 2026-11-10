@@ -8,11 +8,16 @@ const WHITE_TEXT_OUTLINE = getTextOutline('rgb(var(--c-slate-900) / 0.9)', '0 1p
 export const getQuickActionBackground = (actionColor?: string, columnColor?: string): string =>
     actionColor || columnColor || 'rgb(var(--c-white))';
 
-/** Option buttons and photo badges use the same ink on a given visible fill. */
-export const getQuickActionTextStyles = (background: string, backdrop: string, read: ColorReader = readColor) => {
+export const getQuickActionVisibleFill = (background: string, backdrop: string, read: ColorReader) => {
     const paint = read(background);
     const surface = paint && paint.a < 1 ? read(backdrop) : null;
-    const luminance = paint ? relativeLuminance(surface ? compositeColors(paint, surface) : paint) : 0;
+    return paint && surface ? compositeColors(paint, surface) : paint;
+};
+
+/** Option buttons and photo badges use the same ink on a given visible fill. */
+export const getQuickActionTextStyles = (background: string, backdrop: string, read: ColorReader = readColor) => {
+    const fill = getQuickActionVisibleFill(background, backdrop, read);
+    const luminance = fill ? relativeLuminance(fill) : 0;
     const useDarkInk = luminance >= LIGHT_BACKGROUND;
     return {
         color: useDarkInk ? SOLID_TEXT_COLORS.dark : SOLID_TEXT_COLORS.light,
