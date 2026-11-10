@@ -68,9 +68,9 @@ describe('shared photo player items', () => {
   });
 
   it.each([
-    { count: 2, width: '320px', groupWidth: '864px' },
-    { count: 4, width: '206px', groupWidth: '1080px' },
-    { count: 5, width: '280px', groupWidth: '1080px' },
+    { count: 2, width: '320px', groupWidth: '824px' },
+    { count: 4, width: '224px', groupWidth: '1080px' },
+    { count: 5, width: '298px', groupWidth: '1078px' },
   ])('uses available width for item rows with $count players', ({ count, width, groupWidth }) => {
     const players = Array.from({ length: count }, (_, index) => ({
       ...createPlayer(`p${index}`, `Player ${index}`, 10),
@@ -114,7 +114,7 @@ describe('shared photo player items', () => {
     expect(groups[1].querySelector('[data-score-photo-item-player="p4"]')).toHaveTextContent('精靈');
     const shared = container.querySelector('[data-score-photo-shared-items]')!;
     expect(shared.previousElementSibling).toBe(groups[1]);
-    expect(shared).toHaveStyle({ gridTemplateColumns: '128px minmax(0, 1fr)' });
+    expect(shared).toHaveStyle({ gridTemplateColumns: '120px minmax(0, 1fr)' });
     expect(shared.querySelector('[data-score-photo-item-name]')).toHaveTextContent('地圖');
     expect(shared.querySelector('[data-score-photo-item="map"]')).toHaveTextContent(/^7$/);
     expect(container.querySelectorAll('[data-score-photo-item="map"]')).toHaveLength(1);
@@ -160,6 +160,23 @@ describe('shared photo player items', () => {
     const cell = labels[0].closest('[data-score-photo-item]');
     expect(cell?.previousElementSibling).toHaveTextContent('角色');
     expect(cell).toHaveStyle({ display: 'flex', flexWrap: 'wrap', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' });
+  });
+
+  it('uses the player column width for each single option rather than fitting a box to its glyphs', () => {
+    const names = ['煌焰族', '亞特蘭斯星人', '瘋狂機器', '超星人'];
+    const race = { ...columns[0], quickActions: names.map((label, index) => ({ id: String(index), label, value: 0 })) };
+    const players = names.map((_, index) => ({ ...createPlayer(String(index), `Player ${index}`, 1),
+      scores: { race: { parts: [0], optionId: String(index) } } }));
+    const { container } = renderOverlay({ ...baseData(players, players.map(player => player.id), 'HIGHEST_WINS'), columns: [race] });
+    const group = container.querySelector('[data-score-photo-player-group]')!;
+    expect(group).toHaveStyle({ gridTemplateColumns: '120px repeat(4, 224px)' });
+    expect(group.firstElementChild).toHaveTextContent('玩家總分');
+    const labels = Array.from(group.querySelectorAll('[data-score-photo-label]'));
+    expect(labels.map(label => label.textContent)).toEqual(names);
+    for (const label of labels) {
+      expect(label).toHaveStyle({ flexBasis: '100%', overflowWrap: 'anywhere' });
+      expect(label.parentElement).toHaveStyle({ fontSize: '30px', whiteSpace: 'pre-wrap' });
+    }
   });
 
   it.each(['standard', 'value_only', 'label_only'] as const)(

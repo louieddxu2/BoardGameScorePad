@@ -32,22 +32,26 @@ const PADDING_PX = 32;
 const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
 const MAX_PLAYER_WIDTH_WITH_ITEMS = 320;
-const ITEM_NAME_WIDTH = 128;
-// Keep headings on the fixed export surface so photo sampling cannot tint the label rail.
-const ITEM_NAME_BACKGROUND = PHOTO_RESULT_FALLBACK.identity;
-const ITEM_GRID_STYLE: React.CSSProperties = { display: 'grid', width: '100%', gap: `6px ${GAP_PX}px` };
+const ITEM_NAME_WIDTH = 120;
 const RESULT_CARD = `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
+const RESULT_BORDER = `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`;
+const RESULT_RULE = `1px solid ${RESULT_BORDER}`;
+const ITEM_GRID_STYLE: React.CSSProperties = {
+    display: 'grid', maxWidth: '100%', borderRadius: 14, overflow: 'hidden',
+    backgroundColor: RESULT_CARD, outline: RESULT_RULE,
+};
+const ITEM_HEADING_STYLE: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', minWidth: 0, padding: '8px 12px',
+    fontSize: 28, lineHeight: 1.2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+    backgroundColor: PHOTO_RESULT_FALLBACK.identity, color: PHOTO_RESULT_FALLBACK.text, fontWeight: 600,
+};
 
 function PhotoItemName({ item, read }: { item: { name: string; color?: string }; read: ColorReader }) {
     return (
         <div data-score-photo-item-name="true" style={{
-            display: 'flex', alignItems: 'center', minWidth: 0, padding: '6px 12px', borderRadius: 6,
-            fontSize: 24, lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
-            backgroundColor: ITEM_NAME_BACKGROUND,
-            ...(item.color
-                ? getPhotoPlayerNameStyles(item.color, ITEM_NAME_BACKGROUND, read)
-                : { color: PHOTO_RESULT_FALLBACK.text, fontWeight: 600 }),
+            ...ITEM_HEADING_STYLE, borderTop: RESULT_RULE,
+            ...(item.color ? getPhotoPlayerNameStyles(item.color, PHOTO_RESULT_FALLBACK.identity, read) : {}),
         }}>
             <span style={{ minWidth: 0 }}>{item.name}</span>
         </div>
@@ -57,22 +61,24 @@ function PhotoItemName({ item, read }: { item: { name: string; color?: string };
 function PhotoItemCell({ id, playerId, value, read }: {
     id: string; playerId?: string; value?: PhotoItemValue; read: ColorReader;
 }) {
+    const labels = value && 'labels' in value ? value.labels : undefined;
     return (
-        <div data-score-photo-item={value ? id : undefined} data-score-photo-item-player={playerId}
-            style={value ? {
-                display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 5,
-                minWidth: 0, padding: '6px 8px', borderRadius: 6, backgroundColor: RESULT_CARD,
-                textAlign: 'center', fontSize: 26, lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
-            } : undefined}
-        >
-            {value && ('labels' in value ? value.labels.map(label => (
+        <div data-score-photo-item={value ? id : undefined} data-score-photo-item-player={playerId} style={{
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 6,
+            minWidth: 0, minHeight: 60, padding: '8px 10px', borderTop: RESULT_RULE, borderLeft: RESULT_RULE,
+            textAlign: 'center', fontSize: 30, lineHeight: 1.2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+        }}>
+            {labels?.map(label => (
                 <span key={label.id} data-score-photo-label={label.id} data-score-photo-label-color={label.color} style={{
-                    minWidth: 0, maxWidth: '100%', padding: '3px 6px', borderRadius: 6,
-                    border: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                    // Size from the cell so a different font in the captured SVG cannot outgrow a shrink-wrapped badge.
+                    flex: labels.length === 1 ? '0 1 100%' : '1 1 126px',
+                    minWidth: 0, maxWidth: playerId ? '100%' : MAX_PLAYER_WIDTH_WITH_ITEMS,
+                    padding: '6px', borderRadius: 6,
                     backgroundColor: label.color, fontWeight: 700, overflowWrap: 'anywhere',
                     ...getQuickActionTextStyles(label.color, PHOTO_RESULT_FALLBACK.card, read),
                 }}>{label.text}</span>
-            )) : <span style={{ minWidth: 0 }}>{value.value}</span>)}
+            ))}
+            {value && 'value' in value && <span style={{ minWidth: 0 }}>{value.value}</span>}
         </div>
     );
 }
@@ -112,11 +118,12 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
     const numRows = Math.max(1, Math.ceil(data.players.length / 4));
     const targetCols = Math.max(1, Math.ceil(data.players.length / numRows));
     const innerWidth = GENERATOR_WIDTH - PADDING_PX * 2;
-    const itemGutter = hasPhotoItems ? ITEM_NAME_WIDTH + GAP_PX : 0;
+    const itemGutter = hasPhotoItems ? ITEM_NAME_WIDTH : 0;
+    const columnGap = hasPhotoItems ? 0 : GAP_PX;
     const playerWidth = Math.min(hasPhotoItems ? MAX_PLAYER_WIDTH_WITH_ITEMS : MAX_PLAYER_WIDTH,
-        Math.floor((innerWidth - itemGutter - (targetCols - 1) * GAP_PX) / targetCols));
+        Math.floor((innerWidth - itemGutter - (targetCols - 1) * columnGap) / targetCols));
     // Bound the whole group as well, so five compact cards still wrap as 3+2.
-    const resultsWidth = itemGutter + targetCols * playerWidth + (targetCols - 1) * GAP_PX + PADDING_PX * 2;
+    const resultsWidth = itemGutter + targetCols * playerWidth + (targetCols - 1) * columnGap + PADDING_PX * 2;
     const read = createColorReader();
 
     const playerCards = data.players.map(p => {
@@ -134,13 +141,14 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
             <div
                 key={p.id}
                 data-score-photo-player={p.id}
-                className={`flex flex-col items-center justify-between${shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border overflow-hidden'}`}
+                className={`flex flex-col items-center justify-between${hasPhotoItems || shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border overflow-hidden'}`}
                 style={{
-                    width: playerWidth, minWidth: 0, borderRadius: 12,
-                    padding: shareTeamResult ? '8px 12px 12px' : 0, gap: shareTeamResult ? 6 : 0,
-                    ...(!shareTeamResult ? {
+                    width: playerWidth, minWidth: 0,
+                    ...(hasPhotoItems ? { borderLeft: RESULT_RULE } : { borderRadius: 12 }),
+                    padding: shareTeamResult && !hasPhotoItems ? '8px 12px 12px' : 0, gap: shareTeamResult ? 6 : 0,
+                    ...(!hasPhotoItems && !shareTeamResult ? {
                         backgroundColor: RESULT_CARD,
-                        borderColor: `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                        borderColor: RESULT_BORDER,
                     } : {}),
                 }}
             >
@@ -154,7 +162,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         // Match the dark fallback until capture selects the photo's appearance.
                         // Score paint stays photo-derived below this fixed scoreboard wash.
                         backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`,
-                        borderRadius: shareTeamResult ? 8 : 0,
+                        borderRadius: shareTeamResult && !hasPhotoItems ? 8 : 0,
                     }}
                 >
                     {isWinner && !isCoop && (
@@ -209,6 +217,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
             // Export typography must not inherit the user's rem-based UI zoom.
             style={{
                 width: GENERATOR_WIDTH, fontSize: 16, lineHeight: 1.4,
+                // Keep the export's pixel type scale when a mobile browser rasterizes the SVG.
+                textSizeAdjust: 'none', WebkitTextSizeAdjust: 'none',
                 backgroundColor: `var(--photo-result-background, ${PHOTO_RESULT_FALLBACK.background})`,
                 color: RESULT_TEXT,
             }}
@@ -260,7 +270,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         margin: '16px 0', borderRadius: 12,
                         backgroundColor: RESULT_CARD,
                         // An inset outline preserves the available row width.
-                        boxShadow: `inset 0 0 0 2px var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                        boxShadow: `inset 0 0 0 2px ${RESULT_BORDER}`,
                     } : {}),
                 }}
             >
@@ -288,10 +298,16 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     const players = data.players.slice(start, start + targetCols);
                     return (
                         <div key={players[0].id} data-score-photo-player-group="true" style={{
-                            ...ITEM_GRID_STYLE,
+                            ...ITEM_GRID_STYLE, marginRight: 'auto',
                             gridTemplateColumns: `${ITEM_NAME_WIDTH}px repeat(${players.length}, ${playerWidth}px)`,
                         }}>
-                            <div aria-hidden="true" />
+                            <div style={{
+                                ...ITEM_HEADING_STYLE, flexDirection: 'column', alignItems: 'flex-start',
+                                justifyContent: 'space-between', padding: '14px 12px 24px',
+                            }}>
+                                <span>{t('ss_player_label')}</span>
+                                {!shareTeamResult && !showOutcomeForZeroScores && <span>{t('ss_total_label')}</span>}
+                            </div>
                             {playerCards.slice(start, start + targetCols)}
                             {individual.filter(item => players.some(player => item.values.has(player.id))).map(item => (
                                 <React.Fragment key={item.id}>
@@ -305,7 +321,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 }) : playerCards}
                 {shared.length > 0 && (
                     <div data-score-photo-shared-items="true" style={{
-                        ...ITEM_GRID_STYLE, gridTemplateColumns: `${ITEM_NAME_WIDTH}px minmax(0, 1fr)`,
+                        ...ITEM_GRID_STYLE, width: '100%', gridTemplateColumns: `${ITEM_NAME_WIDTH}px minmax(0, 1fr)`,
                     }}>
                         {shared.map(item => (
                             <React.Fragment key={item.id}>
@@ -323,7 +339,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 style={{
                     padding: `12px ${PADDING_PX}px`, gap: '8px 24px', fontSize: 24, lineHeight: 1.4,
                     color: `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})`,
-                    borderColor: `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
+                    borderColor: RESULT_BORDER,
                 }}
             >
                 <span className="font-mono">{dateStr} {timeStr}</span>
