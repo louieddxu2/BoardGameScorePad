@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getPhotoPlayerNameStyles } from './photoTextContrast';
+import { getPhotoColumnNameStyles, getPhotoPlayerNameStyles } from './photoTextContrast';
+import { PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { getQuickActionTextStyles } from './quickActionColors';
 import { getPhotoResultPalette } from './photoResultPalette';
 import { parseColor } from './color';
@@ -18,6 +19,13 @@ const luminance = (color: string) => {
 const contrast = (first: number, second: number) => (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 
 describe('photo name and surface contrast', () => {
+    it('adds a thin light edge to low-contrast column ink while preserving its fill', () => {
+        const ink = 'rgba(239, 68, 68, 0.8)';
+        const styles = getPhotoColumnNameStyles(ink, '#565b5f');
+        expect(styles).toMatchObject({ color: ink, fontWeight: 600 });
+        expect(styles.textShadow).toContain(`0.75px 0 0 ${PHOTO_RESULT_FALLBACK.text}`);
+    });
+
     it('uses dark text on light photo badges and edged white text on midtone colors', () => {
         const variables: Record<string, string> = { '--c-white': '255 255 255' };
         const read = (color: string) => parseColor(color, name => variables[name]);

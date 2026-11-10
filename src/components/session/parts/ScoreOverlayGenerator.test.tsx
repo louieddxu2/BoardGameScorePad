@@ -80,7 +80,7 @@ describe('shared photo player items', () => {
     for (const card of container.querySelectorAll('[data-score-photo-player]')) expect(card).toHaveStyle({ width });
   });
 
-  it('shares the result background and default ink with the left column while preserving selected heading colors', () => {
+  it('shares the result background with the left column and preserves selected heading colors', () => {
     const colored: ScoreColumn[] = [
       { ...columns[0], color: 'rgba(12, 34, 56, 0.5)' },
       { ...columns[2], color: '#ef4444' },
@@ -93,7 +93,7 @@ describe('shared photo player items', () => {
     expect(titles[0].style.color).toBe('rgba(12, 34, 56, 0.5)');
     expect(titles[0].dataset.scorePhotoItemNameColor).toBe('rgba(12, 34, 56, 0.5)');
     expect(titles[1]).toHaveStyle({ color: '#ef4444' });
-    expect(titles[2].style.color).toBe(root.style.color);
+    expect(titles[2].style.color).toBe('var(--photo-result-muted, #cbd5e1)');
     for (const title of titles) expect(title.style.backgroundColor).toBe(root.style.backgroundColor);
   });
 
@@ -163,7 +163,7 @@ describe('shared photo player items', () => {
     expect(cell).toHaveStyle({ display: 'flex', flexWrap: 'wrap', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' });
   });
 
-  it('uses the player column width for each single option rather than fitting a box to its glyphs', () => {
+  it('reserves enough width for short and long options in a four-player group', () => {
     const names = ['煌焰族', '亞特蘭斯星人', '瘋狂機器', '超星人'];
     const race = { ...columns[0], quickActions: names.map((label, index) => ({ id: String(index), label, value: 0 })) };
     const players = names.map((_, index) => ({ ...createPlayer(String(index), `Player ${index}`, 1),
@@ -171,11 +171,12 @@ describe('shared photo player items', () => {
     const { container } = renderOverlay({ ...baseData(players, players.map(player => player.id), 'HIGHEST_WINS'), columns: [race] });
     const group = container.querySelector('[data-score-photo-player-group]')!;
     expect(group).toHaveStyle({ gridTemplateColumns: '120px repeat(4, 224px)' });
-    expect(group.firstElementChild).toHaveTextContent('玩家總分');
+    expect(group.firstElementChild).toHaveTextContent('總分');
     const labels = Array.from(group.querySelectorAll('[data-score-photo-label]'));
     expect(labels.map(label => label.textContent)).toEqual(names);
+    expect(labels.map(label => (label as HTMLElement).style.width)).toEqual(['114px', '204px', '144px', '114px']);
     for (const label of labels) {
-      expect(label).toHaveStyle({ flexBasis: '100%', overflowWrap: 'anywhere' });
+      expect(label).toHaveStyle({ maxWidth: '100%', overflowWrap: 'anywhere' });
       expect(label.parentElement).toHaveStyle({ fontSize: '30px', whiteSpace: 'pre-wrap' });
     }
   });

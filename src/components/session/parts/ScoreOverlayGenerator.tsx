@@ -5,7 +5,7 @@ import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
-import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
+import { getPhotoColumnNameStyles, getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { getQuickActionTextStyles } from '../../../utils/quickActionColors';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
 import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
@@ -33,26 +33,30 @@ const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
 const MAX_PLAYER_WIDTH_WITH_ITEMS = 320;
 const ITEM_NAME_WIDTH = 120;
+const ITEM_VALUE_FONT_SIZE = 30;
 const RESULT_BACKGROUND = `var(--photo-result-background, ${PHOTO_RESULT_FALLBACK.background})`;
 const RESULT_CARD = `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
+const RESULT_MUTED = `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})`;
 const RESULT_BORDER = `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`;
-const RESULT_RULE = `1px solid ${RESULT_BORDER}`;
-const ITEM_GRID_STYLE: React.CSSProperties = {
-    display: 'grid', maxWidth: '100%', borderRadius: 14, overflow: 'hidden',
-    backgroundColor: RESULT_CARD, outline: RESULT_RULE,
-};
+const ITEM_GRID_STYLE: React.CSSProperties = { display: 'grid', maxWidth: '100%', rowGap: 6 };
 const ITEM_HEADING_STYLE: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', minWidth: 0, padding: '8px 12px',
-    fontSize: 28, lineHeight: 1.2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
-    backgroundColor: RESULT_BACKGROUND, color: RESULT_TEXT, fontWeight: 600,
+    display: 'flex', alignItems: 'center', minWidth: 0, padding: '6px 8px 6px 0',
+    fontSize: 28, lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+    backgroundColor: RESULT_BACKGROUND, color: RESULT_MUTED, fontWeight: 600,
 };
+
+function getPhotoOptionWidth(text: string) {
+    const longestLine = text.split(/\r\n?|\n/).reduce((longest, line) => Math.max(longest, Array.from(line).length), 0);
+    // Reserve a full em per character and room for the rasterizer's fallback font.
+    return Math.max(96, longestLine * ITEM_VALUE_FONT_SIZE + 24);
+}
 
 function PhotoItemName({ item, read }: { item: { name: string; color?: string }; read: ColorReader }) {
     return (
         <div data-score-photo-item-name="true" data-score-photo-item-name-color={item.color} style={{
-            ...ITEM_HEADING_STYLE, borderTop: RESULT_RULE,
-            ...(item.color ? getPhotoPlayerNameStyles(item.color, PHOTO_RESULT_FALLBACK.background, read) : {}),
+            ...ITEM_HEADING_STYLE,
+            ...(item.color ? getPhotoColumnNameStyles(item.color, PHOTO_RESULT_FALLBACK.background, read) : {}),
         }}>
             <span style={{ minWidth: 0 }}>{item.name}</span>
         </div>
@@ -66,17 +70,16 @@ function PhotoItemCell({ id, playerId, value, read }: {
     return (
         <div data-score-photo-item={value ? id : undefined} data-score-photo-item-player={playerId} style={{
             display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 6,
-            minWidth: 0, minHeight: 60, padding: '8px 10px', borderTop: RESULT_RULE, borderLeft: RESULT_RULE,
-            textAlign: 'center', fontSize: 30, lineHeight: 1.2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+            minWidth: 0, minHeight: 48, padding: '4px 6px',
+            textAlign: 'center', fontSize: ITEM_VALUE_FONT_SIZE, lineHeight: 1.2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
         }}>
             {labels?.map(label => (
                 <span key={label.id} data-score-photo-label={label.id} data-score-photo-label-color={label.color} style={{
-                    // Size from the cell so a different font in the captured SVG cannot outgrow a shrink-wrapped badge.
-                    flex: labels.length === 1 ? '0 1 100%' : '1 1 126px',
-                    minWidth: 0, maxWidth: playerId ? '100%' : MAX_PLAYER_WIDTH_WITH_ITEMS,
-                    padding: '6px', borderRadius: 6,
+                    width: getPhotoOptionWidth(label.text), minWidth: 0,
+                    maxWidth: playerId ? '100%' : `min(100%, ${MAX_PLAYER_WIDTH_WITH_ITEMS}px)`,
+                    padding: '4px 9px', borderRadius: 6,
                     backgroundColor: label.color, fontWeight: 700, overflowWrap: 'anywhere',
-                    ...getQuickActionTextStyles(label.color, PHOTO_RESULT_FALLBACK.card, read),
+                    ...getQuickActionTextStyles(label.color, PHOTO_RESULT_FALLBACK.background, read),
                 }}>{label.text}</span>
             ))}
             {value && 'value' in value && <span style={{ minWidth: 0 }}>{value.value}</span>}
@@ -136,7 +139,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
         const playerColor = hasDefaultColor ? RESULT_TEXT : p.color;
         const nameBackground = !hasDefaultColor && !p.isAnonymous
             ? getPhotoNamePlateBackground(playerColor, read, 'dark') : undefined;
-        const scoreFontSize = Math.min(56, (playerWidth - 64) / (String(displayScore).length * 0.65));
+        const scoreFontSize = Math.min(hasPhotoItems ? 54 : 56, (playerWidth - 64) / (String(displayScore).length * 0.65));
 
         return (
             <div
@@ -145,8 +148,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 className={`flex flex-col items-center justify-between${hasPhotoItems || shareTeamResult ? '' : ' bg-surface-bg border-2 border-surface-border overflow-hidden'}`}
                 style={{
                     width: playerWidth, minWidth: 0,
-                    ...(hasPhotoItems ? { borderLeft: RESULT_RULE } : { borderRadius: 12 }),
-                    padding: shareTeamResult && !hasPhotoItems ? '8px 12px 12px' : 0, gap: shareTeamResult ? 6 : 0,
+                    borderRadius: hasPhotoItems ? 0 : 12,
+                    padding: hasPhotoItems ? '0 8px' : shareTeamResult ? '8px 12px 12px' : 0, gap: shareTeamResult ? 6 : 0,
                     ...(!hasPhotoItems && !shareTeamResult ? {
                         backgroundColor: RESULT_CARD,
                         borderColor: RESULT_BORDER,
@@ -163,13 +166,13 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         // Match the dark fallback until capture selects the photo's appearance.
                         // Score paint stays photo-derived below this fixed scoreboard wash.
                         backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`,
-                        borderRadius: shareTeamResult && !hasPhotoItems ? 8 : 0,
+                        borderRadius: shareTeamResult || hasPhotoItems ? 8 : 0,
                     }}
                 >
                     {isWinner && !isCoop && (
                         <Crown
                             data-score-photo-winner="true"
-                            size={32}
+                            size={hasPhotoItems ? 26 : 32}
                             className="absolute text-status-warning fill-current"
                             style={{
                                 top: 8, right: 8, color: PHOTO_RESULT_FALLBACK.winner,
@@ -302,14 +305,15 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             ...ITEM_GRID_STYLE, marginRight: 'auto',
                             gridTemplateColumns: `${ITEM_NAME_WIDTH}px repeat(${players.length}, ${playerWidth}px)`,
                         }}>
-                            <div style={{
-                                ...ITEM_HEADING_STYLE, flexDirection: 'column', alignItems: 'flex-start',
-                                justifyContent: 'space-between', padding: '14px 12px 24px',
-                            }}>
-                                <span>{t('ss_player_label')}</span>
-                                {!shareTeamResult && !showOutcomeForZeroScores && <span>{t('ss_total_label')}</span>}
+                            <div style={{ ...ITEM_HEADING_STYLE, alignItems: 'flex-end', paddingBottom: 19 }}>
+                                {!shareTeamResult && !showOutcomeForZeroScores && t('ss_total_label')}
                             </div>
-                            {playerCards.slice(start, start + targetCols)}
+                            <div style={{
+                                gridColumn: '2 / -1', display: 'flex', borderRadius: 12, backgroundColor: RESULT_CARD,
+                                padding: shareTeamResult ? '10px 0' : '10px 0 0',
+                            }}>
+                                {playerCards.slice(start, start + targetCols)}
+                            </div>
                             {individual.filter(item => players.some(player => item.values.has(player.id))).map(item => (
                                 <React.Fragment key={item.id}>
                                     <PhotoItemName item={item} read={read} />
@@ -339,7 +343,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 className="border-t border-surface-border text-txt-secondary flex flex-wrap items-baseline justify-between"
                 style={{
                     padding: `12px ${PADDING_PX}px`, gap: '8px 24px', fontSize: 24, lineHeight: 1.4,
-                    color: `var(--photo-result-muted, ${PHOTO_RESULT_FALLBACK.muted})`,
+                    color: RESULT_MUTED,
                     borderColor: RESULT_BORDER,
                 }}
             >

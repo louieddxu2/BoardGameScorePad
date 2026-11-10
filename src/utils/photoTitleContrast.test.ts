@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPhotoTitleAppearance, PHOTO_TITLE_FALLBACK, prepareScorePhotoTitle } from './photoTitleContrast';
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
 import { parseColor } from './color';
-import { getPhotoPlayerNameStyles } from './photoTextContrast';
+import { getPhotoColumnNameStyles, getPhotoPlayerNameStyles } from './photoTextContrast';
 import { SOLID_TEXT_COLORS } from './colorContrast';
 import { getPhotoNamePlateBackground } from './photoNamePlate';
 
@@ -83,7 +83,7 @@ describe('photo title contrast', () => {
         expect(context.getImageData).toHaveBeenCalledTimes(2);
     });
 
-    it('keeps the selected translucent label background while adapting ink to the sampled card', async () => {
+    it('keeps the selected translucent label background while adapting ink to the sampled result background', async () => {
         const { root, context } = setupPhoto();
         const label = document.createElement('span');
         label.dataset.scorePhotoLabel = 'wizard';
@@ -116,7 +116,7 @@ describe('photo title contrast', () => {
             const data = pixels(brightness);
             context.getImageData.mockReturnValue({ data });
             await prepareScorePhotoTitle(root, new AbortController().signal);
-            const styles = getPhotoPlayerNameStyles(color, getPhotoResultPalette(data).background);
+            const styles = getPhotoColumnNameStyles(color, getPhotoResultPalette(data).background);
             expect(heading.style.color).toBe(color);
             expect(heading.style.textShadow).toBe(styles.textShadow?.trim());
         }
