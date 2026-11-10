@@ -33,7 +33,8 @@ const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
 const MAX_PLAYER_WIDTH_WITH_ITEMS = 320;
 const ITEM_NAME_WIDTH = 128;
-const ITEM_NAME_BACKGROUND = '#29333d';
+// Keep headings on the fixed export surface so photo sampling cannot tint the label rail.
+const ITEM_NAME_BACKGROUND = PHOTO_RESULT_FALLBACK.identity;
 const ITEM_GRID_STYLE: React.CSSProperties = { display: 'grid', width: '100%', gap: `6px ${GAP_PX}px` };
 const RESULT_CARD = `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
@@ -44,7 +45,9 @@ function PhotoItemName({ item, read }: { item: { name: string; color?: string };
             display: 'flex', alignItems: 'center', minWidth: 0, padding: '6px 12px', borderRadius: 6,
             fontSize: 24, lineHeight: 1.25, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
             backgroundColor: ITEM_NAME_BACKGROUND,
-            ...(item.color ? getPhotoPlayerNameStyles(item.color, ITEM_NAME_BACKGROUND, read) : { color: '#f8fafc', fontWeight: 600 }),
+            ...(item.color
+                ? getPhotoPlayerNameStyles(item.color, ITEM_NAME_BACKGROUND, read)
+                : { color: PHOTO_RESULT_FALLBACK.text, fontWeight: 600 }),
         }}>
             <span style={{ minWidth: 0 }}>{item.name}</span>
         </div>
@@ -228,7 +231,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                         className="absolute"
                         style={{
                             inset: -24,
-                            background: 'var(--photo-title-background, radial-gradient(ellipse at 30% 35%, rgba(0,0,0,0.5), transparent 80%))',
+                            background: `var(--photo-title-background, ${PHOTO_TITLE_FALLBACK.background})`,
                         }}
                     />
                     <h2
@@ -238,7 +241,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                             margin: 0, fontSize: 44, lineHeight: 1.2, overflowWrap: 'anywhere',
                             // Leave room for the title's 2px outline inside the clipping box.
                             padding: 2,
-                            color: 'var(--photo-title-color, #ffffff)',
+                            color: `var(--photo-title-color, ${PHOTO_TITLE_FALLBACK.color})`,
                             textShadow: `var(--photo-title-shadow, ${PHOTO_TITLE_FALLBACK.shadow})`,
                         }}
                     >

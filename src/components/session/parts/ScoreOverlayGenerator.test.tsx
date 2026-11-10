@@ -5,6 +5,7 @@ import { LanguageContext } from '../../../i18n';
 import { Player, ScoreColumn } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
+import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
 import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
 import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { getPlayerStickerIndices } from './StickerElement';
@@ -80,7 +81,7 @@ describe('shared photo player items', () => {
     for (const card of container.querySelectorAll('[data-score-photo-player]')) expect(card).toHaveStyle({ width });
   });
 
-  it('puts item names on a neutral backing while preserving selected foreground colors', () => {
+  it('uses the fixed export palette for item headings while preserving selected foreground colors', () => {
     const colored: ScoreColumn[] = [
       { ...columns[0], color: 'rgba(12, 34, 56, 0.5)' },
       { ...columns[2], color: '#ef4444' },
@@ -91,8 +92,8 @@ describe('shared photo player items', () => {
     const titles = container.querySelectorAll<HTMLElement>('[data-score-photo-item-name]');
     expect(titles[0].style.color).toBe('rgba(12, 34, 56, 0.5)');
     expect(titles[1]).toHaveStyle({ color: '#ef4444' });
-    expect(titles[2]).toHaveStyle({ color: '#f8fafc' });
-    for (const title of titles) expect(title).toHaveStyle({ backgroundColor: '#29333d' });
+    expect(titles[2]).toHaveStyle({ color: PHOTO_RESULT_FALLBACK.text });
+    for (const title of titles) expect(title).toHaveStyle({ backgroundColor: PHOTO_RESULT_FALLBACK.identity });
   });
 
   it('repeats personal headings after wrapping and displays shared values once below all players', () => {

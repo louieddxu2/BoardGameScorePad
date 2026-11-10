@@ -3,7 +3,7 @@ import { compositeColors, getTextOutline, relativeLuminance, SOLID_TEXT_COLORS }
 
 const LIGHT_BACKGROUND = 0.5;
 const WHITE_INK_MAX_LUMINANCE = 0.17;
-const WHITE_TEXT_OUTLINE = getTextOutline('rgba(15,23,42,0.9)', '0 1px 2px rgba(15,23,42,0.35)', 1);
+const WHITE_TEXT_OUTLINE = getTextOutline('rgb(var(--c-slate-900) / 0.9)', '0 1px 2px rgb(var(--c-slate-900) / 0.35)', 1);
 
 export const getQuickActionBackground = (actionColor?: string, columnColor?: string): string =>
     actionColor || columnColor || 'rgb(var(--c-white))';

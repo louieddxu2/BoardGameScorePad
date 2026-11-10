@@ -13,7 +13,6 @@ export const fixedColorExceptions: FixedColorException[] = [
     { file: 'src/components/session/modals/MultiplayerRoomModal.tsx', tokens: /^bg-white$/, reason: 'QR code quiet zone must remain white in both themes.' },
     { file: 'src/components/session/parts/PhotoLightbox.tsx', tokens: /^(?:bg-black\/(?:40|60)|white|black)$/, reason: 'Photo navigation overlays and luminance-based custom-player contrast.' },
     { file: 'src/components/dashboard/HistoryPhotoGridShareModal.tsx', tokens: /^(?:ring-white\/50|rgba\(15,23,42,0\.34\))$/, reason: 'Photo crop mask and its high-contrast outline.' },
-    { file: 'src/components/session/parts/ScoreOverlayGenerator.tsx', tokens: /^(?:#ffffff|rgba\(0,0,0,0\.5\))$/, reason: 'Adaptive exported-photo title fallbacks, independent of the application theme.' },
     { file: 'src/components/session/parts/StickerElement.tsx', tokens: /^#(?:f8fafc|0f172a)$/, reason: 'Choose a contrasting outline for arbitrary user-colored photo stickers.' },
     { file: 'src/components/session/parts/TexturedTotalCell.tsx', tokens: /^rgba\(0,\s*0,\s*0,\s*0\.(?:5|05)\)$/, reason: 'Physical drop shadow and texture shading, not a themed background.' },
     { file: 'src/components/session/parts/TexturedScoreCell.tsx', tokens: /^(?:border-black\/10|bg-black\/5|--c-(?:black|slate-600))$/, reason: 'Handwriting ink and edit affordances over source-image textures.' },

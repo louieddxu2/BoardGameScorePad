@@ -27,7 +27,7 @@ describe('photo name and surface contrast', () => {
         for (const background of ['#3b82f6', '#f97316', '#ef4444']) {
             const ink = getQuickActionTextStyles(background, '#334155', read);
             expect(ink.color).toBe(SOLID_TEXT_COLORS.light);
-            expect(ink.textShadow).toContain('1px 0 0 rgba(15,23,42,0.9)');
+            expect(ink.textShadow).toContain('1px 0 0 rgb(var(--c-slate-900) / 0.9)');
         }
         expect(getQuickActionTextStyles('#111111', '#ffffff', read)).toEqual({ color: SOLID_TEXT_COLORS.light, textShadow: 'none' });
         expect(getQuickActionTextStyles('rgba(0,0,0,0.1)', '#ffffff', read).color).toBe(SOLID_TEXT_COLORS.dark);

@@ -223,7 +223,7 @@ describe('QuickButtonPad fixed-background contrast', () => {
     ] }} onAction={vi.fn()} /></LanguageProvider>);
     const label = screen.getByText('One');
     const badge = screen.getByText('1');
-    expect(label.style.textShadow).toContain('1px 0 0 rgba(15,23,42,0.9)');
+    expect(label.style.textShadow).toContain('1px 0 0 rgb(var(--c-slate-900) / 0.9)');
     expect(badge.style.textShadow).toBe(label.style.textShadow);
     expect(badge).toHaveClass('bg-[rgb(var(--c-black)_/_0.2)]');
   });
