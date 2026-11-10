@@ -25,6 +25,22 @@ describe('photo name and surface contrast', () => {
         expect(styles.textShadow).toContain(`0.75px 0 0 ${withColorOpacity(PHOTO_RESULT_FALLBACK.text, 0.72)}`);
     });
 
+    it.each(['#ffffff', 'rgb(255, 255, 255)', 'rgb(var(--c-p-white))'])('edges %s on a nearly matching pale photo background', color => {
+        const read = (paint: string) => parseColor(paint, name => name === '--c-p-white' ? '255 255 255' : undefined);
+        const styles = getPhotoColumnNameStyles(color, '#f2f0ea', read);
+        expect(styles.color).toBe(color);
+        expect(styles.textShadow?.split(', ')).toEqual([
+            '1.5px 0 0 rgb(var(--c-black))', '-1.5px 0 0 rgb(var(--c-black))',
+            '0 1.5px 0 rgb(var(--c-black))', '0 -1.5px 0 rgb(var(--c-black))',
+        ]);
+    });
+
+    it.each([
+        ['#ef4444', '#e7e5e4'], ['#facc15', '#fbfaf7'], ['#ffffff', '#94a3b8'], ['#94a3b8', '#94a3b8'],
+    ])('keeps %s without a black contour on %s', (color, background) => {
+        expect(getPhotoColumnNameStyles(color, background)).toMatchObject({ color, textShadow: 'none' });
+    });
+
     it('uses dark text on light option backgrounds and edged white text on midtones', () => {
         const variables: Record<string, string> = { '--c-white': '255 255 255' };
         const read = (color: string) => parseColor(color, name => variables[name]);

@@ -130,7 +130,9 @@ describe('photo title contrast', () => {
         const color = 'rgba(12, 34, 56, 0.5)';
         heading.dataset.scorePhotoItemName = 'true';
         heading.dataset.scorePhotoItemNameColor = color;
-        root.append(heading);
+        const whiteHeading = document.createElement('div');
+        whiteHeading.dataset.scorePhotoItemNameColor = '#fff';
+        root.append(heading, whiteHeading);
 
         for (const brightness of [240, 20, 240]) {
             const data = pixels(brightness);
@@ -141,6 +143,8 @@ describe('photo title contrast', () => {
             expect(root.style.getPropertyValue('--photo-result-background')).toBe(palette.background);
             expect(heading.style.color).toBe(color);
             expect(heading.style.textShadow).toBe(styles.textShadow?.trim());
+            if (brightness === 240) expect(whiteHeading.style.textShadow).toContain('rgb(var(--c-black))');
+            else expect(whiteHeading.style.textShadow).toBe('none');
         }
     });
 
