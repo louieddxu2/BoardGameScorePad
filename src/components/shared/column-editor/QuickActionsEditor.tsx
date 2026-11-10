@@ -4,7 +4,7 @@ import { QuickAction } from '../../../types';
 import { COLORS } from '../../../colors';
 import { isColorDark } from '../../../utils/ui';
 import { createColorReader } from '../../../utils/color';
-import { getSolidTextChoice } from '../../../utils/colorContrast';
+import { getQuickActionBackground, getQuickActionTextStyles } from '../../../utils/quickActionColors';
 import { Plus, Trash2, Palette, X } from 'lucide-react';
 import { generateId } from '../../../utils/idGenerator';
 import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
@@ -80,7 +80,7 @@ const AutoResizingTextarea = ({
 const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
   quickActions = [],
   buttonGridColumns = 1,
-  defaultColor = 'rgb(var(--c-white))',
+  defaultColor,
   showModifierToggle,
   onChange,
 }) => {
@@ -166,14 +166,14 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
               <button
                 onClick={() => setColorPickerIdx(colorPickerIdx === idx ? null : idx)}
                 className="w-9 h-9 shrink-0 rounded-lg border border-surface-border flex items-center justify-center shadow-sm relative overflow-hidden active:scale-95 transition-transform"
-                style={{ backgroundColor: action.color || defaultColor }}
+                style={{ backgroundColor: getQuickActionBackground(action.color, defaultColor) }}
                 title={t('col_btn_color_hint')}
               >
                 <Palette
                   size={14}
-                  className={
-                    getSolidTextChoice(action.color || defaultColor, { read: readColor }) === 'light' ? 'text-txt-on-color' : 'text-black'
-                  }
+                  style={{ color: getQuickActionTextStyles(
+                    getQuickActionBackground(action.color, defaultColor), 'rgb(var(--c-modal-bg-elevated))', readColor,
+                  ).color }}
                 />
               </button>
               <div className="flex-1 flex gap-2 min-w-0">

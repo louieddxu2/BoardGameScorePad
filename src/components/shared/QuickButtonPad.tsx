@@ -2,7 +2,8 @@
 import React, { useMemo } from 'react';
 import { QuickAction, ScoreColumn } from '../../types';
 import { createColorReader } from '../../utils/color';
-import { getSolidTextChoice, SOLID_TEXT_COLORS } from '../../utils/colorContrast';
+import { SOLID_TEXT_COLORS } from '../../utils/colorContrast';
+import { getQuickActionBackground, getQuickActionTextStyles } from '../../utils/quickActionColors';
 import { Check } from 'lucide-react';
 import { useSessionTranslation } from '../../i18n/session';
 import { useTouchAction } from './useTouchAction';
@@ -27,7 +28,7 @@ interface QuickActionButtonProps {
     showActionValue: boolean;
     isStandardSumParts: boolean;
     backgroundColor: string;
-    textColor: string;
+    textStyle: ReturnType<typeof getQuickActionTextStyles>;
     borderClass: string;
     badgeBackgroundClass: string;
     onAction: (action: QuickAction) => void;
@@ -41,7 +42,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
     showActionValue,
     isStandardSumParts,
     backgroundColor,
-    textColor,
+    textStyle,
     borderClass,
     badgeBackgroundClass,
     onAction,
@@ -95,7 +96,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             >
                 <span
                     className={`quick-button-label-text block font-bold leading-tight break-words whitespace-pre-wrap pointer-events-none ${showValueOnly ? 'font-mono text-[1.5rem]' : `hyphenate ${isListMode ? 'text-[1.25rem]' : 'text-[1rem]'}`}`}
-                    style={{ color: textColor }}
+                    style={textStyle}
                 >
                     {typography.displayText}
                 </span>
@@ -103,7 +104,7 @@ const QuickActionButton: React.FC<QuickActionButtonProps> = ({
             {showValueBadge && (
                 <span
                     className={`font-mono font-bold leading-normal rounded-full flex items-center justify-center shrink-0 pointer-events-none ${isListMode ? 'text-[1rem] px-[12px] py-[4px] ml-[8px]' : 'text-[0.875rem] px-[8px] py-[2px]'} ${badgeBackgroundClass}`}
-                    style={{ color: textColor }}
+                    style={textStyle}
                 >
                     {valueText}
                 </span>
@@ -143,27 +144,18 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                 <div className="absolute inset-0 bg-[rgb(var(--c-black)_/_0.05)] dark:bg-[rgb(var(--c-black)_/_0.15)] pointer-events-none z-0"></div>
 
                 {actions.map(action => {
-                    const bg = action.color || column.color || 'rgb(var(--c-white))';
-                    const isLightBg = getSolidTextChoice(bg, {
-                        colors: SOLID_TEXT_COLORS, backdrop: 'rgb(var(--c-input-bg))', read: readColor,
-                    }) === 'dark';
+                    const background = getQuickActionBackground(action.color, column.color);
+                    const textStyle = getQuickActionTextStyles(background, 'rgb(var(--c-input-bg))', readColor);
+                    const isLightBg = textStyle.color === SOLID_TEXT_COLORS.dark;
                     const isStandardSumParts = column.formula.includes('+next') && !column.formula.includes('×a2');
                     const isModifier = isStandardSumParts && action.isModifier;
 
                     const isSelected = currentOptionId === action.id || (currentMultiOptionIds || []).includes(action.id);
 
-                    // --- New Dynamic Style Logic ---
-
-                    // Contrast is against a game-selected background, not the app surface.
-                    // Keep fixed palette tokens here: semantic UI colors change with theme.
-                    const textColor = isLightBg ? SOLID_TEXT_COLORS.dark : SOLID_TEXT_COLORS.light;
-
-                    // 2. Modifier Border Style
                     const borderClass = isModifier
                         ? `border-dashed border-2 ${isLightBg ? 'border-[rgb(var(--c-black)_/_0.4)]' : 'border-[rgb(var(--c-white)_/_0.5)]'}`
                         : 'border border-[rgb(var(--c-black)_/_0.1)]';
 
-                    // 3. Badge Background Style
                     const badgeBgClass = isModifier
                         ? (isLightBg ? 'bg-[rgb(var(--c-white)_/_0.3)]' : 'bg-[rgb(var(--c-black)_/_0.3)]')
                         : (isLightBg ? 'bg-[rgb(var(--c-white)_/_0.2)]' : 'bg-[rgb(var(--c-black)_/_0.2)]');
@@ -177,8 +169,8 @@ const QuickButtonPad: React.FC<QuickButtonPadProps> = ({ column, onAction, curre
                             isListMode={isListMode}
                             showActionValue={showActionValue}
                             isStandardSumParts={isStandardSumParts}
-                            backgroundColor={bg}
-                            textColor={textColor}
+                            backgroundColor={background}
+                            textStyle={textStyle}
                             borderClass={borderClass}
                             badgeBackgroundClass={badgeBgClass}
                             onAction={onAction}

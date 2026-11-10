@@ -41,6 +41,14 @@ export const SOLID_TEXT_COLORS = {
     dark: 'rgb(var(--c-slate-900))', light: 'rgb(var(--c-slate-50))',
 } as const;
 
+/** A crisp edge protects every side of a glyph, including in exported images. */
+export const getTextOutline = (color: string, softShadow: string, width = 2): string => [
+    `-${width}px -${width}px 0 ${color}`, `0 -${width}px 0 ${color}`, `${width}px -${width}px 0 ${color}`,
+    `-${width}px 0 0 ${color}`, `${width}px 0 0 ${color}`,
+    `-${width}px ${width}px 0 ${color}`, `0 ${width}px 0 ${color}`, `${width}px ${width}px 0 ${color}`,
+    softShadow,
+].join(', ');
+
 interface SolidTextOptions {
     backdrop?: string;
     colors?: { dark: string; light: string };

@@ -5,7 +5,8 @@ import StickerElement, { getPlayerStickerIndices } from './StickerElement';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
-import { getPhotoLabelTextStyles, getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
+import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
+import { getQuickActionTextStyles } from '../../../utils/quickActionColors';
 import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
 import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
 import { createColorReader, type ColorReader } from '../../../utils/color';
@@ -66,7 +67,7 @@ function PhotoItemCell({ id, playerId, value, read }: {
                     minWidth: 0, maxWidth: '100%', padding: '3px 6px', borderRadius: 6,
                     border: `1px solid var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`,
                     backgroundColor: label.color, fontWeight: 700, overflowWrap: 'anywhere',
-                    ...getPhotoLabelTextStyles(label.color, PHOTO_RESULT_FALLBACK.card, read),
+                    ...getQuickActionTextStyles(label.color, PHOTO_RESULT_FALLBACK.card, read),
                 }}>{label.text}</span>
             )) : <span style={{ minWidth: 0 }}>{value.value}</span>)}
         </div>

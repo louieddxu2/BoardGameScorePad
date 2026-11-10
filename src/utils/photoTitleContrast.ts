@@ -1,5 +1,7 @@
 import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalette';
-import { getPhotoLabelTextStyles, getPhotoPlayerNameStyles, getPhotoTextOutline } from './photoTextContrast';
+import { getPhotoPlayerNameStyles } from './photoTextContrast';
+import { getTextOutline } from './colorContrast';
+import { getQuickActionTextStyles } from './quickActionColors';
 import { createColorReader } from './color';
 import { getPhotoNamePlateAppearance, getPhotoNamePlateBackground } from './photoNamePlate';
 
@@ -9,8 +11,8 @@ interface TitleAppearance {
     background: string;
 }
 
-const WHITE_SHADOW = getPhotoTextOutline('rgba(15,23,42,0.8)', '0 2px 4px rgba(0,0,0,0.3)');
-const DARK_SHADOW = getPhotoTextOutline('rgba(248,250,252,0.95)', '0 1px 3px rgba(255,255,255,0.5)');
+const WHITE_SHADOW = getTextOutline('rgba(15,23,42,0.8)', '0 2px 4px rgba(0,0,0,0.3)');
+const DARK_SHADOW = getTextOutline('rgba(248,250,252,0.95)', '0 1px 3px rgba(255,255,255,0.5)');
 const RESULT_SAMPLE_RATIO = 0.3;
 const localScrim = (light: boolean) => `radial-gradient(ellipse at 30% 35%, ${
     light ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.5)'
@@ -114,7 +116,7 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
     const nameAppearance = getPhotoNamePlateAppearance(palette.identity, read);
     for (const label of root.querySelectorAll<HTMLElement>('[data-score-photo-label]')) {
         const background = label.dataset.scorePhotoLabelColor;
-        if (background) Object.assign(label.style, getPhotoLabelTextStyles(background, palette.card, read));
+        if (background) Object.assign(label.style, getQuickActionTextStyles(background, palette.card, read));
     }
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {

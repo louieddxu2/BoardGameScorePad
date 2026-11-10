@@ -155,7 +155,7 @@ describe('QuickButtonPad fixed-background contrast', () => {
 
   it('lightens the numeric badge when choosing dark text instead of darkening its backing', () => {
     render(<LanguageProvider><QuickButtonPad column={{ ...column, quickActions: [
-      { id: 'green', label: 'Green', value: 1, color: 'rgb(var(--c-p-emerald))' },
+      { id: 'yellow', label: 'Yellow', value: 1, color: 'rgb(var(--c-p-yellow))' },
     ] }} onAction={vi.fn()} /></LanguageProvider>);
     expect(screen.getByText('1')).toHaveClass('bg-[rgb(var(--c-white)_/_0.2)]');
     expect(screen.getByText('1')).toHaveStyle({ color: 'rgb(var(--c-slate-900))' });
@@ -172,15 +172,16 @@ describe('QuickButtonPad fixed-background contrast', () => {
     { name: 'white player color', actionColor: 'rgb(var(--c-p-white))', backgroundColor: 'rgb(var(--c-p-white))', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'yellow player color', actionColor: 'rgb(var(--c-p-yellow))', backgroundColor: 'rgb(var(--c-p-yellow))', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'skin player color', actionColor: 'rgb(var(--c-p-skin))', backgroundColor: 'rgb(var(--c-p-skin))', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'blue player color', actionColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'red player color', actionColor: 'rgb(var(--c-p-red))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'green player color', actionColor: 'rgb(var(--c-p-emerald))', backgroundColor: 'rgb(var(--c-p-emerald))', textColor: 'rgb(var(--c-slate-900))' },
+    { name: 'blue player color', actionColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-50))' },
+    { name: 'red player color', actionColor: 'rgb(var(--c-p-red))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-50))' },
+    { name: 'green player color', actionColor: 'rgb(var(--c-p-emerald))', backgroundColor: 'rgb(var(--c-p-emerald))', textColor: 'rgb(var(--c-slate-50))' },
+    { name: 'orange player color', actionColor: 'rgb(var(--c-p-orange))', backgroundColor: 'rgb(var(--c-p-orange))', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'custom dark hex', actionColor: '#123456', backgroundColor: 'rgb(18, 52, 86)', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'custom light hex', actionColor: '#eeeeee', backgroundColor: 'rgb(238, 238, 238)', textColor: 'rgb(var(--c-slate-900))' },
     { name: 'custom dark RGB', actionColor: 'rgb(20, 40, 60)', backgroundColor: 'rgb(20, 40, 60)', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'custom light RGB', actionColor: 'rgb(240, 240, 240)', backgroundColor: 'rgb(240, 240, 240)', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'column color fallback', columnColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'action color over column color', actionColor: 'rgb(var(--c-p-red))', columnColor: 'rgb(var(--c-p-white))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-900))' },
+    { name: 'column color fallback', columnColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-50))' },
+    { name: 'action color over column color', actionColor: 'rgb(var(--c-p-red))', columnColor: 'rgb(var(--c-p-white))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'default white background', backgroundColor: 'rgb(var(--c-white))', textColor: 'rgb(var(--c-slate-900))' },
   ];
 
@@ -214,6 +215,17 @@ describe('QuickButtonPad fixed-background contrast', () => {
       expect(within(button).getByText('One')).toHaveStyle({ color: textColor });
       expect(within(button).getByText('1')).toHaveStyle({ color: textColor });
     });
+  });
+
+  it('uses the same edge on a midtone label and numeric badge as a photo option', () => {
+    render(<LanguageProvider><QuickButtonPad column={{ ...column, quickActions: [
+      { id: 'orange', label: 'One', value: 1, color: '#f97316' },
+    ] }} onAction={vi.fn()} /></LanguageProvider>);
+    const label = screen.getByText('One');
+    const badge = screen.getByText('1');
+    expect(label.style.textShadow).toContain('1px 0 0 rgba(15,23,42,0.9)');
+    expect(badge.style.textShadow).toBe(label.style.textShadow);
+    expect(badge).toHaveClass('bg-[rgb(var(--c-black)_/_0.2)]');
   });
 
   it('keeps label-only contrast fixed when switching themes without remounting', () => {

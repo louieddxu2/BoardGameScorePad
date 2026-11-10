@@ -1,6 +1,7 @@
 import type { Player, ScoreColumn } from '../../../types';
 import { calculateColumnScore, getAutoColumnError, resolveSelectedOptions } from '../../../utils/scoring';
 import { formatDisplayNumber } from '../../../utils/scoreDisplay';
+import { getQuickActionBackground } from '../../../utils/quickActionColors';
 
 interface PhotoItemHeading {
   id: string;
@@ -10,9 +11,6 @@ interface PhotoItemHeading {
 
 export type PhotoItemValue = { value: string } | { labels: Array<{ id: string; text: string; color: string }> };
 
-// Match the input button's option / column / default background precedence.
-const DEFAULT_PHOTO_LABEL_COLOR = 'rgb(var(--c-white))';
-
 /** Resolve values against the same column definitions and scoring context as the grid. */
 function getPhotoItemValue(column: ScoreColumn, player: Player, columns: ScoreColumn[], players: Player[]): PhotoItemValue | undefined {
   const context = { allColumns: columns, playerScores: player.scores, allPlayers: players };
@@ -20,7 +18,7 @@ function getPhotoItemValue(column: ScoreColumn, player: Player, columns: ScoreCo
   const options = resolveSelectedOptions(column, score);
   if (options.length) {
     return { labels: options.map(option => ({
-      id: option.id, text: option.label, color: option.color || column.color || DEFAULT_PHOTO_LABEL_COLOR,
+      id: option.id, text: option.label, color: getQuickActionBackground(option.color, column.color),
     })) };
   }
   const parts = score?.parts ?? [];
