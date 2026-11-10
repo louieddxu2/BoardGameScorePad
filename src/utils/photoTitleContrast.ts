@@ -2,7 +2,7 @@ import { getPhotoResultPalette, PHOTO_RESULT_FALLBACK } from './photoResultPalet
 import { getPhotoPlayerNameStyles } from './photoTextContrast';
 import { getTextOutline } from './colorContrast';
 import { getQuickActionTextStyles } from './quickActionColors';
-import { createColorReader } from './color';
+import { createColorReader, type ColorReader } from './color';
 import { getPhotoNamePlateAppearance, getPhotoNamePlateBackground } from './photoNamePlate';
 
 interface TitleAppearance {
@@ -62,6 +62,12 @@ const waitForPhoto = (image: HTMLImageElement, signal: AbortSignal): Promise<boo
     });
 };
 
+const applyNameStyles = (name: HTMLElement, color: string, background: string, read: ColorReader) => {
+    const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, background, read);
+    Object.assign(name.style, styles);
+    name.style.setProperty('-webkit-text-stroke', String(WebkitTextStroke ?? ''));
+};
+
 /** Runs only before export: two 48x24 samples on one canvas, never a full-resolution pixel scan. */
 export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSignal): Promise<void> => {
     const image = root.querySelector<HTMLImageElement>('[data-score-photo-source]');
@@ -118,6 +124,10 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         const background = label.dataset.scorePhotoLabelColor;
         if (background) Object.assign(label.style, getQuickActionTextStyles(background, palette.card, read));
     }
+    for (const heading of root.querySelectorAll<HTMLElement>('[data-score-photo-item-name-color]')) {
+        const color = heading.dataset.scorePhotoItemNameColor;
+        if (color) applyNameStyles(heading, color, palette.background, read);
+    }
     for (const name of root.querySelectorAll<HTMLElement>('[data-score-photo-name]')) {
         if (name.dataset.scorePhotoName === 'default') {
             name.style.fontWeight = String(getPhotoPlayerNameStyles(palette.text, palette.identity, read).fontWeight);
@@ -132,8 +142,6 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
         const plate = name.closest<HTMLElement>('[data-score-photo-identity]');
         const background = getPhotoNamePlateBackground(color, read, nameAppearance);
         if (plate) plate.style.backgroundColor = background;
-        const { WebkitTextStroke, ...styles } = getPhotoPlayerNameStyles(color, background, read);
-        Object.assign(name.style, styles);
-        name.style.setProperty('-webkit-text-stroke', String(WebkitTextStroke ?? ''));
+        applyNameStyles(name, color, background, read);
     }
 };

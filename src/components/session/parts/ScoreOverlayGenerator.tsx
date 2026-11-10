@@ -33,6 +33,7 @@ const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
 const MAX_PLAYER_WIDTH_WITH_ITEMS = 320;
 const ITEM_NAME_WIDTH = 120;
+const RESULT_BACKGROUND = `var(--photo-result-background, ${PHOTO_RESULT_FALLBACK.background})`;
 const RESULT_CARD = `var(--photo-result-card, ${PHOTO_RESULT_FALLBACK.card})`;
 const RESULT_TEXT = `var(--photo-result-text, ${PHOTO_RESULT_FALLBACK.text})`;
 const RESULT_BORDER = `var(--photo-result-border, ${PHOTO_RESULT_FALLBACK.border})`;
@@ -44,14 +45,14 @@ const ITEM_GRID_STYLE: React.CSSProperties = {
 const ITEM_HEADING_STYLE: React.CSSProperties = {
     display: 'flex', alignItems: 'center', minWidth: 0, padding: '8px 12px',
     fontSize: 28, lineHeight: 1.2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
-    backgroundColor: PHOTO_RESULT_FALLBACK.identity, color: PHOTO_RESULT_FALLBACK.text, fontWeight: 600,
+    backgroundColor: RESULT_BACKGROUND, color: RESULT_TEXT, fontWeight: 600,
 };
 
 function PhotoItemName({ item, read }: { item: { name: string; color?: string }; read: ColorReader }) {
     return (
-        <div data-score-photo-item-name="true" style={{
+        <div data-score-photo-item-name="true" data-score-photo-item-name-color={item.color} style={{
             ...ITEM_HEADING_STYLE, borderTop: RESULT_RULE,
-            ...(item.color ? getPhotoPlayerNameStyles(item.color, PHOTO_RESULT_FALLBACK.identity, read) : {}),
+            ...(item.color ? getPhotoPlayerNameStyles(item.color, PHOTO_RESULT_FALLBACK.background, read) : {}),
         }}>
             <span style={{ minWidth: 0 }}>{item.name}</span>
         </div>
@@ -219,7 +220,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                 width: GENERATOR_WIDTH, fontSize: 16, lineHeight: 1.4,
                 // Keep the export's pixel type scale when a mobile browser rasterizes the SVG.
                 textSizeAdjust: 'none', WebkitTextSizeAdjust: 'none',
-                backgroundColor: `var(--photo-result-background, ${PHOTO_RESULT_FALLBACK.background})`,
+                backgroundColor: RESULT_BACKGROUND,
                 color: RESULT_TEXT,
             }}
             className="bg-app-bg text-txt-primary flex flex-col items-stretch overflow-hidden"

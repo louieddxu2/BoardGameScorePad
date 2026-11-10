@@ -31,7 +31,7 @@ Run `npm run check:theme`. V3test CI and `npm run publish:v3test` run the same c
 - Callers provide the effective backing for their context; this utility does not inspect ancestor elements, sample images, or infer every CSS overlay/filter. Photo treatments and the existing ink-outline registry remain separate consumers of shared color math.
 - Reuse a `createColorReader()` for one synchronous operation or render. It performs at most one lazy `getComputedStyle` call and deduplicates parsed colors within that operation. Never keep this reader across theme changes. There are no new observers, global caches, effects or theme-selection state.
 - `src/utils/quickActionColors.ts` shares the fill and ink rules for quick buttons and photo option badges. A visible fill at or above 0.5 relative luminance uses dark text. Other fills use near-white text, with a dark edge on midtones. Numeric badges lighten for dark text and darken for light text. Other controls that call `getSolidTextChoice()` continue to compare the contrast of both candidates.
-- Photo export headings pair the fixed result palette's identity backing with its default ink. A configured column color supplies the heading ink with dark-surface outline protection. The export title and its scrim share the same fallback for initial rendering and capture.
+- Photo export column headings share the sampled result background and its default ink. Configured column ink keeps its RGB and alpha, with outline protection based on the sampled backing. The export title and its scrim share the same fallback for initial rendering and capture.
 
 ## Reviewed fixed colors
 

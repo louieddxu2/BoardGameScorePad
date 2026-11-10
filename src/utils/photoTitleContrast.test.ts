@@ -105,6 +105,23 @@ describe('photo title contrast', () => {
         }
     });
 
+    it('adapts custom column ink protection to the sampled result background', async () => {
+        const { root, context } = setupPhoto();
+        const heading = document.createElement('div');
+        const color = 'rgba(12, 34, 56, 0.5)';
+        heading.dataset.scorePhotoItemNameColor = color;
+        root.append(heading);
+
+        for (const brightness of [240, 20, 240]) {
+            const data = pixels(brightness);
+            context.getImageData.mockReturnValue({ data });
+            await prepareScorePhotoTitle(root, new AbortController().signal);
+            const styles = getPhotoPlayerNameStyles(color, getPhotoResultPalette(data).background);
+            expect(heading.style.color).toBe(color);
+            expect(heading.style.textShadow).toBe(styles.textShadow?.trim());
+        }
+    });
+
     it('refreshes each name against the sampled backing when photos change, without additional sampling', async () => {
         const { root, context } = setupPhoto();
         const name = document.createElement('span');

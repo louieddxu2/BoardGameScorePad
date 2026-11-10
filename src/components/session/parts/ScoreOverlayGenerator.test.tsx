@@ -5,7 +5,6 @@ import { LanguageContext } from '../../../i18n';
 import { Player, ScoreColumn } from '../../../types';
 import ScoreOverlayGenerator, { OverlayData } from './ScoreOverlayGenerator';
 import { PHOTO_TITLE_FALLBACK } from '../../../utils/photoTitleContrast';
-import { PHOTO_RESULT_FALLBACK } from '../../../utils/photoResultPalette';
 import { getPhotoNamePlateBackground } from '../../../utils/photoNamePlate';
 import { getPhotoPlayerNameStyles } from '../../../utils/photoTextContrast';
 import { getPlayerStickerIndices } from './StickerElement';
@@ -81,7 +80,7 @@ describe('shared photo player items', () => {
     for (const card of container.querySelectorAll('[data-score-photo-player]')) expect(card).toHaveStyle({ width });
   });
 
-  it('uses the fixed export palette for item headings while preserving selected foreground colors', () => {
+  it('shares the result background and default ink with the left column while preserving selected heading colors', () => {
     const colored: ScoreColumn[] = [
       { ...columns[0], color: 'rgba(12, 34, 56, 0.5)' },
       { ...columns[2], color: '#ef4444' },
@@ -89,11 +88,13 @@ describe('shared photo player items', () => {
     ];
     const player = { ...createPlayer('p1', 'Alice', 10), scores };
     const { container } = renderOverlay({ ...baseData([player], ['p1'], 'HIGHEST_WINS'), columns: colored });
+    const root = container.firstElementChild as HTMLElement;
     const titles = container.querySelectorAll<HTMLElement>('[data-score-photo-item-name]');
     expect(titles[0].style.color).toBe('rgba(12, 34, 56, 0.5)');
+    expect(titles[0].dataset.scorePhotoItemNameColor).toBe('rgba(12, 34, 56, 0.5)');
     expect(titles[1]).toHaveStyle({ color: '#ef4444' });
-    expect(titles[2]).toHaveStyle({ color: PHOTO_RESULT_FALLBACK.text });
-    for (const title of titles) expect(title).toHaveStyle({ backgroundColor: PHOTO_RESULT_FALLBACK.identity });
+    expect(titles[2].style.color).toBe(root.style.color);
+    for (const title of titles) expect(title.style.backgroundColor).toBe(root.style.backgroundColor);
   });
 
   it('repeats personal headings after wrapping and displays shared values once below all players', () => {
