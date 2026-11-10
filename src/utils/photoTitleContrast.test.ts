@@ -109,6 +109,7 @@ describe('photo title contrast', () => {
         const { root, context } = setupPhoto();
         const heading = document.createElement('div');
         const color = 'rgba(12, 34, 56, 0.5)';
+        heading.dataset.scorePhotoItemName = 'true';
         heading.dataset.scorePhotoItemNameColor = color;
         root.append(heading);
 
@@ -116,7 +117,9 @@ describe('photo title contrast', () => {
             const data = pixels(brightness);
             context.getImageData.mockReturnValue({ data });
             await prepareScorePhotoTitle(root, new AbortController().signal);
-            const styles = getPhotoColumnNameStyles(color, getPhotoResultPalette(data).background);
+            const palette = getPhotoResultPalette(data, { separateAttributeBackdrop: true });
+            const styles = getPhotoColumnNameStyles(color, palette.background);
+            expect(root.style.getPropertyValue('--photo-result-background')).toBe(palette.background);
             expect(heading.style.color).toBe(color);
             expect(heading.style.textShadow).toBe(styles.textShadow?.trim());
         }

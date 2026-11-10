@@ -32,6 +32,7 @@ const PADDING_PX = 32;
 const GAP_PX = 16;
 const MAX_PLAYER_WIDTH = 228;
 const MAX_PLAYER_WIDTH_WITH_ITEMS = 320;
+const MAX_NAME_PLATE_WIDTH_WITH_ITEMS = 180;
 const ITEM_NAME_WIDTH = 120;
 const ITEM_VALUE_FONT_SIZE = 30;
 const RESULT_BACKGROUND = `var(--photo-result-background, ${PHOTO_RESULT_FALLBACK.background})`;
@@ -128,6 +129,7 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
         Math.floor((innerWidth - itemGutter - (targetCols - 1) * columnGap) / targetCols));
     // Bound the whole group as well, so five compact cards still wrap as 3+2.
     const resultsWidth = itemGutter + targetCols * playerWidth + (targetCols - 1) * columnGap + PADDING_PX * 2;
+    const namePadding = hasPhotoItems ? `6px ${isCoop ? 8 : 34}px` : `10px ${isCoop ? 8 : 44}px 6px`;
     const read = createColorReader();
 
     const playerCards = data.players.map(p => {
@@ -161,8 +163,8 @@ const ScoreOverlayGenerator = forwardRef<HTMLDivElement, ScoreOverlayGeneratorPr
                     className="relative"
                     // Reserve space within the name box for its superscript crown.
                     style={{
-                        width: '100%', maxWidth: '100%', minHeight: 50,
-                        padding: isCoop ? '10px 8px 6px' : '10px 44px 6px', textAlign: 'center',
+                        width: '100%', maxWidth: hasPhotoItems ? MAX_NAME_PLATE_WIDTH_WITH_ITEMS : '100%', minHeight: 50,
+                        padding: namePadding, textAlign: 'center',
                         // Match the dark fallback until capture selects the photo's appearance.
                         // Score paint stays photo-derived below this fixed scoreboard wash.
                         backgroundColor: nameBackground ?? `var(--photo-result-identity, ${PHOTO_RESULT_FALLBACK.identity})`,

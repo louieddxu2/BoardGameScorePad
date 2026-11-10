@@ -57,6 +57,15 @@ describe('photo result palette', () => {
         expect(rgb(cool.background)[2]).toBeGreaterThan(rgb(cool.background)[0]);
     });
 
+    it.each([40, 240])('separates the attribute backdrop while preserving the score and identity paint at brightness %i', value => {
+        const sample = pixels([value, value, value]);
+        const original = getPhotoResultPalette(sample);
+        const attributes = getPhotoResultPalette(sample, { separateAttributeBackdrop: true });
+        expect(attributes).toEqual({ ...original, background: attributes.background });
+        expect(contrast(attributes.background, attributes.card)).toBeGreaterThan(contrast(original.background, original.card));
+        expect(contrast(attributes.background, attributes.muted)).toBeGreaterThanOrEqual(4.5);
+    });
+
     it('keeps text and crowns readable across hues and midtones while keeping identity tones close', () => {
         for (let value = 0; value <= 255; value += 5) {
             for (const color of [[value, value, value], [value, 0, 0], [0, value, 0], [0, 0, value], [value, value, 0]]) {

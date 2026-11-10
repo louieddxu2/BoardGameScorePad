@@ -86,7 +86,9 @@ export const prepareScorePhotoTitle = async (root: HTMLElement, signal: AbortSig
             const sampleHeight = Math.max(1, Math.round(image.naturalHeight * RESULT_SAMPLE_RATIO));
             context.drawImage(image, 0, image.naturalHeight - sampleHeight, image.naturalWidth, sampleHeight,
                 0, 0, canvas.width, canvas.height);
-            palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data);
+            palette = getPhotoResultPalette(context.getImageData(0, 0, canvas.width, canvas.height).data, {
+                separateAttributeBackdrop: !!root.querySelector('[data-score-photo-item-name]'),
+            });
         }
         const imageRect = image.getBoundingClientRect();
         const titleRect = title.getBoundingClientRect();

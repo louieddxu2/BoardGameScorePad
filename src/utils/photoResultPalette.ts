@@ -11,6 +11,10 @@ interface PhotoResultPalette {
     winner: string;
 }
 
+interface PhotoResultPaletteOptions {
+    separateAttributeBackdrop?: boolean;
+}
+
 export const PHOTO_RESULT_FALLBACK: Readonly<PhotoResultPalette> = {
     background: '#1e293b', card: '#334155', identity: '#293649', border: '#64748b',
     text: '#f8fafc', muted: '#cbd5e1', winner: '#fbbf24',
@@ -24,6 +28,7 @@ const BLACK = parseColor('#000000')!;
 export const PHOTO_DARK_SURFACE_MAX_LUMINANCE = 0.10;
 // Leave a little headroom for image-export channel rounding.
 const TEXT_CONTRAST = 4.6;
+const ATTRIBUTE_BACKDROP_STEP = 0.18;
 const mix = (from: RgbaColor, to: RgbaColor, amount: number): RgbaColor => ({
     r: from.r + (to.r - from.r) * amount,
     g: from.g + (to.g - from.g) * amount,
@@ -47,7 +52,9 @@ const readableTint = (seed: RgbaColor, ink: RgbaColor, surfaces: RgbaColor[], ta
 };
 
 /** Pick a common color from a tiny sample, ignoring transparent/near-gray pixels. */
-export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPalette => {
+export const getPhotoResultPalette = (
+    pixels: Uint8ClampedArray, { separateAttributeBackdrop }: PhotoResultPaletteOptions = {},
+): PhotoResultPalette => {
     const buckets = new Map<number, { red: number; green: number; blue: number; count: number }>();
     let dominant: { red: number; green: number; blue: number; count: number } | undefined;
     let brightness = 0;
@@ -108,9 +115,14 @@ export const getPhotoResultPalette = (pixels: Uint8ClampedArray): PhotoResultPal
         surfaces = surfaces.map(surface => mix(surface, anchor, high));
     }
     const [base, tile, name] = surfaces;
-    const gold = parseColor(ink === LIGHT_INK ? '#fbbf24' : '#854d0e')!;
+    // The attributes and caption use the photo hue, one tonal step away from the score band.
+    const lightInk = ink === LIGHT_INK;
+    const attributeBackdrop = separateAttributeBackdrop
+        ? mix(lightInk ? base : tile, lightInk ? BLACK : WHITE, ATTRIBUTE_BACKDROP_STEP)
+        : base;
+    const gold = parseColor(lightInk ? '#fbbf24' : '#854d0e')!;
     return {
-        background: formatColor(base), card: formatColor(tile), identity: formatColor(name),
+        background: formatColor(attributeBackdrop), card: formatColor(tile), identity: formatColor(name),
         border: formatColor(mix(tile, ink, 0.14)), text: formatColor(ink),
         muted: formatColor(readableTint(mix(ink, base, 0.24), ink, surfaces, TEXT_CONTRAST)),
         winner: formatColor(readableTint(gold, ink, surfaces, 3.1)),
