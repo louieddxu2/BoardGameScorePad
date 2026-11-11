@@ -57,12 +57,12 @@ describe('photo name and surface contrast', () => {
         expect(getQuickActionTextStyles('rgba(0,0,0,0.1)', '#111111', read).color).toBe(SOLID_TEXT_COLORS.light);
     });
 
-    it('shades white photo badge text areas to a readable contrast while exposing the original color at the edge', () => {
+    it('shades the full photo badge to give white text enough contrast', () => {
         const backdrop = '#474b4e';
         for (const background of ['#f97316', '#3b82f6', '#f59e0b']) {
             const styles = getPhotoOptionStyles(background, backdrop);
             expect(styles).toMatchObject({ color: SOLID_TEXT_COLORS.light, textShadow: 'none' });
-            expect(styles.backgroundImage).toContain('transparent 6px');
+            expect(styles.backgroundImage).toMatch(/^linear-gradient\((rgb\(var\(--c-black\) \/ [\d.]+\)), \1\)$/);
             const opacity = Number(styles.backgroundImage.match(/--c-black\) \/ ([\d.]+)/)?.[1]);
             const shaded = compositeColors({ ...parseColor('black')!, a: opacity }, parseColor(background)!);
             expect(contrastAfterRounding(parseColor(PHOTO_RESULT_FALLBACK.text)!, shaded)).toBeGreaterThanOrEqual(4.6);

@@ -54,10 +54,9 @@ export const getPhotoColumnNameStyles = (color: string, background: string, read
     return { ...styles, textShadow: getColumnEdge(edgeColor, 0.75) };
 };
 
-const PHOTO_OPTION_COLOR_STRIP = 6;
 const PHOTO_OPTION_CONTRAST = 4.6;
 
-/** Give low-contrast white labels a quieter backing and keep a strip of the chosen fill visible. */
+/** Shade the full badge when its white label needs more contrast. */
 export const getPhotoOptionStyles = (background: string, backdrop: string, read: ColorReader = readColor) => {
     const { color } = getQuickActionTextStyles(background, backdrop, read);
     const styles = { color, textShadow: 'none', backgroundImage: 'none' };
@@ -77,8 +76,9 @@ export const getPhotoOptionStyles = (background: string, backdrop: string, read:
         if (contrastAfterRounding(ink, shaded)! >= PHOTO_OPTION_CONTRAST) high = opacity;
         else low = opacity;
     }
+    const shade = `rgb(var(--c-black) / ${high})`;
     return {
         ...styles,
-        backgroundImage: `linear-gradient(to right, transparent ${PHOTO_OPTION_COLOR_STRIP}px, rgb(var(--c-black) / ${high}) ${PHOTO_OPTION_COLOR_STRIP}px)`,
+        backgroundImage: `linear-gradient(${shade}, ${shade})`,
     };
 };
