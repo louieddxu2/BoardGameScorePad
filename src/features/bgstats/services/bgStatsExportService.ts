@@ -127,7 +127,9 @@ class BgStatsExportService {
 
             // --- Player Scores Resolution ---
             // Pre-calculate ranks for this play
-            const scores = record.players.map(p => p.totalScore);
+            // BG Stats rank 1 is the best result, so a lowest-wins play ranks ascending.
+            const rankSign = getRecordScoringRule(record) === 'LOWEST_WINS' ? -1 : 1;
+            const scores = record.players.map(p => p.totalScore * rankSign);
             const playerScores = record.players.map((p, index) => {
                 // Determine Identity
                 // If linkedPlayerId exists, map to that. Otherwise map to name (anonymous)
@@ -154,7 +156,7 @@ class BgStatsExportService {
                 const isWinner = record.winnerIds.includes(p.id) || (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId));
                 
                 // Calculate Rank
-                const rank = getScoreRank(p.totalScore, scores);
+                const rank = getScoreRank(p.totalScore * rankSign, scores);
 
                 return {
                     playerRefId: playerRefId,
