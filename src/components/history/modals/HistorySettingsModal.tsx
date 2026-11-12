@@ -31,14 +31,21 @@ const toDatetimeInput = (timestamp: number) => {
     return localISOTime;
 };
 
-// Helper: Convert HTML input string back to timestamp
-const fromDatetimeInput = (val: string) => {
-    return new Date(val).getTime();
+// Helper: Convert HTML input string back to timestamp.
+// A cleared or half-typed field reports '' and has no timestamp; a NaN time must never
+// reach the record, because it is not a valid index key and hides the record from history.
+const fromDatetimeInput = (val: string): number | null => {
+    const time = new Date(val).getTime();
+    return Number.isFinite(time) ? time : null;
 };
+
+type TimeField = 'startTime' | 'endTime';
 
 const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onClose, record, onSave, locationHistory = [], onRestoreTemplate }) => {
     const [formData, setFormData] = useState<HistoryRecord | null>(null);
     const [showRawInspector, setShowRawInspector] = useState(false);
+    // Text currently shown in a time field while it has no complete value.
+    const [timeDrafts, setTimeDrafts] = useState<Partial<Record<TimeField, string>>>({});
     const { t } = useHistoryTranslation();
 
     const SCORING_OPTIONS: { value: ScoringRule, label: string }[] = [
@@ -67,6 +74,7 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
             }
 
             setFormData(initialForm);
+            setTimeDrafts({});
         }
     }, [isOpen, record]);
 
@@ -76,6 +84,17 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
 
     const handleFieldChange = (key: keyof HistoryRecord, value: any) => {
         setFormData(prev => prev ? ({ ...prev, [key]: value }) : null);
+    };
+
+    const handleTimeChange = (key: TimeField, text: string) => {
+        const time = fromDatetimeInput(text);
+        if (time === null) {
+            // Keep the last complete time in the record; only the visible text follows the edit.
+            setTimeDrafts(prev => ({ ...prev, [key]: text }));
+            return;
+        }
+        setTimeDrafts(prev => ({ ...prev, [key]: undefined }));
+        handleFieldChange(key, time);
     };
 
     const handleSave = async () => {
@@ -190,8 +209,8 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                         </label>
                         <input
                             type="datetime-local"
-                            value={toDatetimeInput(formData.startTime)}
-                            onChange={(e) => handleFieldChange('startTime', fromDatetimeInput(e.target.value))}
+                            value={timeDrafts.startTime ?? toDatetimeInput(formData.startTime)}
+                            onChange={(e) => handleTimeChange('startTime', e.target.value)}
                             className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-2 text-sm text-txt-primary focus:border-brand-primary outline-none"
                         />
                     </div>
@@ -201,8 +220,8 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
                         </label>
                         <input
                             type="datetime-local"
-                            value={toDatetimeInput(formData.endTime)}
-                            onChange={(e) => handleFieldChange('endTime', fromDatetimeInput(e.target.value))}
+                            value={timeDrafts.endTime ?? toDatetimeInput(formData.endTime)}
+                            onChange={(e) => handleTimeChange('endTime', e.target.value)}
                             className="w-full bg-modal-bg-elevated border border-modal-border rounded-xl p-2 text-sm text-txt-primary focus:border-brand-primary outline-none"
                         />
                     </div>
