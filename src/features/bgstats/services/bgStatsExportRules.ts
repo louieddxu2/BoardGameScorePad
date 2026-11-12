@@ -25,6 +25,21 @@ export const computeBgStatsRanks = (record: HistoryRecord): number[] => {
 };
 
 /**
+ * BG Stats marks winners as manual when they cannot be read from the scores: a tie broken
+ * by a tie-breaker, a player forced to lose, or any winner of a cooperative or no-points play.
+ * A play with no winner, or whose winners are exactly the best scores, is automatic.
+ */
+export const isManualWinner = (record: HistoryRecord): boolean => {
+    const winners = record.players.map(player => isRecordWinner(record, player));
+    if (!winners.some(Boolean)) return false;
+    const rule = getRecordScoringRule(record);
+    if (isNoPointsRule(rule) || rule === 'COOP') return true;
+    const totals = record.players.map(player => player.totalScore);
+    const best = rule === 'LOWEST_WINS' ? Math.min(...totals) : Math.max(...totals);
+    return totals.some((total, i) => (total === best) !== winners[i]);
+};
+
+/**
  * `${record.id}|${linkedPlayerId}` for each linked player's earliest play of each game,
  * which BG Stats marks as `newPlayer`. Unlinked players have no identity to follow.
  */

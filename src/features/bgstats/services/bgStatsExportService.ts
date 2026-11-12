@@ -2,7 +2,7 @@
 import { db } from '../../../db';
 import { BgStatsExport, BgStatsGame, BgStatsPlayer, BgStatsLocation } from '../types';
 import { HistoryRecord, BggGame } from '../../../types';
-import { computeBgStatsRanks, findFirstPlays, isNoPointsRule, isRecordWinner } from './bgStatsExportRules';
+import { computeBgStatsRanks, findFirstPlays, isManualWinner, isNoPointsRule, isRecordWinner } from './bgStatsExportRules';
 import { generateId } from '../../../utils/idGenerator';
 import { getRecordScoringRule } from '../../../utils/historyUtils';
 import { getHistoryBggId } from './bgStatsBggData';
@@ -198,7 +198,7 @@ class BgStatsExportService {
                 scoringSetting: 0,
                 playerScores: playerScores,
                 rounds: 0,
-                manualWinner: false,
+                manualWinner: isManualWinner(record),
                 ignored: false,
                 importPlayId: 0,
                 modificationDate: formatDate(record.updatedAt || record.endTime),
