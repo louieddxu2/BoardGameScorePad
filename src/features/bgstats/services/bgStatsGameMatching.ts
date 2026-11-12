@@ -2,6 +2,7 @@ import { db } from '../../../db';
 import { BggGame, GameTemplate, SavedListItem } from '../../../types';
 import { BgStatsGame } from '../types';
 import { normalizeBggId } from './bgStatsBggData';
+import { buildSourceLinkIndex } from './bgStatsLinkMemory';
 
 type LocalGame = SavedListItem | GameTemplate;
 const cleanName = (name: string) => name.trim().toLowerCase();
@@ -14,6 +15,8 @@ export class BgStatsGameMatcher {
     private aliasIds = new Map<string, Set<string>>();
     private relatedRows = new Map<string, LocalGame[]>();
     private savedIds: Set<string>;
+    /** BG Stats game uuid -> saved game it was linked to in an earlier import. */
+    private bySourceUuid: Map<string, SavedListItem>;
 
     constructor(
         public readonly savedGames: SavedListItem[],
@@ -21,6 +24,7 @@ export class BgStatsGameMatcher {
         referencedTemplates: GameTemplate[] = []
     ) {
         this.savedIds = new Set(savedGames.map(game => game.id));
+        this.bySourceUuid = buildSourceLinkIndex(savedGames);
         for (const game of [...savedGames, ...referencedTemplates]) {
             const related = this.relatedRows.get(game.id) ?? [];
             related.push(game);
@@ -84,7 +88,15 @@ export class BgStatsGameMatcher {
         if (bggId) this.addIndex(this.byBggId, bggId, game);
     }
 
+    /** Name of a known local game, for creating its saved-game entry. */
+    public nameOf(localId: string): string | undefined {
+        return this.byId.get(localId)?.name;
+    }
+
     public async find(source: BgStatsGame): Promise<LocalGame | undefined> {
+        const linked = source.uuid ? this.bySourceUuid.get(source.uuid) : undefined;
+        if (linked) return this.byId.get(linked.id) ?? linked;
+
         const uuidMatch = this.byId.get(source.uuid);
         if (uuidMatch) return uuidMatch;
 

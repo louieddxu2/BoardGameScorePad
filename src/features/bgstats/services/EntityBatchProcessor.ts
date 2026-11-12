@@ -6,6 +6,7 @@ import { bgStatsEntityService } from './bgStatsEntityService';
 import { normalizeBggId } from './bgStatsBggData';
 import { enrichBggDictionary } from './bgStatsBggDictionary';
 import { loadBgStatsGameMatcher } from './bgStatsGameMatching';
+import { buildSourceLinkIndex, rememberSourceLinks } from './bgStatsLinkMemory';
 
 /**
  * 實體批次處理器
@@ -36,14 +37,21 @@ export class EntityBatchProcessor {
             console.warn("[EntityBatchProcessor] Batch check failed for locations", e);
         }
 
+        const remembered = buildSourceLinkIndex(await db.savedLocations.toArray());
+        const resolved = new Map<string, string>();
+
         for (const loc of locations) {
             try {
                 const link = links.get(loc.id);
-                
+                const rememberedId = loc.uuid ? remembered.get(loc.uuid)?.id : undefined;
+
                 if (link) {
                     // A. Manual Link (Override)
                     const localId = await importStrategies.resolveLocation(loc.name, loc.uuid, link);
                     idMap.set(loc.id, localId);
+                } else if (rememberedId) {
+                    // A2. Linked in an earlier import
+                    idMap.set(loc.id, rememberedId);
                 } else if (existingSet.has(loc.uuid)) {
                     // B. Fast Path: ID Exists locally
                     const localId = loc.uuid;
@@ -57,8 +65,20 @@ export class EntityBatchProcessor {
             } catch (e) {
                 console.warn(`[EntityBatchProcessor] Skipping location ${loc.name}`, e);
             }
+            const localId = idMap.get(loc.id);
+            if (loc.uuid && localId) resolved.set(loc.uuid, localId);
         }
+        await this.remember(db.savedLocations, resolved, remembered);
         return idMap;
+    }
+
+    private async remember(...args: Parameters<typeof rememberSourceLinks>): Promise<void> {
+        try {
+            await rememberSourceLinks(...args);
+        } catch (e) {
+            // The import itself succeeded; the next import falls back to the usual matching.
+            console.warn('[EntityBatchProcessor] Failed to remember BG Stats links', e);
+        }
     }
 
     /**
@@ -82,14 +102,21 @@ export class EntityBatchProcessor {
             console.warn("[EntityBatchProcessor] Batch check failed for players", e);
         }
 
+        const remembered = buildSourceLinkIndex(await db.savedPlayers.toArray());
+        const resolved = new Map<string, string>();
+
         for (const p of validPlayers) {
             try {
                 const link = links.get(p.id);
+                const rememberedId = p.uuid ? remembered.get(p.uuid)?.id : undefined;
 
                 if (link) {
                     // A. Manual Link
                     const localId = await importStrategies.resolvePlayer(p.name, p.uuid, link);
                     idMap.set(p.id, localId);
+                } else if (rememberedId) {
+                    // A2. Linked in an earlier import
+                    idMap.set(p.id, rememberedId);
                 } else if (existingSet.has(p.uuid)) {
                     // B. Fast Path
                     const localId = p.uuid;
@@ -103,7 +130,10 @@ export class EntityBatchProcessor {
             } catch (e) {
                 console.warn(`[EntityBatchProcessor] Skipping player ${p.name}`, e);
             }
+            const localId = idMap.get(p.id);
+            if (p.uuid && localId) resolved.set(p.uuid, localId);
         }
+        await this.remember(db.savedPlayers, resolved, remembered);
         return idMap;
     }
 
@@ -121,6 +151,7 @@ export class EntityBatchProcessor {
         const matcher = await loadBgStatsGameMatcher(games);
         const localNames = new Map<number, string>();
         const writeOptions = { ...options, deferDictionary: true };
+        const resolved = new Map<string, string>();
 
         for (const g of games) {
             try {
@@ -153,7 +184,11 @@ export class EntityBatchProcessor {
             } catch (e) {
                 console.warn(`[EntityBatchProcessor] Failed to sync game ${g.name}`, e);
             }
+            const localId = idMap.get(g.id);
+            if (g.uuid && localId) resolved.set(g.uuid, localId);
         }
+        // A game linked to a scoreboard without a saved-game entry gets one, named like the scoreboard.
+        await this.remember(db.savedGames, resolved, buildSourceLinkIndex(matcher.savedGames), localId => matcher.nameOf(localId));
         // One missing-only dictionary merge per BGG ID, independent of the UUID fast path.
         await enrichBggDictionary(games, localNames);
         return idMap;

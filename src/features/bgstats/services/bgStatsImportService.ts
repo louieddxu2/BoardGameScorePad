@@ -5,6 +5,7 @@ import { db } from '../../../db';
 import { HistoryBatchProcessor } from './historyBatchUtils';
 import { entityBatchProcessor } from './EntityBatchProcessor';
 import { loadBgStatsGameMatcher } from './bgStatsGameMatching';
+import { buildSourceLinkIndex } from './bgStatsLinkMemory';
 import { fillHistoryBggId, normalizeBggId } from './bgStatsBggData';
 
 /** Imports BG Stats JSON (games, players, locations and plays).
@@ -53,13 +54,14 @@ class BgStatsImportService {
                 if (cleanName) localByName.set(cleanName, local);
             });
 
+            const localBySourceUuid = buildSourceLinkIndex(localItems);
+
             importItems.forEach(imp => {
                 let matchFound = false;
 
-                // 1. UUID Match (Unified ID Check)
-                // If incoming UUID exists as a local ID, it's a match.
+                // 1. UUID Match: linked in an earlier import, or the incoming UUID is a local ID.
                 if (imp.uuid) {
-                    const match = localById.get(imp.uuid);
+                    const match = localBySourceUuid.get(imp.uuid) ?? localById.get(imp.uuid);
                     if (match) {
                         matchedImportIds.add(imp.id);
                         matchedLocalIds.add(match.id);
