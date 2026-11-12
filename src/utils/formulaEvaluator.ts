@@ -20,13 +20,19 @@ export const evaluateFormula = (
     // 1. 準備變數替換
     const sortedVars = Object.keys(variables).sort((a, b) => b.length - a.length);
     
-    // 2. 替換變數為數值
+    // 2. 替換變數為「依位置取值」的參照，而不是把數值印成文字。
+    // 數值的文字形式不一定只含數字：1e-17、1e+21、Infinity、NaN 都帶有字母，
+    // 會被下方的字元檢查擋下，使整條公式靜默回傳 0。
+    const values: number[] = [];
+    // 安全性檢查用的副本：變數位置以 (0) 佔位，其餘文字與原公式相同
+    let checkStr = processedFormula;
     sortedVars.forEach(key => {
-      const val = variables[key];
       // 確保變數替換不會破壞函數名 (例如 x11 替換掉 f11 的 11)
       // 使用更精確的邊界判斷
       const regex = new RegExp(`\\b${key.toLowerCase()}\\b`, 'g');
-      processedFormula = processedFormula.replace(regex, `(${val})`);
+      const index = values.push(variables[key]) - 1;
+      processedFormula = processedFormula.replace(regex, `(${VALUES_ARG}[${index}])`);
+      checkStr = checkStr.replace(regex, '(0)');
     });
 
     // 3. 安全性檢查 (Sanitization)
@@ -36,7 +42,6 @@ export const evaluateFormula = (
     
     // 檢查公式中是否包含未經授權的英文字母
     // 我們移除所有合法函數名(f1, f2...)後，不應該剩下任何英文字母
-    let checkStr = processedFormula;
     Object.keys(functions).forEach(fnName => {
         checkStr = checkStr.split(fnName.toLowerCase()).join('');
     });
@@ -53,8 +58,8 @@ export const evaluateFormula = (
     const fnValues = fnNames.map(name => functions[name]);
     
     // eslint-disable-next-line no-new-func
-    const evalFn = new Function(...fnNames, `"use strict"; return (${processedFormula})`);
-    const result = evalFn(...fnValues);
+    const evalFn = new Function(VALUES_ARG, ...fnNames, `"use strict"; return (${processedFormula})`);
+    const result = evalFn(values, ...fnValues);
 
     // 5. 回傳結果
     // 修改：不再強制歸零，允許回傳 Infinity/NaN 以便上層偵測錯誤 (如除以0)
@@ -65,6 +70,9 @@ export const evaluateFormula = (
     return 0;
   }
 };
+
+// 內部參數名稱：含底線，無法通過使用者公式的字元檢查，因此不可能由公式本身寫出。
+const VALUES_ARG = '_v';
 
 const MATH_KEYWORDS = new Set([
   'min', 'max', 'floor', 'ceil', 'round', 'abs', 'sin', 'cos', 'tan', 'log', 'sqrt', 'pow', 'pi', 'e'
