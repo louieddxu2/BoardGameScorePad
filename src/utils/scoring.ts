@@ -121,7 +121,22 @@ export const getAutoColumnError = (
   return null;
 };
 
+/**
+ * 欄位分數的唯一出口：計算結果一律是有限數值。
+ * 公式除以零等情況會得到 Infinity/NaN；這類值不顯示給使用者、不累加進總分、
+ * 也不往下游公式傳遞，一律以 0 計（與過去下游公式的處理一致）。
+ */
 export const calculateColumnScore = (
+  col: ScoreColumn,
+  parts: number[],
+  context?: ScoringContext,
+  scoreValue?: ScoreValue
+): number => {
+  const score = computeColumnScore(col, parts, context, scoreValue);
+  return Number.isFinite(score) ? score : 0;
+};
+
+const computeColumnScore = (
   col: ScoreColumn,
   parts: number[],
   context?: ScoringContext,

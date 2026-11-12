@@ -41,3 +41,28 @@ describe('auto column that reads a decimal sum', () => {
     expect(result).toBeCloseTo(10, 10);
   });
 });
+
+describe('auto column that divides by zero', () => {
+  const numerator: ScoreColumn = { id: 'num', name: 'Num', formula: 'a1', inputType: 'keypad', isScoring: false };
+  const denominator: ScoreColumn = { id: 'den', name: 'Den', formula: 'a1', inputType: 'keypad', isScoring: false };
+  const ratio: ScoreColumn = {
+    id: 'ratio', name: 'Ratio', formula: 'x1 / x2', inputType: 'auto', isScoring: true, isAuto: true,
+    variableMap: { x1: { id: 'num', name: 'Num' }, x2: { id: 'den', name: 'Den' } },
+  };
+  const bonus: ScoreColumn = {
+    id: 'bonus', name: 'Bonus', formula: 'x1 + 10', inputType: 'auto', isScoring: true, isAuto: true,
+    variableMap: { x1: { id: 'ratio', name: 'Ratio' } },
+  };
+  const allColumns = [numerator, denominator, ratio, bonus];
+
+  it.each([
+    ['x / 0', [5]],
+    ['0 / 0', [0]],
+  ])('never yields a non-finite score for %s', (_label, numParts) => {
+    const playerScores = { num: { parts: numParts }, den: { parts: [0] } };
+    const own = calculateColumnScore(ratio, [], { allColumns, playerScores });
+    const downstream = calculateColumnScore(bonus, [], { allColumns, playerScores });
+    expect(own).toBe(0);
+    expect(downstream).toBe(10);
+  });
+});
