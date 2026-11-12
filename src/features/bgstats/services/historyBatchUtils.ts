@@ -4,11 +4,9 @@ import { HistoryRecord, GameTemplate, Player, ScoringRule, SavedListItem } from 
 import { generateId } from '../../../utils/idGenerator';
 import { BgStatsExport, BgStatsGame } from '../types';
 import { fillHistoryBggId, normalizeBggId } from './bgStatsBggData';
-import { BgStatsPlaySource, captureBgStatsSource, historyFingerprint } from './bgStatsPlaySource';
 
 export class HistoryBatchProcessor {
     private existingIds: Set<string> = new Set();
-    private existingSources = new Map<string, BgStatsPlaySource>();
     private localGameMap: Map<string, SavedListItem | GameTemplate> = new Map();
     private localLocationMap: Map<string, SavedListItem> = new Map();
     
@@ -124,146 +122,113 @@ export class HistoryBatchProcessor {
     public processPlays(): HistoryRecord[] {
         const result: HistoryRecord[] = [];
         const seenIds = new Set(this.existingIds);
-
+        
         for (const play of (this.data.plays || [])) {
-            // Skip existing records, but remember their original BG Stats fields:
-            // records imported before those fields were kept can still receive them.
-            if (play.uuid && seenIds.has(play.uuid)) {
-                if (this.existingIds.has(play.uuid) && !this.existingSources.has(play.uuid)) {
-                    const rebuilt = this.buildRecord(play);
-                    if (rebuilt?.bgStatsSource) this.existingSources.set(play.uuid, rebuilt.bgStatsSource);
+            // Skip existing records
+            if (play.uuid && seenIds.has(play.uuid)) continue;
+
+            const sourceGame = this.sourceGames.get(play.gameRefId);
+            if (!sourceGame) continue;
+
+            const localGameId = this.sourceGameIdToLocalId.get(play.gameRefId);
+            if (!localGameId) continue;
+
+            // Resolve Game Name
+            const localGame = this.localGameMap.get(localGameId);
+            const gameName = localGame?.name || sourceGame.name;
+            const bggId = normalizeBggId(localGame?.bggId) ?? normalizeBggId(sourceGame.bggId);
+
+            // Resolve Location
+            let localLocationName: string | undefined;
+            let localLocationId: string | undefined;
+
+            if (play.locationRefId) {
+                const sourceLoc = this.sourceLocations.get(play.locationRefId);
+                if (sourceLoc) {
+                    localLocationId = this.sourceLocationIdToLocalId.get(play.locationRefId);
+                    if (localLocationId) {
+                         const localLoc = this.localLocationMap.get(localLocationId);
+                         localLocationName = localLoc?.name || sourceLoc.name;
+                    } else {
+                        localLocationName = sourceLoc.name;
+                    }
                 }
-                continue;
             }
 
-            const record = this.buildRecord(play);
-            if (!record) continue;
+            // Resolve Players
+            const players: Player[] = [];
+            const winnerIds: string[] = [];
+
+            if (Array.isArray(play.playerScores)) {
+                play.playerScores.forEach((ps: any, index: number) => {
+                    const sourcePlayer = this.sourcePlayers.get(ps.playerRefId);
+                    let name = `玩家 ${index + 1}`;
+                    let localPlayerId: string | undefined;
+
+                    if (sourcePlayer) {
+                        if (sourcePlayer.isAnonymous) {
+                             name = `玩家 ${index + 1}`;
+                        } else {
+                            localPlayerId = this.sourcePlayerIdToLocalId.get(ps.playerRefId);
+                            name = sourcePlayer.name;
+                        }
+                    }
+
+                    const scoreStr = ps.score || "0";
+                    const scoreNum = parseFloat(scoreStr);
+                    const validScore = isNaN(scoreNum) ? 0 : scoreNum;
+                    const sessionPlayerId = `player_${index + 1}`;
+
+                    players.push({
+                        id: sessionPlayerId,
+                        name: name,
+                        color: 'transparent',
+                        scores: {},
+                        totalScore: validScore,
+                        linkedPlayerId: localPlayerId,
+                        isStarter: ps.startPlayer === true || ps.startPlayer === 1
+                    });
+
+                    if (ps.winner === true || ps.winner === 1) {
+                        winnerIds.push(sessionPlayerId);
+                    }
+                });
+            }
+
+            const snapshotTemplate = this.createEmptySnapshot(sourceGame);
+            snapshotTemplate.bggId = bggId;
+            
+            let scoringRule: ScoringRule = 'HIGHEST_WINS';
+            if (sourceGame.cooperative) {
+                scoringRule = sourceGame.noPoints ? 'COOP_NO_SCORE' : 'COOP';
+            } else if (sourceGame.noPoints) {
+                scoringRule = 'COMPETITIVE_NO_SCORE';
+            } else if (!sourceGame.highestWins) {
+                scoringRule = 'LOWEST_WINS';
+            }
+
+            const record: HistoryRecord = {
+                id: play.uuid || generateId(),
+                templateId: localGameId,
+                gameName: gameName,
+                bggId,
+                startTime: this.parseDate(play.playDate),
+                endTime: this.parseDate(play.playDate) + (play.durationMin || 0) * 60000,
+                updatedAt: Date.now(),
+                players: players,
+                winnerIds: winnerIds,
+                snapshotTemplate: snapshotTemplate,
+                location: localLocationName,
+                locationId: localLocationId,
+                note: play.comments || "",
+                scoringRule: scoringRule
+            };
+
             result.push(record);
             seenIds.add(record.id);
         }
 
         return result;
-    }
-
-    /**
-     * Attach the original BG Stats fields to plays imported earlier, but only when the
-     * stored record still matches the file; a record edited in ScorePad is left as it is.
-     */
-    public async attachExistingSources(): Promise<void> {
-        const ids = [...this.existingSources.keys()];
-        const CHUNK_SIZE = 500;
-        for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-            const chunk = ids.slice(i, i + CHUNK_SIZE);
-            await db.transaction('rw', db.history, async () => {
-                await db.history.where('id').anyOf(chunk).modify(record => {
-                    const source = this.existingSources.get(record.id);
-                    if (!source || record.bgStatsSource || historyFingerprint(record) !== source.fingerprint) return false;
-                    record.bgStatsSource = source;
-                });
-            });
-        }
-    }
-
-    private buildRecord(play: any): HistoryRecord | null {
-        const sourceGame = this.sourceGames.get(play.gameRefId);
-        if (!sourceGame) return null;
-
-        const localGameId = this.sourceGameIdToLocalId.get(play.gameRefId);
-        if (!localGameId) return null;
-
-        // Resolve Game Name
-        const localGame = this.localGameMap.get(localGameId);
-        const gameName = localGame?.name || sourceGame.name;
-        const bggId = normalizeBggId(localGame?.bggId) ?? normalizeBggId(sourceGame.bggId);
-
-        // Resolve Location
-        let localLocationName: string | undefined;
-        let localLocationId: string | undefined;
-
-        if (play.locationRefId) {
-            const sourceLoc = this.sourceLocations.get(play.locationRefId);
-            if (sourceLoc) {
-                localLocationId = this.sourceLocationIdToLocalId.get(play.locationRefId);
-                if (localLocationId) {
-                     const localLoc = this.localLocationMap.get(localLocationId);
-                     localLocationName = localLoc?.name || sourceLoc.name;
-                } else {
-                    localLocationName = sourceLoc.name;
-                }
-            }
-        }
-
-        // Resolve Players
-        const players: Player[] = [];
-        const winnerIds: string[] = [];
-
-        if (Array.isArray(play.playerScores)) {
-            play.playerScores.forEach((ps: any, index: number) => {
-                const sourcePlayer = this.sourcePlayers.get(ps.playerRefId);
-                let name = `玩家 ${index + 1}`;
-                let localPlayerId: string | undefined;
-
-                if (sourcePlayer) {
-                    if (sourcePlayer.isAnonymous) {
-                         name = `玩家 ${index + 1}`;
-                    } else {
-                        localPlayerId = this.sourcePlayerIdToLocalId.get(ps.playerRefId);
-                        name = sourcePlayer.name;
-                    }
-                }
-
-                const scoreStr = ps.score || "0";
-                const scoreNum = parseFloat(scoreStr);
-                const validScore = isNaN(scoreNum) ? 0 : scoreNum;
-                const sessionPlayerId = `player_${index + 1}`;
-
-                players.push({
-                    id: sessionPlayerId,
-                    name: name,
-                    color: 'transparent',
-                    scores: {},
-                    totalScore: validScore,
-                    linkedPlayerId: localPlayerId,
-                    isStarter: ps.startPlayer === true || ps.startPlayer === 1
-                });
-
-                if (ps.winner === true || ps.winner === 1) {
-                    winnerIds.push(sessionPlayerId);
-                }
-            });
-        }
-
-        const snapshotTemplate = this.createEmptySnapshot(sourceGame);
-        snapshotTemplate.bggId = bggId;
-        
-        let scoringRule: ScoringRule = 'HIGHEST_WINS';
-        if (sourceGame.cooperative) {
-            scoringRule = sourceGame.noPoints ? 'COOP_NO_SCORE' : 'COOP';
-        } else if (sourceGame.noPoints) {
-            scoringRule = 'COMPETITIVE_NO_SCORE';
-        } else if (!sourceGame.highestWins) {
-            scoringRule = 'LOWEST_WINS';
-        }
-
-        const record: HistoryRecord = {
-            id: play.uuid || generateId(),
-            templateId: localGameId,
-            gameName: gameName,
-            bggId,
-            startTime: this.parseDate(play.playDate),
-            endTime: this.parseDate(play.playDate) + (play.durationMin || 0) * 60000,
-            updatedAt: Date.now(),
-            players: players,
-            winnerIds: winnerIds,
-            snapshotTemplate: snapshotTemplate,
-            location: localLocationName,
-            locationId: localLocationId,
-            note: play.comments || "",
-            scoringRule: scoringRule
-        };
-        record.bgStatsSource = captureBgStatsSource(play, record);
-
-        return record;
     }
 
     private parseDate(dateStr: string): number {
