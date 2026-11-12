@@ -37,10 +37,24 @@ describe('bgStatsExportService ranks', () => {
   it('ranks the highest score first when the highest score wins', async () => {
     tables.history.rows.push(play('high', 'HIGHEST_WINS', [30, 50, 50, 10], [1, 2]));
     expect(await ranksOf('high')).toEqual([
-      { score: '30', rank: 2, winner: false },
+      { score: '30', rank: 3, winner: false },
       { score: '50', rank: 1, winner: true },
       { score: '50', rank: 1, winner: true },
-      { score: '10', rank: 3, winner: false },
+      { score: '10', rank: 4, winner: false },
+    ]);
+  });
+
+  it('puts a tie-break winner ahead of a tied loser', async () => {
+    tables.history.rows.push(play('tie', 'HIGHEST_WINS', [40, 40, 20], [1]));
+    expect((await ranksOf('tie')).map((s: any) => s.rank)).toEqual([2, 1, 3]);
+  });
+
+  it('ranks no-points plays by winners only and leaves their scores blank', async () => {
+    tables.history.rows.push(play('nopts', 'COMPETITIVE_NO_SCORE', [0, 0, 0], [2]));
+    expect(await ranksOf('nopts')).toEqual([
+      { score: '', rank: 2, winner: false },
+      { score: '', rank: 2, winner: false },
+      { score: '', rank: 1, winner: true },
     ]);
   });
 
@@ -51,6 +65,36 @@ describe('bgStatsExportService ranks', () => {
       { score: '30', rank: 3, winner: false },
       { score: '21', rank: 2, winner: false },
     ]);
+  });
+});
+
+describe('bgStatsExportService game and player flags', () => {
+  beforeEach(() => { tables.history.rows.length = 0; });
+
+  it('marks only lowest-wins games as not highest-wins', async () => {
+    tables.history.rows.push(
+      play('coop', 'COOP_NO_SCORE', [0, 0], [0, 1]),
+      play('none', 'COMPETITIVE_NO_SCORE', [0, 0], [0]),
+      play('low', 'LOWEST_WINS', [1, 2], [0]),
+    );
+    const data = await bgStatsExportService.exportData();
+    expect(Object.fromEntries((data.games || []).map(g => [g.name, g.highestWins])))
+      .toEqual({ 'Game coop': true, 'Game none': true, 'Game low': false });
+  });
+
+  it('marks a linked player new only in their earliest play of a game', async () => {
+    const linked = (record: HistoryRecord, startTime: number) => ({
+      ...record, gameName: 'Same game', startTime,
+      players: record.players.map((p, i) => ({ ...p, linkedPlayerId: i === 0 ? 'ann' : undefined })),
+    }) as HistoryRecord;
+    tables.history.rows.push(
+      linked(play('later', 'HIGHEST_WINS', [1, 2], [1]), 2000),
+      linked(play('first', 'HIGHEST_WINS', [1, 2], [1]), 1000),
+    );
+    const data = await bgStatsExportService.exportData();
+    const flags = (id: string) => (data.plays || []).find((p: any) => p.uuid === id).playerScores.map((s: any) => s.newPlayer);
+    expect(flags('first')).toEqual([true, false]);
+    expect(flags('later')).toEqual([false, false]);
   });
 });
 

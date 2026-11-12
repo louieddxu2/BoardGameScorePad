@@ -2,7 +2,7 @@
 import { db } from '../../../db';
 import { BgStatsExport, BgStatsGame, BgStatsPlayer, BgStatsLocation } from '../types';
 import { HistoryRecord, BggGame } from '../../../types';
-import { getScoreRank } from '../../../utils/ranking';
+import { computeBgStatsRanks, findFirstPlays, isNoPointsRule, isRecordWinner } from './bgStatsExportRules';
 import { generateId } from '../../../utils/idGenerator';
 import { getRecordScoringRule } from '../../../utils/historyUtils';
 import { getHistoryBggId } from './bgStatsBggData';
@@ -71,16 +71,19 @@ class BgStatsExportService {
         const locationsMap = new Map<number, BgStatsLocation>();
 
         const plays: any[] = [];
+        // Use Template Name as unique key for Game unless BGG ID is present
+        const gameKeyOf = (record: HistoryRecord) => {
+            const id = getHistoryBggId(record);
+            return id ? `bgg:${id}` : `name:${record.gameName}`;
+        };
+        const firstPlays = findFirstPlays(allHistory, gameKeyOf);
 
         // 2. Process History Records -> Plays
         for (const record of allHistory) {
             // --- Game Resolution ---
             const bggId = getHistoryBggId(record);
-            // Use Template Name as unique key for Game unless BGG ID is present
-            const gameKey = bggId 
-                ? `bgg:${bggId}` 
-                : `name:${record.gameName}`;
-            
+            const gameKey = gameKeyOf(record);
+
             const gameRefId = gameMapper.getId(gameKey);
 
             if (!gamesMap.has(gameRefId)) {
@@ -103,8 +106,9 @@ class BgStatsExportService {
                     bggName: bggData?.name,
                     bggYear: bggData?.year,
                     designers: bggData?.designers,
-                    highestWins: scoringRule === 'HIGHEST_WINS',
-                    noPoints: scoringRule === 'COMPETITIVE_NO_SCORE' || scoringRule === 'COOP_NO_SCORE',
+                    // BG Stats keeps highestWins true for cooperative and no-points games.
+                    highestWins: scoringRule !== 'LOWEST_WINS',
+                    noPoints: isNoPointsRule(scoringRule),
                     cooperative: scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE',
                     modificationDate: formatDate(record.updatedAt || record.endTime),
                     isBaseGame: 1,
@@ -134,10 +138,8 @@ class BgStatsExportService {
             }
 
             // --- Player Scores Resolution ---
-            // Pre-calculate ranks for this play
-            // BG Stats rank 1 is the best result, so a lowest-wins play ranks ascending.
-            const rankSign = getRecordScoringRule(record) === 'LOWEST_WINS' ? -1 : 1;
-            const scores = record.players.map(p => p.totalScore * rankSign);
+            const ranks = computeBgStatsRanks(record);
+            const noPoints = isNoPointsRule(getRecordScoringRule(record));
             const playerScores = record.players.map((p, index) => {
                 // Determine Identity
                 // If linkedPlayerId exists, map to that. Otherwise map to name (anonymous)
@@ -172,19 +174,14 @@ class BgStatsExportService {
                     });
                 }
 
-                // Check winner status (support legacy ID or linked ID)
-                const isWinner = record.winnerIds.includes(p.id) || (p.linkedPlayerId && record.winnerIds.includes(p.linkedPlayerId));
-                
-                // Calculate Rank
-                const rank = getScoreRank(p.totalScore * rankSign, scores);
-
                 return {
                     playerRefId: playerRefId,
-                    score: p.totalScore.toString(),
-                    winner: !!isWinner,
+                    // A no-points play has no scores; BG Stats stores them blank.
+                    score: noPoints ? '' : p.totalScore.toString(),
+                    winner: isRecordWinner(record, p),
                     startPlayer: !!p.isStarter,
-                    newPlayer: false, // Default false
-                    rank: rank,
+                    newPlayer: !!p.linkedPlayerId && firstPlays.has(`${record.id}|${p.linkedPlayerId}`),
+                    rank: ranks[index],
                     seatOrder: index
                 };
             });

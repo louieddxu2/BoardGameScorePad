@@ -214,7 +214,8 @@ export class HistoryBatchProcessor {
                 bggId,
                 startTime: this.parseDate(play.playDate),
                 endTime: this.parseDate(play.playDate) + (play.durationMin || 0) * 60000,
-                updatedAt: Date.now(),
+                // BG Stats records when the play was last changed; keep it as the record's modification time.
+                updatedAt: this.parseDate(play.modificationDate),
                 players: players,
                 winnerIds: winnerIds,
                 snapshotTemplate: snapshotTemplate,
