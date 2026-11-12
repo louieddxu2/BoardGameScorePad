@@ -10,6 +10,7 @@ import { getTouchDistance } from '../../../utils/ui';
 import { useSessionTranslation } from '../../../i18n/session';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { formatLocalDateStamp } from '../../../utils/localDate';
 
 interface ScreenshotModalProps {
     isOpen: boolean;
@@ -340,7 +341,7 @@ const ScreenshotModal: React.FC<ScreenshotModalProps> = ({
         const url = URL.createObjectURL(currentBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${template.name}_${activeMode}_${new Date().toISOString().slice(0, 10)}.png`;
+        a.download = `${template.name}_${activeMode}_${formatLocalDateStamp()}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

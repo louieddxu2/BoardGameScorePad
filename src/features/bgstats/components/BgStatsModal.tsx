@@ -8,6 +8,7 @@ import { useToast } from '../../../hooks/useToast';
 import ImportStagingView from './ImportStagingView';
 import { useIntegrationTranslation } from '../../../i18n/integration';
 import { useCommonTranslation } from '../../../i18n/common';
+import { formatLocalDateStamp } from '../../../utils/localDate';
 
 interface BgStatsModalProps {
     isOpen: boolean;
@@ -121,7 +122,7 @@ const BgStatsModal: React.FC<BgStatsModalProps> = ({ isOpen, onClose, onImport }
             }
         }
         else if (exportState === 'ready' && exportUrl) {
-            const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const dateStr = formatLocalDateStamp(new Date(), '');
             const filename = `BGStats_Export_${dateStr}.json`;
 
             try {
