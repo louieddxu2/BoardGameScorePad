@@ -6,6 +6,14 @@ import { getScoreRank } from '../../../utils/ranking';
 import { generateId } from '../../../utils/idGenerator';
 import { getRecordScoringRule } from '../../../utils/historyUtils';
 import { getHistoryBggId } from './bgStatsBggData';
+import { isDefaultPlayerName } from '../../../utils/historyGameEntries';
+
+// BG Stats 以單一「匿名玩家」代表所有沒有身分的參與者。
+// ScorePad 中未連結且仍用預設名稱（玩家 N / Player N）的玩家都匯出成這一位；
+// uuid 固定不變，重複匯出到 BG Stats 時才會對應到同一位匿名玩家。
+const ANONYMOUS_PLAYER_KEY = 'anonymous';
+const ANONYMOUS_PLAYER_UUID = 'B6E1C3A0-5C0B-4F0E-9A57-2D5C0A9E7F41';
+const ANONYMOUS_PLAYER_NAME = 'Anonymous player';
 
 // Helper class to map UUIDs (strings) to Integer IDs (required by BG Stats)
 class IntIdMapper {
@@ -133,8 +141,20 @@ class BgStatsExportService {
             const playerScores = record.players.map((p, index) => {
                 // Determine Identity
                 // If linkedPlayerId exists, map to that. Otherwise map to name (anonymous)
-                const playerKey = p.linkedPlayerId || `name:${p.name}`;
+                const isAnonymous = !p.linkedPlayerId && isDefaultPlayerName(p.name);
+                const playerKey = p.linkedPlayerId || (isAnonymous ? ANONYMOUS_PLAYER_KEY : `name:${p.name}`);
                 const playerRefId = playerMapper.getId(playerKey);
+
+                if (isAnonymous && !playersMap.has(playerRefId)) {
+                    playersMap.set(playerRefId, {
+                        id: playerRefId,
+                        uuid: ANONYMOUS_PLAYER_UUID,
+                        name: ANONYMOUS_PLAYER_NAME,
+                        isAnonymous: true,
+                        modificationDate: formatDate(Date.now()),
+                        bggUsername: ""
+                    });
+                }
 
                 if (!playersMap.has(playerRefId)) {
                     // Try to find full info from saved list

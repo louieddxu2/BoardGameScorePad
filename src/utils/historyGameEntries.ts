@@ -56,7 +56,7 @@ export interface HistoryGameEntryOptions {
 
 const normalizeName = (name: string | undefined): string => (name || '').trim().toLowerCase();
 
-const isDefaultPlayerName = (name: string | undefined): boolean => {
+export const isDefaultPlayerName = (name: string | undefined): boolean => {
   return /^(\u73a9\u5bb6|Player)\s?\d+$/i.test((name || '').trim());
 };
 

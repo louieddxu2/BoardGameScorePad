@@ -53,3 +53,37 @@ describe('bgStatsExportService ranks', () => {
     ]);
   });
 });
+
+describe('bgStatsExportService players', () => {
+  beforeEach(() => { tables.history.rows.length = 0; });
+
+  const withPlayers = (record: HistoryRecord, players: { name: string; linkedPlayerId?: string }[]) => ({
+    ...record,
+    players: record.players.map((player, index) => ({ ...player, ...players[index] })),
+  }) as HistoryRecord;
+
+  it('exports unlinked default-named players as one anonymous player with a uuid', async () => {
+    tables.history.rows.push(
+      withPlayers(play('a', 'HIGHEST_WINS', [1, 2, 3], [2]), [
+        { name: '玩家 1' }, { name: 'Player 2' }, { name: 'Claudia', linkedPlayerId: 'claudia-uuid' },
+      ]),
+      withPlayers(play('b', 'HIGHEST_WINS', [1, 2], [1]), [{ name: '玩家 3' }, { name: 'Claudia', linkedPlayerId: 'claudia-uuid' }]),
+    );
+    const data = await bgStatsExportService.exportData();
+
+    const anonymous = (data.players || []).filter(p => p.isAnonymous);
+    expect(anonymous).toHaveLength(1);
+    expect(anonymous[0].uuid).not.toBe('');
+    expect(data.players).toHaveLength(2);
+
+    const refsOf = (id: string) => (data.plays || []).find((p: any) => p.uuid === id).playerScores.map((s: any) => s.playerRefId);
+    expect(refsOf('a').slice(0, 2)).toEqual([anonymous[0].id, anonymous[0].id]);
+    expect(refsOf('b')[0]).toBe(anonymous[0].id);
+  });
+
+  it('keeps an unlinked player with a custom name as its own player', async () => {
+    tables.history.rows.push(withPlayers(play('c', 'HIGHEST_WINS', [1, 2], [1]), [{ name: '玩家 1' }, { name: 'Guest Bob' }]));
+    const data = await bgStatsExportService.exportData();
+    expect((data.players || []).map(p => p.name).sort()).toEqual(['Anonymous player', 'Guest Bob']);
+  });
+});
