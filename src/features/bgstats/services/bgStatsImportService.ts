@@ -147,6 +147,7 @@ class BgStatsImportService {
 
         const newRecords = batchProcessor.processPlays();
         await batchProcessor.fillExistingBggIds();
+        await batchProcessor.attachExistingSources();
 
         if (newRecords.length > 0) {
             // Bulk insert for performance

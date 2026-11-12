@@ -1,5 +1,6 @@
 
 import type { AppTheme } from './theme';
+import type { BgStatsPlaySource } from './features/bgstats/services/bgStatsPlaySource';
 
 // --- Formula-based structure ---
 export interface ScoreValue {
@@ -311,6 +312,9 @@ export interface HistoryRecord {
 
   // [v25 Migration] 提升為頂層屬性，減少對 snapshotTemplate 的依賴
   scoringRule?: ScoringRule;
+
+  // 從 BG Stats 匯入的原始對局資料，匯出時用來還原 ScorePad 沒有使用的欄位
+  bgStatsSource?: BgStatsPlaySource;
 }
 
 // [New Type] 資料處理狀態

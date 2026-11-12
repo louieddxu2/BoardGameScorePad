@@ -328,7 +328,8 @@ describe('BG Stats BGG ID enrichment', () => {
         expect(testDb.tables.history.writes).toHaveBeenCalledTimes(501);
         expect(testDb.tables.history.toArray).not.toHaveBeenCalled();
         expect(testDb.tables.history.filter).not.toHaveBeenCalled();
-        expect(testDb.tables.history.where.mock.calls.map(([key]) => key)).toEqual(['id', 'id', 'id']);
+        // One existence lookup, then two 500-UUID chunks each for BGG IDs and original BG Stats fields.
+        expect(testDb.tables.history.where.mock.calls.map(([key]) => key)).toEqual(['id', 'id', 'id', 'id', 'id']);
         expect(testDb.tables.history.rows.get('unrelated')).toEqual(unrelated);
         expect(testDb.tables.history.bulkAdd).not.toHaveBeenCalled();
     });

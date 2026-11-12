@@ -7,6 +7,7 @@ import { generateId } from '../../../utils/idGenerator';
 import { getRecordScoringRule } from '../../../utils/historyUtils';
 import { getHistoryBggId } from './bgStatsBggData';
 import { isDefaultPlayerName } from '../../../utils/historyGameEntries';
+import { restoreBgStatsPlay } from './bgStatsPlaySource';
 
 // BG Stats 以單一「匿名玩家」代表所有沒有身分的參與者。
 // ScorePad 中未連結且仍用預設名稱（玩家 N / Player N）的玩家都匯出成這一位；
@@ -183,34 +184,36 @@ class BgStatsExportService {
                     score: p.totalScore.toString(),
                     winner: !!isWinner,
                     startPlayer: !!p.isStarter,
-                    newPlayer: false, // Default false
-                    rank: rank,
-                    seatOrder: index
+                    rank: rank
                 };
             });
+            // Fields ScorePad does not track: used only when no original BG Stats value exists.
+            const placeholderScores = record.players.map((_, index) => ({ newPlayer: false, seatOrder: index }));
 
             // --- Play Object ---
-            plays.push({
+            const managedPlay = {
                 // [Unified UUID Strategy] record.id IS the UUID.
                 uuid: record.id,
                 gameRefId: gameRefId,
                 locationRefId: locationRefId || undefined,
                 playDate: formatDate(record.startTime),
-                playDateYmd: formatDateYmd(record.startTime), // Added
+                playDateYmd: formatDateYmd(record.startTime),
                 durationMin: Math.round((record.endTime - record.startTime) / 60000),
+                modificationDate: formatDate(record.updatedAt || record.endTime),
+                comments: record.note || ""
+            };
+            const placeholderPlay = {
                 scoringSetting: 0,
-                playerScores: playerScores,
                 rounds: 0,
                 manualWinner: false,
                 ignored: false,
                 importPlayId: 0,
-                modificationDate: formatDate(record.updatedAt || record.endTime),
                 entryDate: formatDate(record.startTime),
-                comments: record.note || "",
-                usesTeams: false, // Added
-                playImages: "[]", // Added (Stringified JSON array)
+                usesTeams: false,
+                playImages: "[]", // Stringified JSON array
                 rating: 0
-            });
+            };
+            plays.push(restoreBgStatsPlay(record, managedPlay, placeholderPlay, playerScores, placeholderScores));
         }
 
         // 3. Assemble Final Object
