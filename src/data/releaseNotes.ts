@@ -22,6 +22,28 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    items: [
+      { kind: 'new', zh: '計分項目可設定在分享照片的玩家卡片上顯示內容。',
+        en: 'Score items can be set to show their values on player cards in shared photos.' },
+      { kind: 'improved', zh: '分享照片的成績改為表格呈現，屬性依玩家對齊，選項標籤保留原本顏色。',
+        en: 'Shared photos show results as a score table, align attributes by player and keep option label colors.' },
+      { kind: 'fixed', zh: '同一款 BGG 遊戲存有多個名稱時，遊戲選單只顯示一筆。',
+        en: 'The game picker lists a BGG game once, even when it is saved under several names.' },
+      { kind: 'fixed', zh: '系統資料檢視器依歷史紀錄重建資料時，不再多建立重複的遊戲。',
+        en: 'Rebuilding data from history in the System Data Inspector no longer creates duplicate games.' },
+      { kind: 'fixed', zh: '清除紀錄設定中的開始或結束時間後，紀錄不再從歷史清單消失。',
+        en: 'Clearing a start or end time in record settings no longer removes the record from history.' },
+      { kind: 'fixed', zh: '自動計算公式可正確處理極小或極大的數值；除以零等無效結果顯示 0，不再顯示 NaN 或 ∞。',
+        en: 'Auto-calculated formulas handle very small or very large values; invalid results such as division by zero show 0 instead of NaN or ∞.' },
+      { kind: 'fixed', zh: '截圖與 BG Stats 匯出的檔名改用本地日期。',
+        en: 'Screenshot and BG Stats export file names use the local date.' },
+      { kind: 'fixed', zh: '再次匯入 BG Stats 時沿用先前的連結，不再建立重複的玩家、地點或遊戲。',
+        en: 'Importing from BG Stats again reuses earlier links instead of creating duplicate players, locations or games.' },
+      { kind: 'fixed', zh: 'BG Stats 匯出的名次、匿名玩家與手動贏家標記改依 BG Stats 的記錄方式；連結過的玩家、地點與遊戲沿用 BG Stats 原本的識別碼。',
+        en: 'BG Stats exports record ranks, anonymous players and manual winners the way BG Stats does, and linked players, locations and games keep their original BG Stats IDs.' },
+    ],
+  },
+  {
     date: '2026-11-08',
     items: [
       { kind: 'fixed', zh: '修正「和諧之森」河流 A 面計分。1 個水板塊不計分，各得分級距所需的水板塊數都增加 1 個。',
