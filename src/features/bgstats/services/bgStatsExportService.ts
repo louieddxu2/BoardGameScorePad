@@ -7,6 +7,7 @@ import { generateId } from '../../../utils/idGenerator';
 import { getRecordScoringRule } from '../../../utils/historyUtils';
 import { getHistoryBggId } from './bgStatsBggData';
 import { isDefaultPlayerName } from '../../../utils/historyGameEntries';
+import { exportUuidOf } from './bgStatsLinkMemory';
 
 // BG Stats 以單一「匿名玩家」代表所有沒有身分的參與者。
 // ScorePad 中未連結且仍用預設名稱（玩家 N / Player N）的玩家都匯出成這一位；
@@ -59,6 +60,8 @@ class BgStatsExportService {
         // Maps for fast lookup
         const bggLookup = new Map<string, BggGame>(bggGames.map(g => [g.id, g])); // Key: BGG ID String
         const playerLookup = new Map(savedPlayers.map(p => [p.id, p]));
+        const locationLookup = new Map(savedLocations.map(l => [l.id, l]));
+        const gameLookup = new Map(savedGames.map(g => [g.id, g]));
         
         // ID Mappers for Export Integer IDs
         const gameMapper = new IntIdMapper();
@@ -90,11 +93,8 @@ class BgStatsExportService {
                 // Construct Game Object
                 const bggData = bggId ? bggLookup.get(bggId) : undefined;
                 
-                // [Unified UUID Strategy] Use record.templateId as the UUID if no specific logic overrides it.
-                // Or better, use the ID of the SavedGame if available. 
-                // Since we don't have bgStatsId map anymore, we need a stable ID.
-                // record.templateId is the stable local ID for the game definition.
-                const originalUuid = record.templateId;
+                // A game linked to a BG Stats game keeps that game's uuid; otherwise the local id.
+                const originalUuid = exportUuidOf(gameLookup.get(record.templateId), record.templateId);
 
                 const scoringRule = getRecordScoringRule(record);
 
@@ -126,7 +126,9 @@ class BgStatsExportService {
                 locationRefId = locationMapper.getId(locKey);
                 
                 if (!locationsMap.has(locationRefId)) {
-                    const originalUuid = record.locationId || "";
+                    const originalUuid = record.locationId
+                        ? exportUuidOf(locationLookup.get(record.locationId), record.locationId)
+                        : "";
 
                     locationsMap.set(locationRefId, {
                         id: locationRefId,
@@ -162,7 +164,7 @@ class BgStatsExportService {
                     // Try to find full info from saved list
                     const savedP = p.linkedPlayerId ? playerLookup.get(p.linkedPlayerId) : undefined;
                     
-                    const originalUuid = p.linkedPlayerId || "";
+                    const originalUuid = p.linkedPlayerId ? exportUuidOf(savedP, p.linkedPlayerId) : "";
 
                     playersMap.set(playerRefId, {
                         id: playerRefId,

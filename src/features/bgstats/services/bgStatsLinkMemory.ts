@@ -10,7 +10,7 @@ import type { SavedListItem } from '../../../types';
  * `meta.bgStatsUuids`，下次匯入同一個來源項目時直接對應回去，不會再建立重複項目。
  */
 
-const sourceUuidsOf = (item: SavedListItem | undefined): string[] => {
+export const sourceUuidsOf = (item: SavedListItem | undefined): string[] => {
     const value = item?.meta?.bgStatsUuids;
     return Array.isArray(value) ? value.filter((uuid): uuid is string => typeof uuid === 'string' && !!uuid) : [];
 };
@@ -70,3 +70,7 @@ export async function rememberSourceLinks(
         if (updated.length) await table.bulkPut(updated);
     });
 }
+
+/** 匯出時使用的 uuid：連結過 BG Stats 項目時用記住的來源 uuid，否則用本機 id。 */
+export const exportUuidOf = (item: SavedListItem | undefined, localId: string): string =>
+    sourceUuidsOf(item)[0] ?? localId;

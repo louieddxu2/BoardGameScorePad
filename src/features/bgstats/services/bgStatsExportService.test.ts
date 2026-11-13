@@ -150,3 +150,35 @@ describe('bgStatsExportService players', () => {
     expect((data.players || []).map(p => p.name).sort()).toEqual(['Anonymous player', 'Guest Bob']);
   });
 });
+
+describe('bgStatsExportService uuids', () => {
+  beforeEach(() => {
+    for (const t of [tables.history, tables.savedPlayers, tables.savedLocations, tables.savedGames]) t.rows.length = 0;
+  });
+
+  const linkedPlay = () => ({
+    ...play('u', 'HIGHEST_WINS', [1, 2], [1]),
+    templateId: 'local-game', location: 'Cafe', locationId: 'local-cafe',
+    players: play('u', 'HIGHEST_WINS', [1, 2], [1]).players.map((p, i) => ({ ...p, linkedPlayerId: i ? 'local-bob' : 'local-ann' })),
+  }) as HistoryRecord;
+  const saved = (id: string, uuids?: string[]) => ({ id, name: id, lastUsed: 0, usageCount: 0, meta: uuids ? { bgStatsUuids: uuids } : {} });
+
+  it('exports the remembered BG Stats uuid of linked games, locations and players', async () => {
+    tables.history.rows.push(linkedPlay());
+    tables.savedGames.rows.push(saved('local-game', ['BGS-GAME']));
+    tables.savedLocations.rows.push(saved('local-cafe', ['BGS-CAFE']));
+    tables.savedPlayers.rows.push(saved('local-ann', ['BGS-ANN']), saved('local-bob'));
+    const data = await bgStatsExportService.exportData();
+    expect(data.games?.[0].uuid).toBe('BGS-GAME');
+    expect(data.locations?.[0].uuid).toBe('BGS-CAFE');
+    expect((data.players || []).map(p => p.uuid)).toEqual(['BGS-ANN', 'local-bob']);
+  });
+
+  it('falls back to local ids when nothing was linked', async () => {
+    tables.history.rows.push(linkedPlay());
+    const data = await bgStatsExportService.exportData();
+    expect(data.games?.[0].uuid).toBe('local-game');
+    expect(data.locations?.[0].uuid).toBe('local-cafe');
+    expect((data.players || []).map(p => p.uuid)).toEqual(['local-ann', 'local-bob']);
+  });
+});
