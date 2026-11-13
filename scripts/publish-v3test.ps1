@@ -69,7 +69,7 @@ try {
         throw "Same-day service-worker revision exceeded 99."
     }
 
-    # Release notes are prepared before merging into main, not for each V3test publish.
+    # Release notes are updated and committed before running this script (see AGENTS.md).
     $nextCacheName = "boardgame-scorepad-cache-$today-$('{0:D2}' -f $nextRevision)"
     Write-Host "Next service-worker cache: $nextCacheName" -ForegroundColor Cyan
 

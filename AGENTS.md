@@ -25,7 +25,7 @@
 - For an explicit publish request, use `npm run publish:v3test` instead of calling `git push` directly.
 - The publish command requires a clean `V3test` worktree, runs the same dependency audit as CI, type-check and core tests, updates the dated service-worker cache revision, commits only `public/sw.js`, and pushes `origin/V3test`.
 - If any precondition or verification fails, stop without publishing.
-- Routine V3test publishing does not require creating or updating release notes.
+- Before every V3test publish, update and commit the undated first entry of `src/data/releaseNotes.ts` with the user-facing changes not yet in `main`, following the Release Notes rules below. Start a new undated first entry if the current first entry has already been merged to `main`. Do not set its date until merging into `main`.
 - Immediately before merging into `main`, update and commit `src/data/releaseNotes.ts` for the user-facing changes not yet in `main`, following the Release Notes rules below. Set the entry date to the merge/release date. Update the first entry if it has not yet been merged to `main`; otherwise start a new first entry.
 
 # Release Notes
@@ -38,7 +38,7 @@
 - Check claims against the relevant implementation and change history. For historical dates, version names, counts and original availability, use evidence from that release or its announcement; current behavior and commit dates alone do not establish what was released when. Omit unsupported details rather than inventing them.
 - Avoid unverified guarantees, completeness claims and comparisons. State the behavior or specific fix instead of asserting that everything works or that results are better without evidence. Keep a supported fix direct; do not replace precise wording with vague hedging.
 - Write short zh-TW and en items with the same meaning, scope, conditions and certainty. Use natural wording in each language, and check that neither translation adds or substitutes a capability.
-- Keep formal release dates, historical version names and service-worker cache revisions distinct. Routine V3test publishes need no release-note update; prepare the first entry before merging into `main`. Correct published entries only when supported by evidence, preserving their historical context.
+- Keep formal release dates, historical version names and service-worker cache revisions distinct. Keep the undated first entry current before every V3test publish; set its date before merging into `main`. Correct published entries only when supported by evidence, preserving their historical context.
 
 # Project-Specific Testing Notes
 

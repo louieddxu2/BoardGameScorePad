@@ -1,6 +1,6 @@
 // User-facing release notes shown in Settings → About.
-// One entry per main release; prepare the first entry before merging into main.
-// Routine V3test publishes do not require release-note updates.
+// One entry per main release. Before every V3test publish, keep the undated first entry
+// current with changes not yet in main; set its date before merging into main.
 // Follow the Release Notes rules in AGENTS.md.
 
 export type ReleaseNoteKind = 'new' | 'improved' | 'fixed';
