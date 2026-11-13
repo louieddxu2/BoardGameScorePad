@@ -25,16 +25,19 @@ export const computeBgStatsRanks = (record: HistoryRecord): number[] => {
 };
 
 /**
- * BG Stats marks winners as manual when they cannot be read from the scores: a tie broken
- * by a tie-breaker, a player forced to lose, or any winner of a cooperative or no-points play.
- * A play with no winner, or whose winners are exactly the best scores, is automatic.
+ * BG Stats marks winners as manual when they were chosen by hand rather than read from the
+ * scores. Only the outcome is known here, so any outcome the scores cannot decide counts as
+ * manual: a tie broken by a tie-breaker, a player forced to lose, a winner when every score
+ * is 0, nobody winning despite recorded scores, or any winner of a cooperative or no-points
+ * play. Automatic: winners exactly the best scores, or no winner and no scores.
  */
 export const isManualWinner = (record: HistoryRecord): boolean => {
     const winners = record.players.map(player => isRecordWinner(record, player));
-    if (!winners.some(Boolean)) return false;
     const rule = getRecordScoringRule(record);
-    if (isNoPointsRule(rule) || rule === 'COOP') return true;
     const totals = record.players.map(player => player.totalScore);
+    const hasScores = !isNoPointsRule(rule) && totals.some(total => total !== 0);
+    if (!winners.some(Boolean)) return hasScores;
+    if (!hasScores || rule === 'COOP') return true;
     const best = rule === 'LOWEST_WINS' ? Math.min(...totals) : Math.max(...totals);
     return totals.some((total, i) => (total === best) !== winners[i]);
 };

@@ -97,7 +97,7 @@ describe('bgStatsExportService game and player flags', () => {
     expect(flags('later')).toEqual([false, false]);
   });
 
-  it('marks winners manual only when the scores do not decide them', async () => {
+  it('marks winners manual whenever the scores do not decide them', async () => {
     tables.history.rows.push(
       play('scored', 'HIGHEST_WINS', [30, 20], [0]),
       play('tie-break', 'HIGHEST_WINS', [30, 30, 10], [1]),
@@ -108,11 +108,16 @@ describe('bgStatsExportService game and player flags', () => {
       play('coop-loss', 'COOP', [12, 12], []),
       play('no-points', 'COMPETITIVE_NO_SCORE', [0, 0], [1]),
       play('no-winner', 'HIGHEST_WINS', [3, 1], []),
+      play('blank', 'HIGHEST_WINS', [0, 0], []),
+      play('solo-zero-win', 'HIGHEST_WINS', [0], [0]),
+      play('solo-win', 'HIGHEST_WINS', [40], [0]),
+      play('solo-loss', 'HIGHEST_WINS', [40], []),
     );
     const data = await bgStatsExportService.exportData();
     expect(Object.fromEntries((data.plays || []).map((p: any) => [p.uuid, p.manualWinner]))).toEqual({
       'scored': false, 'tie-break': true, 'all-zero': true, 'forced-loss': true, 'low': false,
-      'coop-win': true, 'coop-loss': false, 'no-points': true, 'no-winner': false,
+      'coop-win': true, 'coop-loss': true, 'no-points': true, 'no-winner': true,
+      'blank': false, 'solo-zero-win': true, 'solo-win': false, 'solo-loss': true,
     });
   });
 });
