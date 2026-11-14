@@ -141,6 +141,31 @@ describe('useSessionManager', () => {
     });
   });
 
+  it('opens a built-in board with a legacy formula without saving a template copy', async () => {
+    const template: GameTemplate = {
+      id: 'Built-in-weighted-sum',
+      name: 'Built-in weighted sum',
+      createdAt: 1,
+      columns: [{
+        id: 'score', name: 'Score', formula: '(a1+next)×c1', constants: { c1: 2 },
+        inputType: 'keypad', isScoring: true,
+      }],
+    };
+    const { result } = renderHook(() => useSessionManager({
+      getTemplate: async id => id === template.id ? template : null,
+      activeSessions: [],
+      isCloudEnabled: () => false,
+      pinnedIds: [],
+    }));
+
+    await act(async () => { await result.current.startSession(template, 2); });
+
+    expect(result.current.currentSession?.templateId).toBe(template.id);
+    expect(result.current.activeTemplate?.columns[0].formula).toBe('(a1+next)×c1');
+    expect(hoisted.dbMock.templates.put).not.toHaveBeenCalled();
+    expect(hoisted.dbMock.templates.update).not.toHaveBeenCalled();
+  });
+
   it('records the final player count only when saving to history and clears runtime state', async () => {
     const template: GameTemplate = {
       id: 'tpl_1',

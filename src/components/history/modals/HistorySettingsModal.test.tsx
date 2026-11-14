@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import type { HistoryRecord } from '../../../types';
 
 vi.mock('../../../services/relationshipService', () => ({
@@ -82,4 +82,43 @@ describe('HistorySettingsModal time fields', () => {
     const saved = onSave.mock.calls[0][0] as HistoryRecord;
     expect(saved.endTime).toBe(new Date(2026, 10, 7, 22, 15).getTime());
   });
+});
+
+it('restores an independent template with the saved scoring columns', async () => {
+  const record = makeRecord();
+  record.snapshotTemplate = {
+    id: record.templateId,
+    name: 'Original board',
+    createdAt: 1,
+    sourceTemplateId: 'Built-in-original',
+    lastSyncedAt: 2,
+    imageId: 'local-image',
+    cloudImageId: 'cloud-image',
+    columns: [{
+      id: 'trees', name: 'Trees', formula: '(a1+next)×c1',
+      constants: { c1: 3 }, inputType: 'keypad', isScoring: true,
+    }],
+  };
+  record.bggId = '42';
+  const onRestoreTemplate = vi.fn().mockResolvedValue(undefined);
+  const onClose = vi.fn();
+  const view = render(<HistorySettingsModal
+    isOpen record={record} onClose={onClose} onSave={vi.fn()} onRestoreTemplate={onRestoreTemplate}
+  />);
+
+  fireEvent.click(view.getByRole('button', { name: 'history_restore_btn' }));
+
+  expect(onRestoreTemplate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    id: expect.any(String),
+    name: 'Harmonies history_restore_suffix',
+    columns: record.snapshotTemplate.columns,
+    bggId: '42',
+    defaultScoringRule: 'HIGHEST_WINS',
+    imageId: 'local-image',
+    cloudImageId: undefined,
+    sourceTemplateId: undefined,
+    lastSyncedAt: undefined,
+  }));
+  expect(onRestoreTemplate.mock.calls[0][0].id).not.toBe(record.templateId);
+  await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
 });
