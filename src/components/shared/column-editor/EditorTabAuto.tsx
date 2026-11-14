@@ -15,7 +15,7 @@ interface EditorTabAutoProps {
 
 const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], onChange }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
-    const [localFormula, setLocalFormula] = useState(column.formula || '');
+    const formula = column.formula || '';
     const [isLocked, setIsLocked] = useState(false);
     const [parseError, setParseError] = useState<string | null>(null);
     const [expandedFunc, setExpandedFunc] = useState<string | null>(null);
@@ -32,9 +32,9 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
 
     // 初始化檢查：自動解析公式並同步資料
     useEffect(() => {
-        if (localFormula && localFormula.trim()) {
+        if (formula.trim()) {
             try {
-                const { vars, funcs } = extractIdentifiers(localFormula);
+                const { vars, funcs } = extractIdentifiers(formula);
 
                 // 只有當公式包含有效的變數或函數時才進行處理
                 if (vars.length > 0 || funcs.length > 0) {
@@ -67,23 +67,23 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
 
     const existingXVars = useMemo(() => {
         const regex = /x(\d+)/g;
-        const matches = localFormula.match(regex) || [];
+        const matches = formula.match(regex) || [];
         return Array.from(new Set(matches)).sort((a: string, b: string) => parseInt(a.substring(1)) - parseInt(b.substring(1)));
-    }, [localFormula]);
+    }, [formula]);
 
     const existingFuncs = useMemo(() => {
         const regex = /f(\d+)/g;
-        const matches = localFormula.match(regex) || [];
+        const matches = formula.match(regex) || [];
         return Array.from(new Set(matches)).sort((a: string, b: string) => parseInt(a.substring(1)) - parseInt(b.substring(1)));
-    }, [localFormula]);
+    }, [formula]);
 
     const handleLock = () => {
-        if (!localFormula.trim()) { setParseError(t('col_auto_err_empty')); return; }
+        if (!formula.trim()) { setParseError(t('col_auto_err_empty')); return; }
 
-        const { vars: extractedVars, funcs: extractedFuncs } = extractIdentifiers(localFormula);
+        const { vars: extractedVars, funcs: extractedFuncs } = extractIdentifiers(formula);
 
         try {
-            let testFormula = localFormula.toLowerCase().replace(/×/g, '*');
+            let testFormula = formula.toLowerCase().replace(/×/g, '*');
             if (!/^[a-z0-9+\-*/().\s×,]+$/.test(testFormula)) throw new Error(t('col_auto_err_invalid_char'));
 
             // 1. Dry Run - 替換變數為 1
@@ -116,7 +116,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
 
         // 更新所有狀態
         onChange({
-            formula: localFormula,
+            formula,
             variableMap: newVariableMap,
             isAuto: true,
             inputType: 'auto',
@@ -146,12 +146,9 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
         if (isLocked) return;
         const input = inputRef.current;
         if (!input) return;
-        const start = input.selectionStart ?? localFormula.length;
-        const end = input.selectionEnd ?? localFormula.length;
-        const newVal = localFormula.substring(0, start) + token + localFormula.substring(end);
-        setLocalFormula(newVal);
-        // Sync to parent immediately
-        onChange({ formula: newVal });
+        const start = input.selectionStart ?? formula.length;
+        const end = input.selectionEnd ?? formula.length;
+        onChange({ formula: formula.substring(0, start) + token + formula.substring(end) });
         setTimeout(() => {
             input.focus();
             const newPos = start + token.length + cursorOffset;
@@ -195,13 +192,10 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                         ref={inputRef}
                         type="text"
                         inputMode="decimal"
-                        value={localFormula}
+                        value={formula}
                         onChange={e => {
-                            const val = e.target.value;
-                            setLocalFormula(val);
                             setParseError(null);
-                            // Sync to parent immediately so we don't lose typed formula if saving without locking
-                            onChange({ formula: val });
+                            onChange({ formula: e.target.value });
                         }}
                         placeholder="f1(x1) + f2(x2)"
                         disabled={isLocked}
@@ -224,9 +218,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
                         <div className="grid grid-cols-8 gap-1">
                             {['+', '-', '×', '/', '(', ')', ','].map(op => <button key={op} onMouseDown={e => e.preventDefault()} onClick={() => insertToken(op)} className="bg-modal-bg-elevated rounded-lg border border-surface-border text-txt-primary font-black py-2 text-sm hover:bg-surface-hover active:scale-90 transition-all">{op}</button>)}
                             <button onMouseDown={e => e.preventDefault()} onClick={() => {
-                                const newVal = localFormula.slice(0, -1);
-                                setLocalFormula(newVal);
-                                onChange({ formula: newVal });
+                                onChange({ formula: formula.slice(0, -1) });
                             }} className="bg-modal-bg-elevated text-status-danger rounded-lg border border-surface-border py-2 flex items-center justify-center hover:bg-status-danger/10 active:scale-90 transition-all"><Delete size={16} /></button>
                         </div>
 

@@ -825,6 +825,32 @@ describe('SessionView toolbox scroll behavior', () => {
     expect(latestSession?.winnerIds).toEqual([]);
   });
 
+  it('commits a pending product once to the previous player when swiping', () => {
+    const onUpdateSession = vi.fn();
+    const template = makeTemplate();
+    template.columns[0] = { ...template.columns[0], formula: '(a1×a2)+next' };
+    const session = makeSession();
+    session.players[1].scores['col-1'] = { parts: [7] };
+    renderSession({ session, template, onUpdateSession });
+
+    fireEvent.click(getFirstScoreCell());
+    fireEvent.click(screen.getByRole('button', { name: '3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enter B' }));
+    fireEvent.click(screen.getByRole('button', { name: '4' }));
+    expect(onUpdateSession).not.toHaveBeenCalled();
+
+    const panel = getInputPanel();
+    swipeOn(panel, { startX: 200, startY: 100, endX: 100, endY: 100 });
+
+    expect(onUpdateSession).toHaveBeenCalledTimes(1);
+    const saved = onUpdateSession.mock.calls[0][0] as GameSession;
+    expect(saved.players.map(player => player.scores['col-1']?.parts)).toEqual([[12], [7]]);
+    expect(getInputPanel().textContent).toContain('Player 2');
+    const sidebar = getInputPanel().querySelector('[data-input-panel-sidebar]');
+    expect(sidebar?.textContent).toContain('7');
+    expect(sidebar?.textContent).not.toContain('12');
+  });
+
   it('does not turn a vertical-first panel gesture into player navigation', () => {
     const onUpdateSession = vi.fn();
     renderSession({ onUpdateSession });
