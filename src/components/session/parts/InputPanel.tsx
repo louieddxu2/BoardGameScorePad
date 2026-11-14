@@ -14,7 +14,7 @@ import { useSessionTranslation } from '../../../i18n/session';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
 import { applyScoreInputValue } from '../scoreInputUpdate';
 import { getColumnInputPreviewValue, getInitialScoreInputPreviewValue } from '../scoreInputPreview';
-import { appendScoreHistoryPart, getPendingNumericScorePart } from '../scoreInputHistory';
+import { appendScoreHistoryPart, getPendingNumericScorePart, getPendingProductScorePart } from '../scoreInputHistory';
 import { touchGestureGuard } from '../../../utils/touchGesture';
 import { hasSecondFactor, isSumPartsFormula } from '../../../utils/scoreColumnFormula';
 
@@ -460,23 +460,11 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             if (isSumPartsMode) {
                 const cellScoreObject = activePlayer.scores[activeColumn.id];
 
-                if (isProductMode) {
-                    let currentFactors = [0, 1];
-                    if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
-                        currentFactors = previewValue.factors;
-                    }
-                    const n1 = parseFloat(String(currentFactors[0])) || 0;
-                    const n2 = parseFloat(String(currentFactors[1])) || 0;
-
-                    if (n1 !== 0) {
-                        const product = n1 * n2;
-                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, product));
-                    }
-                } else {
-                    const part = getPendingNumericScorePart(activeColumn, previewValue);
-                    if (part !== undefined) {
-                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, part));
-                    }
+                const part = isProductMode
+                    ? getPendingProductScorePart(previewValue)
+                    : getPendingNumericScorePart(activeColumn, previewValue);
+                if (part !== undefined) {
+                    updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, part));
                 }
             }
         };

@@ -10,7 +10,10 @@ import AutoScorePanel from './AutoScorePanel';
 import ScoreInfoPanel from './ScoreInfoPanel';
 import { getScoreHistory } from '../../../utils/scoring';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
-import { appendScoreHistoryPart, buildScoreHistoryInput, getPendingNumericScorePart } from '../scoreInputHistory';
+import {
+    appendScoreHistoryPart, buildScoreHistoryInput, getDraftProductFactors,
+    getPendingNumericScorePart, getPendingProductScorePart,
+} from '../scoreInputHistory';
 import { hasSecondFactor, isSumPartsFormula } from '../../../utils/scoreColumnFormula';
 
 interface ColumnInputViewOptions {
@@ -90,14 +93,12 @@ export const buildColumnInputView = ({
 
     const handleQuickButtonAction = (action: QuickAction) => {
         if (isProductSumPartsMode) {
-            let currentFactors = [0, 1];
-            if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
-                currentFactors = previewValue.factors.slice();
-            }
+            const currentFactors = getDraftProductFactors(previewValue);
 
             if (activeFactorIdx === 0) {
-                currentFactors[0] = action.value;
-                setPreview({ factors: currentFactors });
+                const nextFactors = currentFactors.slice();
+                nextFactors[0] = action.value;
+                setPreview({ factors: nextFactors });
                 setActiveFactorIdx(1);
                 setOverwrite(true);
             } else {
@@ -186,13 +187,8 @@ export const buildColumnInputView = ({
     } else {
         if (isSumPartsMode) {
             if (isProductSumPartsMode) {
-                let currentFactors = [0, 1];
-                if (previewValue && typeof previewValue === 'object' && previewValue.factors) {
-                    currentFactors = previewValue.factors;
-                }
-                const n1 = parseFloat(String(currentFactors[0])) || 0;
-
-                if (n1 !== 0) {
+                const part = getPendingProductScorePart(previewValue);
+                if (part !== undefined) {
                     if (activeFactorIdx === 0) {
                         nextButtonContent = (<div className="flex flex-col items-center leading-none"><span className="text-xs">{t('input_btn_enter')} {activeColumn.subUnits?.[1] || 'B'}</span><ArrowDown size={16} /></div>);
                         onNextAction = () => {
@@ -202,16 +198,11 @@ export const buildColumnInputView = ({
                     } else {
                         nextButtonContent = <ArrowUpToLine size={28} />;
                         onNextAction = () => {
-                            const product = (parseFloat(String(currentFactors[0])) || 0) * (parseFloat(String(currentFactors[1])) || 0);
-                            if (product !== 0 || n1 !== 0) {
-                                updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, product));
+                            updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, part));
 
-                                setPreview({ factors: [0, 1] });
-                                setActiveFactorIdx(0);
-                                setOverwrite(true);
-                            } else {
-                                moveToNext();
-                            }
+                            setPreview({ factors: [0, 1] });
+                            setActiveFactorIdx(0);
+                            setOverwrite(true);
                         };
                     }
                 }

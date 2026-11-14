@@ -1,6 +1,20 @@
 import type { ScoreColumn, ScoreValue } from '../../types';
 import { getRawValue, getScoreHistory } from '../../utils/scoring';
 
+type ProductPreview = { factors?: (number | string)[] } | number | string | null | undefined;
+
+export function getDraftProductFactors(preview: ProductPreview): readonly (number | string)[] {
+    return (preview && typeof preview === 'object' && preview.factors) || [0, 1];
+}
+
+export function getPendingProductScorePart(preview: ProductPreview): number | undefined {
+    const [first, second] = getDraftProductFactors(preview);
+    const quantity = parseFloat(String(first)) || 0;
+    if (quantity === 0) return undefined;
+
+    return quantity * (parseFloat(String(second)) || 0);
+}
+
 export function getPendingNumericScorePart(column: ScoreColumn, previewValue: unknown): number | undefined {
     const input = parseFloat(String(getRawValue(previewValue))) || 0;
     if (input === 0) return undefined;
