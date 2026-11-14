@@ -232,11 +232,9 @@ const computeColumnScore = (
   if (!parts || parts.length === 0) return 0;
   let calculated = 0;
 
-  // includes check covers 'a1+next', '(a1+next)×c1', etc.
+  // Both current and legacy sum formulas store already weighted parts.
   if ((col.formula || '').includes('+next')) {
     calculated = parts.reduce((sum, part) => sum + part, 0);
-    // REMOVED: Post-summation multiplication logic.
-    // We now assume that for sum-parts, the values in `parts` are already fully processed (multiplied) at input time.
   } else if (col.formula === 'a1×a2') {
     const a = parts[0] ?? 0;
     const b = parts[1] ?? 1;

@@ -23,10 +23,7 @@ export function getSavedBasicFormula(
     const fallbackInputType = mode === 'standard' ? cachedSumPartsInputType : undefined;
 
     return {
-        // Saved weighted sums retain the existing serialized formula.
-        formula: mode === 'standard' && sumParts && multiplier !== 1
-            ? '(a1+next)×c1'
-            : buildDraftFormula(mode, sumParts, multiplier),
+        formula: buildDraftFormula(mode, sumParts, multiplier),
         inputType: sumParts ? inputType || fallbackInputType || 'keypad' : 'keypad',
     };
 }
