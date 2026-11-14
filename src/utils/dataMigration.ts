@@ -2,6 +2,7 @@
 import { GameTemplate, ScoreColumn, ScoreValue, MappingRule, QuickAction, InputMethod } from '../types';
 import { generateId } from './idGenerator';
 import { DATA_LIMITS } from '../dataLimits';
+import { isSumPartsFormula } from './scoreColumnFormula';
 
 export const migrateColumn = (oldCol: any): ScoreColumn => {
   let formula = oldCol.formula || 'a1';
@@ -137,7 +138,7 @@ export const migrateScores = (scores: Record<string, any>, template: GameTemplat
     }
 
     let parts: number[] = [];
-    if ((col.formula || '').includes('+next')) {
+    if (isSumPartsFormula(col.formula)) {
       if (typeof oldScore === 'object' && oldScore !== null && oldScore.history) {
         parts = oldScore.history.map((s: string) => parseFloat(s)).filter((n: number) => !isNaN(n));
       }

@@ -5,6 +5,7 @@ import { Calculator, Hash, Plus, X as Multiply, Square } from 'lucide-react';
 import QuickActionsEditor from './QuickActionsEditor';
 import { buildDraftFormula, getCalculationMode, type CalculationMode } from './basicColumnFormula';
 import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
+import { isSumPartsFormula } from '../../../utils/scoreColumnFormula';
 
 interface EditorTabBasicProps {
     column: ScoreColumn;
@@ -96,7 +97,7 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
     const { t } = useColumnEditorTranslation(); // Use New Hook
 
     const currentCalcMode = getCalculationMode(column.formula);
-    const isSumPartsEnabled = (column.formula || '').includes('+next');
+    const isSumPartsEnabled = isSumPartsFormula(column.formula);
 
     // Sync current input type to cache when in sum-parts mode
     useEffect(() => {

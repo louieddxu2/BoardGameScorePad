@@ -1,5 +1,6 @@
 import type { GameSession, ScoreColumn, ScoreValue } from '../../types';
 import { syncPartsFromIds } from '../../utils/scoring';
+import { isSumPartsFormula } from '../../utils/scoreColumnFormula';
 
 type ScoreInputValue = number | string | {
     value?: number | string;
@@ -15,7 +16,7 @@ const toScoreValue = (column: ScoreColumn, value: ScoreInputValue): ScoreValue =
     let optionId: string | undefined;
     let multiOptionIds: string[] | undefined;
 
-    if ((column.formula || '').includes('+next')) {
+    if (isSumPartsFormula(column.formula)) {
         parts = (input?.history || []).map(part => parseFloat(part)).filter(n => !isNaN(n));
     } else if (column.formula === 'a1×a2') {
         parts = (input?.factors || []).map(factor => parseFloat(String(factor))).filter(n => !isNaN(n));

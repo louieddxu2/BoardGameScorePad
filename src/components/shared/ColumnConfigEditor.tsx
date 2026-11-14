@@ -16,6 +16,7 @@ import { extractIdentifiers } from '../../utils/formulaEvaluator';
 import { useColumnEditorTranslation } from '../../i18n/column_editor'; // Changed Import
 import { useCommonTranslation } from '../../i18n/common';
 import { useModalBackHandler } from '../../hooks/useModalBackHandler';
+import { isSumPartsFormula } from '../../utils/scoreColumnFormula';
 
 interface ColumnConfigEditorProps {
     column: ScoreColumn;
@@ -102,7 +103,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
     const initialStringifiedRef = useRef(JSON.stringify(getInitialState()));
 
     const sumPartsInputTypeCache = useRef<InputMethod>(
-        (editedCol.formula || '').includes('+next')
+        isSumPartsFormula(editedCol.formula)
             ? ((editedCol.inputType !== 'auto' ? editedCol.inputType : null) || 'keypad')
             : 'keypad'
     );
@@ -111,7 +112,7 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         if (col.inputType === 'auto') return 'auto';
         const formula = col.formula || '';
         if (formula.startsWith('f1')) return 'mapping';
-        if (col.inputType === 'clicker' && !formula.includes('+next')) return 'select';
+        if (col.inputType === 'clicker' && !isSumPartsFormula(formula)) return 'select';
         return 'basic';
     };
 

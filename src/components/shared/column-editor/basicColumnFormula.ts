@@ -1,9 +1,10 @@
 import type { InputMethod, ScoreColumn } from '../../../types';
+import { hasSecondFactor, isSumPartsFormula } from '../../../utils/scoreColumnFormula';
 
 export type CalculationMode = 'standard' | 'product';
 
 export function getCalculationMode(formula: string): CalculationMode {
-    return formula.includes('×a2') ? 'product' : 'standard';
+    return hasSecondFactor(formula) ? 'product' : 'standard';
 }
 
 export function buildDraftFormula(mode: CalculationMode, sumParts: boolean, multiplier: number): string {
@@ -17,7 +18,7 @@ export function getSavedBasicFormula(
     cachedSumPartsInputType: InputMethod,
 ): Pick<ScoreColumn, 'formula' | 'inputType'> {
     const mode = getCalculationMode(column.formula);
-    const sumParts = (column.formula || '').includes('+next');
+    const sumParts = isSumPartsFormula(column.formula);
     const multiplier = column.constants?.c1 ?? 1;
     const inputType = column.inputType !== 'auto' ? column.inputType : undefined;
     const fallbackInputType = mode === 'standard' ? cachedSumPartsInputType : undefined;

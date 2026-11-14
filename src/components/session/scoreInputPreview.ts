@@ -1,5 +1,6 @@
 import type { GameSession, GameTemplate, ScoreColumn, ScoreValue } from '../../types';
 import { calculatePlayerTotal } from '../../utils/scoring';
+import { hasSecondFactor, isSumPartsFormula } from '../../utils/scoreColumnFormula';
 
 export interface ScoreInputCell {
   playerId: string;
@@ -7,8 +8,8 @@ export interface ScoreInputCell {
 }
 
 export const getColumnInputPreviewValue = (column: ScoreColumn, score?: ScoreValue) => {
-  if ((column.formula || '').includes('+next')) {
-    return column.formula.includes('×a2') ? { factors: [0, 1] } : 0;
+  if (isSumPartsFormula(column.formula)) {
+    return hasSecondFactor(column.formula) ? { factors: [0, 1] } : 0;
   }
   if (column.formula === 'a1×a2') {
     return { factors: score?.parts || [0, 1] };

@@ -11,6 +11,7 @@ import ScoreInfoPanel from './ScoreInfoPanel';
 import { getScoreHistory } from '../../../utils/scoring';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
 import { appendScoreHistoryPart, buildScoreHistoryInput, getPendingNumericScorePart } from '../scoreInputHistory';
+import { hasSecondFactor, isSumPartsFormula } from '../../../utils/scoreColumnFormula';
 
 interface ColumnInputViewOptions {
     player: Player;
@@ -68,8 +69,8 @@ export const buildColumnInputView = ({
     let onNextAction = () => {};
     let nextButtonContent: React.ReactNode = undefined;
 
-    const isProductMode = activeColumn.formula.includes('×a2');
-    const isSumPartsMode = (activeColumn.formula || '').includes('+next');
+    const isProductMode = hasSecondFactor(activeColumn.formula);
+    const isSumPartsMode = isSumPartsFormula(activeColumn.formula);
     const isProductSumPartsMode = isSumPartsMode && isProductMode;
     const constant = activeColumn.constants?.c1 ?? 1;
     const hasMultiplier = constant !== 1;

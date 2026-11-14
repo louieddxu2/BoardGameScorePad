@@ -2,6 +2,7 @@
 import { Player, ScoreColumn, GameTemplate, ScoreValue, MappingRule, QuickAction } from '../types';
 import { evaluateFormula } from './formulaEvaluator';
 import { getScoreRank, getPlayerRank, getTieCount } from './ranking';
+import { isSumPartsFormula } from './scoreColumnFormula';
 
 /**
  * Context required for auto-calculation.
@@ -233,7 +234,7 @@ const computeColumnScore = (
   let calculated = 0;
 
   // Both current and legacy sum formulas store already weighted parts.
-  if ((col.formula || '').includes('+next')) {
+  if (isSumPartsFormula(col.formula)) {
     calculated = parts.reduce((sum, part) => sum + part, 0);
   } else if (col.formula === 'a1×a2') {
     const a = parts[0] ?? 0;

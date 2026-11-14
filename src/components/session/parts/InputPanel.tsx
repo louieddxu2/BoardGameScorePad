@@ -16,6 +16,7 @@ import { applyScoreInputValue } from '../scoreInputUpdate';
 import { getColumnInputPreviewValue, getInitialScoreInputPreviewValue } from '../scoreInputPreview';
 import { appendScoreHistoryPart, getPendingNumericScorePart } from '../scoreInputHistory';
 import { touchGestureGuard } from '../../../utils/touchGesture';
+import { hasSecondFactor, isSumPartsFormula } from '../../../utils/scoreColumnFormula';
 
 interface InputPanelProps {
     sessionState: ReturnType<typeof useSessionState>;
@@ -202,7 +203,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
             if (player && col && col.inputType !== 'auto') {
                 const emptyPreview = getColumnInputPreviewValue(col);
                 setPreview(emptyPreview);
-                if (typeof emptyPreview === 'object' && 'factors' in emptyPreview && (col.formula || '').includes('+next')) {
+                if (typeof emptyPreview === 'object' && 'factors' in emptyPreview && isSumPartsFormula(col.formula)) {
                     setActiveFactorIdx(0);
                 }
                 updateScore(player.id, col.id, undefined);
@@ -453,8 +454,8 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             if (!activeColumn) return;
 
-            const isSumPartsMode = (activeColumn.formula || '').includes('+next');
-            const isProductMode = activeColumn.formula.includes('×a2');
+            const isSumPartsMode = isSumPartsFormula(activeColumn.formula);
+            const isProductMode = hasSecondFactor(activeColumn.formula);
 
             if (isSumPartsMode) {
                 const cellScoreObject = activePlayer.scores[activeColumn.id];
