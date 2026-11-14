@@ -39,8 +39,10 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Screenshot and BG Stats export file names use the local date.' },
       { kind: 'fixed', zh: '再次匯入 BG Stats 時沿用先前的連結，不再建立重複的玩家、地點或遊戲。',
         en: 'Importing from BG Stats again reuses earlier links instead of creating duplicate players, locations or games.' },
-      { kind: 'fixed', zh: 'BG Stats 匯出的名次、匿名玩家與手動贏家標記改依 BG Stats 的記錄方式；連結過的玩家、地點與遊戲沿用 BG Stats 原本的識別碼。',
-        en: 'BG Stats exports record ranks, anonymous players and manual winners the way BG Stats does, and linked players, locations and games keep their original BG Stats IDs.' },
+      { kind: 'fixed', zh: 'BG Stats 匯出會依勝負規則排定名次。分數無法決定勝負時，會標記為手動判定。',
+        en: 'BG Stats exports rank players by the win condition and mark outcomes as manual when scores cannot determine them.' },
+      { kind: 'fixed', zh: 'BG Stats 匯出會將未連結的預設玩家名稱歸為同一位匿名玩家，並保留已連結玩家、地點與遊戲的原始識別碼。',
+        en: 'BG Stats exports group unlinked default-named players under one anonymous player and keep the original IDs of linked players, locations and games.' },
     ],
   },
   {
