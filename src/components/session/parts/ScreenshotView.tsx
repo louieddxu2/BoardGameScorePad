@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
+import { GameSession, GameTemplate } from '../../../types';
 import { Trophy } from 'lucide-react';
 import ScoreCell from './ScoreCell';
 import { getContrastTextStyles } from '../../../utils/ui';
@@ -12,6 +12,7 @@ import TexturedScreenshotView from './TexturedScreenshotView';
 import { calculateWinners } from '../../../utils/templateUtils'; // [Refactor]
 import { useSessionTranslation } from '../../../i18n/session';
 import { injectSoftHyphens } from '../../../utils/text';
+import { groupScoreColumns } from './groupScoreColumns';
 
 interface ScreenshotLayout {
     itemWidth: number;
@@ -142,43 +143,7 @@ const ScreenshotView: React.FC<ScreenshotViewProps> = (props) => {
     const { id, className, style, session, template, zoomLevel, mode, layout, baseImage, customWinners } = props;
     const { t } = useSessionTranslation();
 
-    // Group columns logic (Same as ScoreGrid)
-    const processedColumns = useMemo(() => {
-        const getMode = (col: ScoreColumn) => col.displayMode || 'row';
-
-        const visibleCols: (ScoreColumn & { overlayColumns: ScoreColumn[] })[] = [];
-        const overlays: ScoreColumn[] = [];
-
-        template.columns.forEach(col => {
-            const mode = getMode(col);
-            if (mode === 'row') {
-                visibleCols.push({ ...col, overlayColumns: [] });
-            } else if (mode === 'overlay') {
-                overlays.push(col);
-            }
-            // Hidden columns are implicitly skipped from visibleCols
-        });
-
-        overlays.forEach(overlayCol => {
-            const originalIndex = template.columns.findIndex(c => c.id === overlayCol.id);
-            let host: (ScoreColumn & { overlayColumns: ScoreColumn[] }) | null = null;
-
-            for (let i = originalIndex - 1; i >= 0; i--) {
-                const potentialHostDef = template.columns[i];
-                if (getMode(potentialHostDef) === 'row') {
-                    host = visibleCols.find(vc => vc.id === potentialHostDef.id) || null;
-                    break;
-                }
-            }
-
-            if (host) {
-                host.overlayColumns.push(overlayCol);
-            }
-        });
-
-        return visibleCols;
-
-    }, [template.columns]);
+    const processedColumns = useMemo(() => groupScoreColumns(template.columns), [template.columns]);
 
     if (baseImage) {
         return (

@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { GameSession, GameTemplate, ScoreColumn } from '../../../types';
 import { EyeOff, Layers, Sparkles, Settings, Sigma, X } from 'lucide-react';
 import { buildScoreGridRows } from './buildScoreGridRows';
+import { groupScoreColumns } from './groupScoreColumns';
 import TexturedPlayerHeader from './TexturedPlayerHeader';
 import TexturedBlock from './TexturedBlock';
 import GridFooter from './GridFooter';
@@ -150,49 +151,10 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
     };
   }, [leftColWidth]);
 
-  const processedColumns = useMemo(() => {
-    const getMode = (col: ScoreColumn) => col.displayMode || 'row';
-
-    if (isEditMode) {
-      return template.columns.map(c => ({
-        ...c,
-        resolvedDisplayMode: getMode(c),
-        overlayColumns: [] as ScoreColumn[],
-      }));
-    }
-
-    const visibleCols: (ScoreColumn & { resolvedDisplayMode: string, overlayColumns: ScoreColumn[] })[] = [];
-    const overlays: ScoreColumn[] = [];
-
-    template.columns.forEach(col => {
-      const mode = getMode(col);
-      if (mode === 'row') {
-        visibleCols.push({ ...col, resolvedDisplayMode: 'row', overlayColumns: [] });
-      } else if (mode === 'overlay') {
-        overlays.push(col);
-      }
-    });
-
-    overlays.forEach(overlayCol => {
-      const originalIndex = template.columns.findIndex(c => c.id === overlayCol.id);
-      let host: (ScoreColumn & { overlayColumns: ScoreColumn[] }) | null = null;
-
-      for (let i = originalIndex - 1; i >= 0; i--) {
-        const potentialHostDef = template.columns[i];
-        if (getMode(potentialHostDef) === 'row') {
-          host = visibleCols.find(vc => vc.id === potentialHostDef.id) || null;
-          break;
-        }
-      }
-
-      if (host) {
-        host.overlayColumns.push(overlayCol);
-      }
-    });
-
-    return visibleCols;
-
-  }, [template.columns, isEditMode]);
+  const processedColumns = useMemo(
+    () => groupScoreColumns(template.columns, isEditMode),
+    [template.columns, isEditMode],
+  );
 
 
   usePlayerWidthSync(session.players, processedColumns, zoomLevel);

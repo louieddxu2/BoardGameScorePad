@@ -8,11 +8,10 @@ import { ContrastText } from '../../shared/ContrastText';
 import { injectSoftHyphens } from '../../../utils/text';
 import { buildScoreGridOverlay } from './buildScoreGridOverlay';
 import { createColorReader } from '../../../utils/color';
-
-type ProcessedScoreColumn = ScoreColumn & { resolvedDisplayMode: string; overlayColumns: ScoreColumn[] };
+import type { ScoreGridColumn } from './groupScoreColumns';
 
 interface ScoreGridRowsOptions {
-  processedColumns: ProcessedScoreColumn[];
+  processedColumns: ScoreGridColumn[];
   session: GameSession;
   template: GameTemplate;
   dnd: ReturnType<typeof useColumnDragAndDrop>;
@@ -46,7 +45,7 @@ export function buildScoreGridRows({
   return processedColumns.map((col, index) => {
     const isDragging = dnd.draggingId === col.id;
     const isDropTarget = dnd.dropTargetId === col.id;
-    const displayMode = col.resolvedDisplayMode as 'row' | 'overlay' | 'hidden';
+    const displayMode = col.resolvedDisplayMode;
 
     const isAlt = index % 2 !== 0;
     const isHidden = displayMode === 'hidden';
