@@ -4,6 +4,7 @@ import { ScoreColumn, MappingRule } from '../../../types';
 import { Sparkles, ArrowRight, Lock, Unlock, Check, Calculator, AlertCircle, Ruler, ChevronDown, ChevronUp, Delete, Trophy, Hash, Users, Sigma } from 'lucide-react';
 import EditorTabMapping from './EditorTabMapping';
 import { extractIdentifiers } from '../../../utils/formulaEvaluator';
+import { buildAutoFormulaBindings, PLAYER_COUNT_ID } from './autoFormulaBindings';
 import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
 
 interface EditorTabAutoProps {
@@ -11,8 +12,6 @@ interface EditorTabAutoProps {
     allColumns?: ScoreColumn[];
     onChange: (updates: Partial<ScoreColumn>) => void;
 }
-
-const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
 const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], onChange }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
@@ -24,12 +23,7 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
     const inputRef = useRef<HTMLInputElement>(null);
     const availableColumns = allColumns.filter(c => c.id !== column.id);
 
-    // Explicitly type variableMap to fix TS errors on mapObj access
-    const variableMap = (column.variableMap || {}) as Record<string, {
-        id: string;
-        name: string;
-        mode?: 'value' | 'rank_score' | 'rank_player' | 'tie_count' | 'sum_all';
-    }>;
+    const variableMap = column.variableMap || {};
     const variableList = Object.entries(variableMap);
 
     const functions: Record<string, MappingRule[]> = useMemo(() => {
@@ -44,40 +38,11 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
 
                 // 只有當公式包含有效的變數或函數時才進行處理
                 if (vars.length > 0 || funcs.length > 0) {
-                    // 1. 重建 Variable Map (保留既有設定)
-                    const newVariableMap: typeof variableMap = {};
-                    let mapChanged = false;
-
-                    vars.forEach(v => {
-                        if (variableMap[v]) {
-                            newVariableMap[v] = variableMap[v];
-                        } else {
-                            // 新增預設：如果沒有可用欄位，至少預設為空 (或可以是玩家人數)
-                            newVariableMap[v] = availableColumns[0]
-                                ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' }
-                                : { id: PLAYER_COUNT_ID, name: t('col_auto_player_count'), mode: 'value' }; // i18n
-                            mapChanged = true;
-                        }
-                    });
-
-                    // 檢查是否移除了舊變數
-                    if (Object.keys(variableMap).length !== vars.length) mapChanged = true;
-
-                    // 2. 重建 Functions (保留既有規則)
-                    const newFunctions: Record<string, MappingRule[]> = {};
-                    let funcChanged = false;
-
-                    funcs.forEach(fKey => {
-                        if (functions[fKey]) {
-                            newFunctions[fKey] = functions[fKey];
-                        } else {
-                            // 新增預設
-                            newFunctions[fKey] = [{ min: 0, score: 0 }];
-                            funcChanged = true;
-                        }
-                    });
-
-                    if (Object.keys(functions).length !== funcs.length) funcChanged = true;
+                    const { variableMap: newVariableMap, functions: newFunctions } = buildAutoFormulaBindings(
+                        { vars, funcs }, variableMap, functions, availableColumns[0], () => t('col_auto_player_count'),
+                    );
+                    const mapChanged = Object.keys(variableMap).length !== vars.length || vars.some(name => !variableMap[name]);
+                    const funcChanged = Object.keys(functions).length !== funcs.length || funcs.some(name => !functions[name]);
 
                     // 3. 如果有變更，觸發 onChange 同步回父組件
                     if (mapChanged || funcChanged) {
@@ -144,21 +109,10 @@ const EditorTabAuto: React.FC<EditorTabAutoProps> = ({ column, allColumns = [], 
             return;
         }
 
-        // --- 同步變數設定 ---
-        const newVariableMap: typeof variableMap = {};
-        extractedVars.forEach(v => {
-            // 保留舊設定，或是預設第一個可用欄位
-            newVariableMap[v] = variableMap[v] || (availableColumns[0]
-                ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' }
-                : { id: PLAYER_COUNT_ID, name: t('col_auto_player_count'), mode: 'value' });
-        });
-
-        // --- 同步函數設定 ---
-        const newFunctions: Record<string, MappingRule[]> = {};
-        extractedFuncs.forEach(fKey => {
-            // 保留舊規則，或是建立新規則
-            newFunctions[fKey] = functions[fKey] || [{ min: 0, score: 0 }];
-        });
+        const { variableMap: newVariableMap, functions: newFunctions } = buildAutoFormulaBindings(
+            { vars: extractedVars, funcs: extractedFuncs },
+            variableMap, functions, availableColumns[0], () => t('col_auto_player_count'),
+        );
 
         // 更新所有狀態
         onChange({

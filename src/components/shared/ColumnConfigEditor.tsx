@@ -11,6 +11,7 @@ import EditorTabMapping from './column-editor/EditorTabMapping';
 import EditorTabSelection from './column-editor/EditorTabSelection';
 import EditorTabBasic from './column-editor/EditorTabBasic';
 import EditorTabAuto from './column-editor/EditorTabAuto';
+import { buildAutoFormulaBindings } from './column-editor/autoFormulaBindings';
 import { getCalculationMode, getSavedBasicFormula } from './column-editor/basicColumnFormula';
 import { extractIdentifiers } from '../../utils/formulaEvaluator';
 import { useColumnEditorTranslation } from '../../i18n/column_editor'; // Changed Import
@@ -34,7 +35,6 @@ const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
 const PREF_KEY_PROD_UNIT_A = 'sm_pref_product_unit_a';
 const PREF_KEY_PROD_UNIT_B = 'sm_pref_product_unit_b';
 const PREF_KEY_ADV_OPEN = 'sm_pref_editor_adv';
-const PLAYER_COUNT_ID = '__PLAYER_COUNT__';
 
 // [Stable] 外部化 TabButton，避免每次渲染重新建立元件導致桌面版事件失效
 const TabButton = ({ id, activeTab, setActiveTab, label, icon: Icon, isSpecial }: {
@@ -193,36 +193,13 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             // [AUTO COMPLETE LOGIC]
             // If the user typed a formula but didn't lock/parse it manually, we do it here.
             if (finalUpdates.formula && finalUpdates.formula.trim()) {
-                const { vars, funcs } = extractIdentifiers(finalUpdates.formula);
-                const availableColumns = allColumns.filter(c => c.id !== column.id);
-
-                // 1. Fill missing variable maps
-                const currentVarMap = (finalUpdates.variableMap || {}) as Record<string, any>;
-                const newVariableMap: typeof currentVarMap = {};
-
-                vars.forEach(v => {
-                    if (currentVarMap[v]) {
-                        newVariableMap[v] = currentVarMap[v];
-                    } else {
-                        newVariableMap[v] = availableColumns[0]
-                            ? { id: availableColumns[0].id, name: availableColumns[0].name, mode: 'value' }
-                            : { id: PLAYER_COUNT_ID, name: t('col_auto_player_count'), mode: 'value' };
-                    }
-                });
-                finalUpdates.variableMap = newVariableMap;
-
-                // 2. Fill missing functions
-                const currentFunctions = finalUpdates.functions || {};
-                const newFunctions: Record<string, MappingRule[]> = {};
-
-                funcs.forEach(fKey => {
-                    if (currentFunctions[fKey]) {
-                        newFunctions[fKey] = currentFunctions[fKey];
-                    } else {
-                        newFunctions[fKey] = [{ min: 0, score: 0 }];
-                    }
-                });
-                finalUpdates.functions = newFunctions;
+                Object.assign(finalUpdates, buildAutoFormulaBindings(
+                    extractIdentifiers(finalUpdates.formula),
+                    finalUpdates.variableMap || {},
+                    finalUpdates.functions || {},
+                    allColumns.find(c => c.id !== column.id),
+                    () => t('col_auto_player_count'),
+                ));
             }
 
             // [BUG FIX] Ensure functions is preserved and f1 is synced
