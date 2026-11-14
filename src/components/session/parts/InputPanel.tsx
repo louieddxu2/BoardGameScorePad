@@ -10,12 +10,11 @@ import { buildColumnInputView } from './buildColumnInputView';
 import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
 import { Check } from 'lucide-react';
-import { getRawValue } from '../../../utils/scoring';
 import { useSessionTranslation } from '../../../i18n/session';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
 import { applyScoreInputValue } from '../scoreInputUpdate';
-import { getInitialScoreInputPreviewValue } from '../scoreInputPreview';
-import { appendScoreHistoryPart } from '../scoreInputHistory';
+import { getColumnInputPreviewValue, getInitialScoreInputPreviewValue } from '../scoreInputPreview';
+import { appendScoreHistoryPart, getPendingNumericScorePart } from '../scoreInputHistory';
 import { touchGestureGuard } from '../../../utils/touchGesture';
 
 interface InputPanelProps {
@@ -201,17 +200,10 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             const col = template.columns.find((c: any) => c.id === editingCell.colId);
             if (player && col && col.inputType !== 'auto') {
-                if ((col.formula || '').includes('+next')) {
-                    if (col.formula.includes('×a2')) {
-                        setPreview({ factors: [0, 1] });
-                        setActiveFactorIdx(0);
-                    } else {
-                        setPreview(0);
-                    }
-                } else if (col.formula === 'a1×a2') {
-                    setPreview({ factors: [0, 1] });
-                } else {
-                    setPreview({ value: 0 });
+                const emptyPreview = getColumnInputPreviewValue(col);
+                setPreview(emptyPreview);
+                if (typeof emptyPreview === 'object' && 'factors' in emptyPreview && (col.formula || '').includes('+next')) {
+                    setActiveFactorIdx(0);
                 }
                 updateScore(player.id, col.id, undefined);
                 setUiState((p: any) => ({ ...p, overwriteMode: true }));
@@ -444,14 +436,14 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
     }
 
     // --- Auto-Commit on Blur Logic ---
-    const commitRef = useRef({ previewValue, activePlayer, activeColumn, session, template, updateScore, isTotalMode });
+    const commitRef = useRef({ previewValue, activePlayer, activeColumn, updateScore, isTotalMode });
     useEffect(() => {
-        commitRef.current = { previewValue, activePlayer, activeColumn, session, template, updateScore, isTotalMode };
+        commitRef.current = { previewValue, activePlayer, activeColumn, updateScore, isTotalMode };
     });
 
     useEffect(() => {
         return () => {
-            const { previewValue, activePlayer, activeColumn, session, template, updateScore, isTotalMode } = commitRef.current;
+            const { previewValue, activePlayer, activeColumn, updateScore, isTotalMode } = commitRef.current;
 
             if (!activePlayer) return;
 
@@ -466,8 +458,6 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             if (isSumPartsMode) {
                 const cellScoreObject = activePlayer.scores[activeColumn.id];
-                const constant = activeColumn.constants?.c1 ?? 1;
-                const hasMultiplier = constant !== 1;
 
                 if (isProductMode) {
                     let currentFactors = [0, 1];
@@ -482,10 +472,9 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, product));
                     }
                 } else {
-                    const input = parseFloat(String(getRawValue(previewValue))) || 0;
-                    if (input !== 0) {
-                        const valToAdd = hasMultiplier ? input * constant : input;
-                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, valToAdd));
+                    const part = getPendingNumericScorePart(activeColumn, previewValue);
+                    if (part !== undefined) {
+                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, part));
                     }
                 }
             }

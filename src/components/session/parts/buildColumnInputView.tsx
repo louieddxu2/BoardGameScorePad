@@ -8,9 +8,9 @@ import QuickButtonPad from '../../shared/QuickButtonPad';
 import type { QuickButtonScrollPositions } from '../../shared/useQuickButtonScroll';
 import AutoScorePanel from './AutoScorePanel';
 import ScoreInfoPanel from './ScoreInfoPanel';
-import { getScoreHistory, getRawValue } from '../../../utils/scoring';
+import { getScoreHistory } from '../../../utils/scoring';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
-import { appendScoreHistoryPart, buildScoreHistoryInput } from '../scoreInputHistory';
+import { appendScoreHistoryPart, buildScoreHistoryInput, getPendingNumericScorePart } from '../scoreInputHistory';
 
 interface ColumnInputViewOptions {
     player: Player;
@@ -215,14 +215,12 @@ export const buildColumnInputView = ({
                     }
                 }
             } else {
-                const inputPart = parseFloat(String(getRawValue(previewValue))) || 0;
-                if (inputPart !== 0) nextButtonContent = <ArrowUpToLine size={28} />;
+                const part = getPendingNumericScorePart(activeColumn, previewValue);
+                if (part !== undefined) nextButtonContent = <ArrowUpToLine size={28} />;
 
                 onNextAction = () => {
-                    const input = parseFloat(String(getRawValue(previewValue))) || 0;
-                    if (input !== 0) {
-                        const valToAdd = hasMultiplier ? input * constant : input;
-                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, valToAdd));
+                    if (part !== undefined) {
+                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, part));
                         setPreview(0);
                         setOverwrite(true);
                     } else {

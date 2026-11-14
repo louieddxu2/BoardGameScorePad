@@ -1,10 +1,20 @@
-import { GameSession, GameTemplate } from '../../types';
+import type { GameSession, GameTemplate, ScoreColumn, ScoreValue } from '../../types';
 import { calculatePlayerTotal } from '../../utils/scoring';
 
 export interface ScoreInputCell {
   playerId: string;
   colId: string;
 }
+
+export const getColumnInputPreviewValue = (column: ScoreColumn, score?: ScoreValue) => {
+  if ((column.formula || '').includes('+next')) {
+    return column.formula.includes('×a2') ? { factors: [0, 1] } : 0;
+  }
+  if (column.formula === 'a1×a2') {
+    return { factors: score?.parts || [0, 1] };
+  }
+  return { value: score?.parts?.[0] ?? 0 };
+};
 
 export const getInitialScoreInputPreviewValue = (
   session: GameSession,
@@ -23,14 +33,5 @@ export const getInitialScoreInputPreviewValue = (
   const column = template.columns.find((candidate) => candidate.id === cell.colId);
   if (!column) return 0;
 
-  if ((column.formula || '').includes('+next')) {
-    return column.formula.includes('×a2') ? { factors: [0, 1] } : 0;
-  }
-
-  const existingScore = player.scores[cell.colId];
-  if (column.formula === 'a1×a2') {
-    return { factors: existingScore?.parts || [0, 1] };
-  }
-
-  return { value: existingScore?.parts?.[0] ?? 0 };
+  return getColumnInputPreviewValue(column, player.scores[cell.colId]);
 };
