@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { ScoreColumn, InputMethod } from '../../../types';
 import { Calculator, Hash, Plus, X as Multiply, Square } from 'lucide-react';
 import QuickActionsEditor from './QuickActionsEditor';
+import { buildDraftFormula, getCalculationMode, type CalculationMode } from './basicColumnFormula';
 import { useColumnEditorTranslation } from '../../../i18n/column_editor'; // Changed Import
 
 interface EditorTabBasicProps {
@@ -12,10 +13,7 @@ interface EditorTabBasicProps {
     onUpdateCachedSumPartsInputType: (type: InputMethod) => void;
 }
 
-type CalculationMode = 'standard' | 'product';
-
 // 更清晰的 Key 名稱
-const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
 const PREF_KEY_PROD_UNIT_A = 'sm_pref_product_unit_a';
 const PREF_KEY_PROD_UNIT_B = 'sm_pref_product_unit_b';
 
@@ -97,12 +95,6 @@ const ToggleSwitch = ({ checked, onChange, label, themeColor = 'emerald' }: { ch
 const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cachedSumPartsInputType, onUpdateCachedSumPartsInputType }) => {
     const { t } = useColumnEditorTranslation(); // Use New Hook
 
-    // Logic to determine current mode from formula
-    const getCalculationMode = (formula: string): CalculationMode => {
-        if (formula.includes('×a2')) return 'product';
-        return 'standard';
-    };
-
     const currentCalcMode = getCalculationMode(column.formula);
     const isSumPartsEnabled = (column.formula || '').includes('+next');
 
@@ -115,16 +107,11 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
 
 
     const setCalculationMode = (mode: CalculationMode) => {
-        // Determine the state of Sum Parts BEFORE switch to preserve it
-        const willEnableSumParts = isSumPartsEnabled;
+        const updates: Partial<ScoreColumn> = {
+            formula: buildDraftFormula(mode, isSumPartsEnabled, column.constants?.c1 ?? 1),
+        };
 
         if (mode === 'product') {
-            // Switch to Product
-            // If Sum Parts was enabled, use the sum-product formula, otherwise simple product
-            const newFormula = willEnableSumParts ? '(a1×a2)+next' : 'a1×a2';
-
-            let updates: Partial<ScoreColumn> = { formula: newFormula };
-
             // Initialize subUnits if missing
             if (!column.subUnits || column.subUnits.length !== 2) {
                 // Priority: LocalStorage Pref -> Default i18n
@@ -133,76 +120,21 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
                 updates.subUnits = [prefA, prefB];
             }
 
-            // CRITICAL: Do NOT reset inputType if Sum Parts is enabled. 
-            // If Sum Parts is disabled, Product mode defaults to Keypad.
-            if (willEnableSumParts) {
+            if (isSumPartsEnabled) {
                 updates.inputType = (column.inputType !== 'auto' ? column.inputType : null) || cachedSumPartsInputType;
-            } else {
-                updates.inputType = 'keypad';
             }
-
-            onChange(updates);
-        } else {
-            // Switch to Standard
-            const weight = column.constants?.c1 ?? 1;
-            let newFormula = '';
-
-            if (willEnableSumParts) {
-                // New logic: (a1×c1)+next pattern
-                newFormula = weight !== 1 ? '(a1×c1)+next' : 'a1+next';
-            } else {
-                // a1×c1 pattern
-                newFormula = weight !== 1 ? 'a1×c1' : 'a1';
-            }
-
-            let updates: Partial<ScoreColumn> = { formula: newFormula };
-
-            // CRITICAL: Do NOT reset inputType if Sum Parts is enabled.
-            if (!willEnableSumParts) {
-                updates.inputType = 'keypad';
-            }
-
-            onChange(updates);
         }
+        if (!isSumPartsEnabled) {
+            updates.inputType = 'keypad';
+        }
+        onChange(updates);
     };
 
     const toggleSumParts = () => {
-        if (currentCalcMode === 'product') {
-            // Product Mode Toggle
-            if (!isSumPartsEnabled) {
-                // Enable: (a1×a2)+next
-                onChange({
-                    formula: '(a1×a2)+next',
-                    inputType: cachedSumPartsInputType // Restore preference
-                });
-            } else {
-                // Disable: a1×a2
-                onChange({
-                    formula: 'a1×a2',
-                    inputType: 'keypad' // Reset to keypad (standard product input)
-                });
-            }
-        } else {
-            // Standard Mode Toggle
-            const weight = column.constants?.c1 ?? 1;
-            let newFormula = '';
-
-            if (!isSumPartsEnabled) {
-                // Enable: (a1×c1)+next pattern if weight exists
-                newFormula = weight !== 1 ? '(a1×c1)+next' : 'a1+next';
-                onChange({
-                    formula: newFormula,
-                    inputType: cachedSumPartsInputType // Restore cached preference
-                });
-            } else {
-                // Disable
-                newFormula = weight !== 1 ? 'a1×c1' : 'a1';
-                onChange({
-                    formula: newFormula,
-                    inputType: 'keypad' // Standard is usually keypad
-                });
-            }
-        }
+        onChange({
+            formula: buildDraftFormula(currentCalcMode, !isSumPartsEnabled, column.constants?.c1 ?? 1),
+            inputType: isSumPartsEnabled ? 'keypad' : cachedSumPartsInputType,
+        });
     };
 
     const updateMultiplier = (val: any) => {
@@ -219,20 +151,9 @@ const EditorTabBasic: React.FC<EditorTabBasicProps> = ({ column, onChange, cache
 
         if (isNaN(num)) return;
 
-        // Update c1 and keep the formula structure synced
-        const newC1 = num;
-        let newFormula = '';
-
-        if (isSumPartsEnabled) {
-            // New logic: (a1×c1)+next pattern
-            newFormula = newC1 !== 1 ? '(a1×c1)+next' : 'a1+next';
-        } else {
-            newFormula = newC1 !== 1 ? 'a1×c1' : 'a1';
-        }
-
         onChange({
-            constants: { ...column.constants, c1: newC1 },
-            formula: newFormula
+            constants: { ...column.constants, c1: num },
+            formula: buildDraftFormula('standard', isSumPartsEnabled, num)
         });
     };
 

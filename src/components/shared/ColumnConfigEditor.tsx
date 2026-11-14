@@ -11,6 +11,7 @@ import EditorTabMapping from './column-editor/EditorTabMapping';
 import EditorTabSelection from './column-editor/EditorTabSelection';
 import EditorTabBasic from './column-editor/EditorTabBasic';
 import EditorTabAuto from './column-editor/EditorTabAuto';
+import { getCalculationMode, getSavedBasicFormula } from './column-editor/basicColumnFormula';
 import { extractIdentifiers } from '../../utils/formulaEvaluator';
 import { useColumnEditorTranslation } from '../../i18n/column_editor'; // Changed Import
 import { useCommonTranslation } from '../../i18n/common';
@@ -27,7 +28,6 @@ interface ColumnConfigEditorProps {
 }
 
 type EditorTab = 'basic' | 'mapping' | 'select' | 'auto';
-type CalculationMode = 'standard' | 'product';
 
 const PREF_KEY_STD_UNIT = 'sm_pref_standard_unit';
 const PREF_KEY_PROD_UNIT_A = 'sm_pref_product_unit_a';
@@ -181,12 +181,6 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
         }
     }, 'col-config-editor');
 
-    const getCalculationMode = (formula: string): CalculationMode => {
-        if (formula.includes('×a2')) return 'product';
-        // Now sum-parts is considered part of standard
-        return 'standard';
-    };
-
     const handleSave = () => {
         let finalUpdates: Partial<ScoreColumn> = { ...editedCol };
 
@@ -259,43 +253,8 @@ const ColumnConfigEditor: React.FC<ColumnConfigEditorProps> = ({ column, allColu
             delete finalUpdates.functions;
             delete finalUpdates.constants;
         } else {
-            // Standard / Product / Sum Parts
-            const currentMode = getCalculationMode(editedCol.formula);
             finalUpdates.isAuto = false;
-
-            if (currentMode === 'product') {
-                // Check if sum-parts is enabled in the edited column
-                const isSumParts = (editedCol.formula || '').includes('+next');
-                if (isSumParts) {
-                    finalUpdates.formula = '(a1×a2)+next';
-                    // Preserve current input settings (allows clicker/keypad), ensure not 'auto'
-                    finalUpdates.inputType = (editedCol.inputType !== 'auto' ? editedCol.inputType : null) || 'keypad';
-                } else {
-                    finalUpdates.formula = 'a1×a2';
-                    finalUpdates.inputType = 'keypad';
-                }
-            } else {
-                // Handle Standard (which now includes Sum Parts)
-                // We construct formula based on whether +next was enabled and c1
-                const isSumParts = (editedCol.formula || '').includes('+next');
-                const weight = finalUpdates.constants?.c1 ?? 1;
-
-                let f = 'a1';
-                if (isSumParts) {
-                    // If Sum Parts is enabled:
-                    // 1x weight: a1+next
-                    // >1x weight: (a1+next)×c1  <-- Parenthesis format
-                    f = weight !== 1 ? '(a1+next)×c1' : 'a1+next';
-                    // Filter out 'auto' from previous tab
-                    finalUpdates.inputType = (editedCol.inputType !== 'auto' ? editedCol.inputType : null) || sumPartsInputTypeCache.current || 'keypad';
-                } else {
-                    // Standard: a1 or a1×c1
-                    f = weight !== 1 ? 'a1×c1' : 'a1';
-                    finalUpdates.inputType = 'keypad';
-                }
-
-                finalUpdates.formula = f;
-            }
+            Object.assign(finalUpdates, getSavedBasicFormula(editedCol, sumPartsInputTypeCache.current));
             delete finalUpdates.f1;
             delete finalUpdates.functions;
         }
