@@ -1,6 +1,24 @@
 
 import { HistoryRecord, ScoringRule, GameTemplate } from '../types';
 import { createVirtualTemplate } from './templateUtils';
+import { generateId } from './idGenerator';
+
+export const createTemplateFromHistorySnapshot = (record: HistoryRecord, name: string): GameTemplate | undefined => {
+  if (!record.snapshotTemplate) return undefined;
+
+  return {
+    ...record.snapshotTemplate,
+    id: generateId(),
+    name,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    lastSyncedAt: undefined,
+    cloudImageId: undefined,
+    sourceTemplateId: undefined,
+    bggId: record.bggId,
+    defaultScoringRule: record.scoringRule,
+  };
+};
 
 /**
  * 安全獲取歷史紀錄的計分規則 (Scoring Rule)

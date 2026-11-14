@@ -6,7 +6,7 @@ import { X, Save, Calendar, MapPin, FileText, Settings, Database, Clock, Trophy,
 import { generateId } from '../../../utils/idGenerator';
 import { relationshipService } from '../../../services/relationshipService'; // Import Service
 import { DATA_LIMITS } from '../../../dataLimits';
-import { getRecordScoringRule, getRecordBggId } from '../../../utils/historyUtils';
+import { createTemplateFromHistorySnapshot, getRecordScoringRule, getRecordBggId } from '../../../utils/historyUtils';
 import { calculateWinners } from '../../../utils/templateUtils';
 
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
@@ -142,22 +142,9 @@ const HistorySettingsModal: React.FC<HistorySettingsModalProps> = ({ isOpen, onC
     };
 
     const handleRestore = async () => {
-        if (!formData || !formData.snapshotTemplate) return;
-
-        const newId = generateId();
-        const newTemplate: GameTemplate = {
-            ...formData.snapshotTemplate,
-            id: newId,
-            name: `${formData.gameName} ${t('history_restore_suffix')}`,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            lastSyncedAt: undefined,
-            cloudImageId: undefined,
-            sourceTemplateId: undefined, // Detach
-            // Apply current form values
-            bggId: formData.bggId,
-            defaultScoringRule: formData.scoringRule
-        };
+        if (!formData) return;
+        const newTemplate = createTemplateFromHistorySnapshot(formData, `${formData.gameName} ${t('history_restore_suffix')}`);
+        if (!newTemplate) return;
 
         await onRestoreTemplate(newTemplate);
         onClose();

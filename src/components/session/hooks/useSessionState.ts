@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { GameSession, GameTemplate, SavedListItem } from '../../../types';
 import { useKeyboardStatus } from '../../../hooks/useVisualViewportOffset';
+import { findPreviousScoreRow } from '../parts/groupScoreColumns';
 
 interface SessionViewProps {
   session: GameSession;
@@ -218,14 +219,7 @@ export const useSessionState = (props: SessionViewProps) => {
 
           // Handle Overlays: Find the host row if the column is an overlay
           if (!document.getElementById(`row-${effectiveColId}`)) {
-            const allCols = props.template.columns;
-            const currentIndex = allCols.findIndex(c => c.id === effectiveColId);
-            for (let i = currentIndex - 1; i >= 0; i--) {
-              if ((allCols[i].displayMode || 'row') === 'row') {
-                effectiveColId = allCols[i].id;
-                break;
-              }
-            }
+            effectiveColId = findPreviousScoreRow(props.template.columns, effectiveColId)?.id ?? effectiveColId;
           }
           targetRowEl = document.getElementById(`row-${effectiveColId}`);
         }

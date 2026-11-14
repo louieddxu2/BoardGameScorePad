@@ -10,6 +10,7 @@ import AutoScorePanel from './AutoScorePanel';
 import ScoreInfoPanel from './ScoreInfoPanel';
 import { getScoreHistory, getRawValue } from '../../../utils/scoring';
 import { getEffectiveIds } from '../../../utils/scoreDisplay';
+import { appendScoreHistoryPart, buildScoreHistoryInput } from '../scoreInputHistory';
 
 interface ColumnInputViewOptions {
     player: Player;
@@ -82,9 +83,7 @@ export const buildColumnInputView = ({
     const handleDeleteLastPart = () => {
         const currentHistory = getScoreHistory(cellScoreObject);
         if (currentHistory.length > 0) {
-            const newHistory = currentHistory.slice(0, -1);
-            const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-            updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+            updateScore(activePlayer.id, activeColumn.id, buildScoreHistoryInput(currentHistory.slice(0, -1)));
         }
     };
 
@@ -105,27 +104,15 @@ export const buildColumnInputView = ({
                 const n2 = action.value;
                 const product = n1 * n2;
 
-                const currentHistory = getScoreHistory(cellScoreObject);
-                const newHistory = [...currentHistory, String(product)];
-                const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, product));
 
                 setPreview({ factors: [0, 1] });
                 setActiveFactorIdx(0);
                 setOverwrite(true);
             }
         } else if (isSumPartsMode) {
-            const currentHistory = getScoreHistory(cellScoreObject);
-            let newHistory = [...currentHistory];
             const valToAdd = hasMultiplier ? action.value * constant : action.value;
-
-            if (action.isModifier && newHistory.length > 0) {
-                newHistory[newHistory.length - 1] = String(parseFloat(newHistory[newHistory.length - 1]) + valToAdd);
-            } else {
-                newHistory.push(String(valToAdd));
-            }
-            const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-            updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+            updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, valToAdd, action.isModifier));
         } else {
             // Priority 1: Multi-select Toggle Logic
             if (activeColumn.isMultiSelect) {
@@ -216,10 +203,7 @@ export const buildColumnInputView = ({
                         onNextAction = () => {
                             const product = (parseFloat(String(currentFactors[0])) || 0) * (parseFloat(String(currentFactors[1])) || 0);
                             if (product !== 0 || n1 !== 0) {
-                                const currentHistory = getScoreHistory(cellScoreObject);
-                                const newHistory = [...currentHistory, String(product)];
-                                const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                                updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                                updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, product));
 
                                 setPreview({ factors: [0, 1] });
                                 setActiveFactorIdx(0);
@@ -238,10 +222,7 @@ export const buildColumnInputView = ({
                     const input = parseFloat(String(getRawValue(previewValue))) || 0;
                     if (input !== 0) {
                         const valToAdd = hasMultiplier ? input * constant : input;
-                        const currentHistory = getScoreHistory(cellScoreObject);
-                        const newHistory = [...currentHistory, String(valToAdd)];
-                        const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                        updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, valToAdd));
                         setPreview(0);
                         setOverwrite(true);
                     } else {

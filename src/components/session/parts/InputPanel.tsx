@@ -10,11 +10,12 @@ import { buildColumnInputView } from './buildColumnInputView';
 import InputPanelLayout from './InputPanelLayout';
 import SmartSpacer from './SmartSpacer';
 import { Check } from 'lucide-react';
-import { getScoreHistory, getRawValue } from '../../../utils/scoring';
+import { getRawValue } from '../../../utils/scoring';
 import { useSessionTranslation } from '../../../i18n/session';
 import { colorRecommendationEngine } from '../../../features/recommendation/ColorRecommendationEngine';
 import { applyScoreInputValue } from '../scoreInputUpdate';
 import { getInitialScoreInputPreviewValue } from '../scoreInputPreview';
+import { appendScoreHistoryPart } from '../scoreInputHistory';
 import { touchGestureGuard } from '../../../utils/touchGesture';
 
 interface InputPanelProps {
@@ -478,19 +479,13 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                     if (n1 !== 0) {
                         const product = n1 * n2;
-                        const currentHistory = getScoreHistory(cellScoreObject);
-                        const newHistory = [...currentHistory, String(product)];
-                        const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                        updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, product));
                     }
                 } else {
                     const input = parseFloat(String(getRawValue(previewValue))) || 0;
                     if (input !== 0) {
                         const valToAdd = hasMultiplier ? input * constant : input;
-                        const currentHistory = getScoreHistory(cellScoreObject);
-                        const newHistory = [...currentHistory, String(valToAdd)];
-                        const newSum = newHistory.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
-                        updateScore(activePlayer.id, activeColumn.id, { value: newSum, history: newHistory });
+                        updateScore(activePlayer.id, activeColumn.id, appendScoreHistoryPart(cellScoreObject, valToAdd));
                     }
                 }
             }

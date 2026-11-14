@@ -7,6 +7,14 @@ export type ScoreGridColumn = ScoreColumn & {
 
 const getDisplayMode = (column: ScoreColumn) => column.displayMode || 'row';
 
+export function findPreviousScoreRow(columns: readonly ScoreColumn[], columnId: string): ScoreColumn | undefined {
+  const columnIndex = columns.findIndex(column => column.id === columnId);
+  for (let index = columnIndex - 1; index >= 0; index--) {
+    const column = columns[index];
+    if (getDisplayMode(column) === 'row') return column;
+  }
+}
+
 export function groupScoreColumns(
   columns: readonly ScoreColumn[],
   isEditMode = false,
@@ -31,15 +39,10 @@ export function groupScoreColumns(
   }
 
   for (const overlay of overlays) {
-    const overlayIndex = columns.findIndex(column => column.id === overlay.id);
-    for (let index = overlayIndex - 1; index >= 0; index--) {
-      const column = columns[index];
-      if (getDisplayMode(column) === 'row') {
-        const host = visibleColumns.find(row => row.id === column.id);
-        host?.overlayColumns.push(overlay);
-        break;
-      }
-    }
+    const precedingRow = findPreviousScoreRow(columns, overlay.id);
+    if (!precedingRow) continue;
+    const host = visibleColumns.find(row => row.id === precedingRow.id);
+    host?.overlayColumns.push(overlay);
   }
 
   return visibleColumns;
