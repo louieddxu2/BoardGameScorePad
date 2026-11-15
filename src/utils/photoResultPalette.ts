@@ -30,6 +30,9 @@ export const PHOTO_DARK_SURFACE_MAX_LUMINANCE = 0.10;
 const TEXT_CONTRAST = 4.6;
 const ATTRIBUTE_BACKDROP_STEP = 0.18;
 const LIGHT_BACKDROP_LIFT = 0.68;
+const BACKDROP_LIFT_START = 125;
+const BACKDROP_LIFT_FULL = 158;
+const BACKDROP_FULL_CONTRAST_LEAD = 0.65;
 const mix = (from: RgbaColor, to: RgbaColor, amount: number): RgbaColor => ({
     r: from.r + (to.r - from.r) * amount,
     g: from.g + (to.g - from.g) * amount,
@@ -38,6 +41,20 @@ const mix = (from: RgbaColor, to: RgbaColor, amount: number): RgbaColor => ({
 });
 const minimumContrast = (ink: RgbaColor, surfaces: RgbaColor[]) =>
     Math.min(...surfaces.map(surface => contrastOnBackground(ink, surface)!));
+
+const easeInOut = (value: number): number => {
+    const progress = Math.max(0, Math.min(1, value));
+    return progress * progress * (3 - 2 * progress);
+};
+
+const middleHalfMean = (values: number[]): number => {
+    values.sort((a, b) => a - b);
+    const trim = Math.floor(values.length / 4);
+    const end = values.length - trim;
+    let sum = 0;
+    for (let index = trim; index < end; index++) sum += values[index];
+    return sum / (end - trim);
+};
 
 /** Keep a decorative seed as close as possible while meeting every backing's contrast. */
 const readableTint = (seed: RgbaColor, ink: RgbaColor, surfaces: RgbaColor[], target: number): RgbaColor => {
@@ -58,6 +75,7 @@ export const getPhotoResultPalette = (
 ): PhotoResultPalette => {
     const buckets = new Map<number, { red: number; green: number; blue: number; count: number }>();
     let dominant: { red: number; green: number; blue: number; count: number } | undefined;
+    const brightnessLevels: number[] = [];
     let brightness = 0;
     let opaqueCount = 0;
     let totalRed = 0;
@@ -69,7 +87,9 @@ export const getPhotoResultPalette = (
         const green = pixels[i + 1];
         const blue = pixels[i + 2];
         // Include neutral pixels in the light/dark decision, but not in the hue histogram.
-        brightness += red * 0.299 + green * 0.587 + blue * 0.114;
+        const pixelBrightness = red * 0.299 + green * 0.587 + blue * 0.114;
+        brightness += pixelBrightness;
+        brightnessLevels.push(pixelBrightness);
         totalRed += red;
         totalGreen += green;
         totalBlue += blue;
@@ -100,7 +120,9 @@ export const getPhotoResultPalette = (
     const card = mix(background, WHITE, 0.07);
     const identity = mix(card, BLACK, 0.035);
     let surfaces = [background, card, identity];
-    const ink = minimumContrast(DARK_INK, surfaces) >= minimumContrast(LIGHT_INK, surfaces) ? DARK_INK : LIGHT_INK;
+    const darkInkContrast = minimumContrast(DARK_INK, surfaces);
+    const lightInkContrast = minimumContrast(LIGHT_INK, surfaces);
+    const ink = darkInkContrast >= lightInkContrast ? DARK_INK : LIGHT_INK;
     // Only neutral scores/captions constrain the palette. Chosen player colors
     // retain their fill and use edge protection instead of forcing lighter panels.
     // Binary search is bounded and runs on three colors, not on additional image pixels.
@@ -117,12 +139,21 @@ export const getPhotoResultPalette = (
     }
     const [base, tile, name] = surfaces;
     const lightInk = ink === LIGHT_INK;
-    // Lift the large surface on light photos with a pale tint of the sampled hue.
-    // Keep the score and identity surfaces from the original palette.
-    const sampledColor = { r: red, g: green, b: blue, a: 1 };
-    const backdrop = lightInk ? base : mix(base, mix(WHITE, sampledColor, strength), LIGHT_BACKDROP_LIFT);
+    const inkConfidence = Math.abs(darkInkContrast - lightInkContrast) / BACKDROP_FULL_CONTRAST_LEAD;
+    let backdrop = base;
+    if (!lightInk) {
+        const typicalBrightness = middleHalfMean(brightnessLevels);
+        // Ease in the pale tint as dark ink becomes clearer, so switching ink
+        // near the contrast boundary does not introduce the full lift at once.
+        const lift = easeInOut(Math.min(
+            (typicalBrightness - BACKDROP_LIFT_START) / (BACKDROP_LIFT_FULL - BACKDROP_LIFT_START),
+            inkConfidence,
+        ));
+        const sampledColor = { r: red, g: green, b: blue, a: 1 };
+        backdrop = mix(base, mix(WHITE, sampledColor, strength), LIGHT_BACKDROP_LIFT * lift);
+    }
     const attributeBackdrop = separateAttributeBackdrop
-        ? mix(backdrop, lightInk ? BLACK : WHITE, ATTRIBUTE_BACKDROP_STEP)
+        ? mix(backdrop, lightInk ? BLACK : WHITE, ATTRIBUTE_BACKDROP_STEP * easeInOut(inkConfidence))
         : backdrop;
     const gold = parseColor(lightInk ? '#fbbf24' : '#854d0e')!;
     return {

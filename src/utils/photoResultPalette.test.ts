@@ -78,6 +78,29 @@ describe('photo result palette', () => {
         expect(contrast(palette.background, palette.muted)).toBeGreaterThanOrEqual(4.5);
     });
 
+    it('uses middle brightness levels for the footer lift while preserving card paint', () => {
+        const dark = [120, 120, 120];
+        const even = [150, 150, 150];
+        const bright = [240, 240, 240];
+        const mixed = getPhotoResultPalette(pixels(dark, dark, dark, bright));
+        const uniform = getPhotoResultPalette(pixels(even, even, even, even));
+
+        // Both samples average 150 before trimming.
+        expect(mixed).toEqual({ ...uniform, background: mixed.background });
+        expect(luminance(uniform.background)).toBeGreaterThan(luminance(mixed.background));
+    });
+
+    it.each([false, true])('eases in the footer lift across the ink transition (attributes: %s)', separateAttributeBackdrop => {
+        const options = { separateAttributeBackdrop };
+        const before = getPhotoResultPalette(pixels([145, 145, 145]), options);
+        const after = getPhotoResultPalette(pixels([146, 146, 146]), options);
+        const brighter = getPhotoResultPalette(pixels([159, 159, 159]), options);
+
+        expect(before.text).not.toBe(after.text);
+        expect(rgb(after.background)[0] - rgb(before.background)[0]).toBeLessThanOrEqual(30);
+        expect(rgb(brighter.background)[0] - rgb(after.background)[0]).toBeGreaterThan(30);
+    });
+
     it('keeps text and crowns readable across hues and midtones while keeping identity tones close', () => {
         for (let value = 0; value <= 255; value += 5) {
             for (const color of [[value, value, value], [value, 0, 0], [0, value, 0], [0, 0, value], [value, value, 0]]) {
