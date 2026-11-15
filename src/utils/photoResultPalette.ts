@@ -29,6 +29,7 @@ export const PHOTO_DARK_SURFACE_MAX_LUMINANCE = 0.10;
 // Leave a little headroom for image-export channel rounding.
 const TEXT_CONTRAST = 4.6;
 const ATTRIBUTE_BACKDROP_STEP = 0.18;
+const LIGHT_BACKDROP_LIFT = 0.68;
 const mix = (from: RgbaColor, to: RgbaColor, amount: number): RgbaColor => ({
     r: from.r + (to.r - from.r) * amount,
     g: from.g + (to.g - from.g) * amount,
@@ -115,11 +116,14 @@ export const getPhotoResultPalette = (
         surfaces = surfaces.map(surface => mix(surface, anchor, high));
     }
     const [base, tile, name] = surfaces;
-    // The attributes and caption use the photo hue, one tonal step away from the score band.
     const lightInk = ink === LIGHT_INK;
+    // Lift the large surface on light photos with a pale tint of the sampled hue.
+    // Keep the score and identity surfaces from the original palette.
+    const sampledColor = { r: red, g: green, b: blue, a: 1 };
+    const backdrop = lightInk ? base : mix(base, mix(WHITE, sampledColor, strength), LIGHT_BACKDROP_LIFT);
     const attributeBackdrop = separateAttributeBackdrop
-        ? mix(lightInk ? base : tile, lightInk ? BLACK : WHITE, ATTRIBUTE_BACKDROP_STEP)
-        : base;
+        ? mix(backdrop, lightInk ? BLACK : WHITE, ATTRIBUTE_BACKDROP_STEP)
+        : backdrop;
     const gold = parseColor(lightInk ? '#fbbf24' : '#854d0e')!;
     return {
         background: formatColor(attributeBackdrop), card: formatColor(tile), identity: formatColor(name),

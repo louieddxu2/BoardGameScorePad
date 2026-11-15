@@ -66,6 +66,18 @@ describe('photo result palette', () => {
         expect(contrast(attributes.background, attributes.muted)).toBeGreaterThanOrEqual(4.5);
     });
 
+    it('gives a warm tabletop a light footer distinct from the score cards', () => {
+        const sample = pixels([166, 154, 112], [168, 155, 114], [165, 151, 113],
+            [204, 176, 141], [207, 180, 145], [202, 214, 170], [171, 196, 151]);
+        const palette = getPhotoResultPalette(sample);
+        const [red, green, blue] = rgb(palette.background);
+
+        expect(red).toBeGreaterThan(green);
+        expect(green).toBeGreaterThan(blue + 8);
+        expect(luminance(palette.background)).toBeGreaterThan(luminance(palette.card) + 0.15);
+        expect(contrast(palette.background, palette.muted)).toBeGreaterThanOrEqual(4.5);
+    });
+
     it('keeps text and crowns readable across hues and midtones while keeping identity tones close', () => {
         for (let value = 0; value <= 255; value += 5) {
             for (const color of [[value, value, value], [value, 0, 0], [0, value, 0], [0, 0, value], [value, value, 0]]) {
