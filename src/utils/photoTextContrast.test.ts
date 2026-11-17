@@ -99,10 +99,11 @@ describe('photo name and surface contrast', () => {
 
     it('keeps selected RGB/alpha and the matching scoreboard treatment independently of the app theme', () => {
         const originalTheme = document.documentElement.getAttribute('data-theme');
+        const yellowAndSkin = ['#e3b308', '#c98a72', '#facc15', '#fed7aa'];
         try {
             for (const theme of ['dark', 'light', 'sage']) {
                 document.documentElement.setAttribute('data-theme', theme);
-                for (const color of ['#1f2937', '#facc15', '#fed7aa', '#ef4444', '#3b82f6', '#ffffff', 'rgba(0,0,0,.4)']) {
+                for (const color of ['#1f2937', ...yellowAndSkin, '#ef4444', '#3b82f6', '#ffffff', 'rgba(0,0,0,.4)']) {
                     const style = getPhotoPlayerNameStyles(color, getPhotoNamePlateBackground(color));
                     expect(style.color).toBe(color);
                     expect(style).not.toHaveProperty('transition');
@@ -111,7 +112,7 @@ describe('photo name and surface contrast', () => {
                     expect(style.textShadow).not.toContain('rgba(255,255,255');
                     if (color === '#ffffff') {
                         expect(style.textShadow).toContain('3px 0 0 rgba(0,0,0,1)');
-                    } else if (color === '#facc15' || color === '#fed7aa') {
+                    } else if (yellowAndSkin.includes(color)) {
                         expect(style.textShadow).toBe('none');
                     } else {
                         expect(style.textShadow).toBe('0 1.5px 3px rgba(0,0,0,0.05)');

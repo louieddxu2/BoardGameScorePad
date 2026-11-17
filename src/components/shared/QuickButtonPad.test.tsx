@@ -155,7 +155,7 @@ describe('QuickButtonPad fixed-background contrast', () => {
 
   it('lightens the numeric badge when choosing dark text instead of darkening its backing', () => {
     render(<LanguageProvider><QuickButtonPad column={{ ...column, quickActions: [
-      { id: 'yellow', label: 'Yellow', value: 1, color: 'rgb(var(--c-p-yellow))' },
+      { id: 'white', label: 'White', value: 1, color: 'rgb(var(--c-p-white))' },
     ] }} onAction={vi.fn()} /></LanguageProvider>);
     expect(screen.getByText('1')).toHaveClass('bg-[rgb(var(--c-white)_/_0.2)]');
     expect(screen.getByText('1')).toHaveStyle({ color: 'rgb(var(--c-slate-900))' });
@@ -170,8 +170,8 @@ describe('QuickButtonPad fixed-background contrast', () => {
   }[] = [
     { name: 'black player color', actionColor: 'rgb(var(--c-p-black))', backgroundColor: 'rgb(var(--c-p-black))', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'white player color', actionColor: 'rgb(var(--c-p-white))', backgroundColor: 'rgb(var(--c-p-white))', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'yellow player color', actionColor: 'rgb(var(--c-p-yellow))', backgroundColor: 'rgb(var(--c-p-yellow))', textColor: 'rgb(var(--c-slate-900))' },
-    { name: 'skin player color', actionColor: 'rgb(var(--c-p-skin))', backgroundColor: 'rgb(var(--c-p-skin))', textColor: 'rgb(var(--c-slate-900))' },
+    { name: 'yellow player color', actionColor: 'rgb(var(--c-p-yellow))', backgroundColor: 'rgb(var(--c-p-yellow))', textColor: 'rgb(var(--c-slate-50))' },
+    { name: 'skin player color', actionColor: 'rgb(var(--c-p-skin))', backgroundColor: 'rgb(var(--c-p-skin))', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'blue player color', actionColor: 'rgb(var(--c-p-blue))', backgroundColor: 'rgb(var(--c-p-blue))', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'red player color', actionColor: 'rgb(var(--c-p-red))', backgroundColor: 'rgb(var(--c-p-red))', textColor: 'rgb(var(--c-slate-50))' },
     { name: 'green player color', actionColor: 'rgb(var(--c-p-emerald))', backgroundColor: 'rgb(var(--c-p-emerald))', textColor: 'rgb(var(--c-slate-50))' },

@@ -154,6 +154,15 @@ export const getContrastTextStyles = (
         // Unregistered custom ink uses perceptual lightness calibrated to that palette.
         const ink = !tone ? (options.read ?? readColor)(textColorHex) : null;
         if (ink?.a === 0) return { ...styles, textShadow: 'none' };
+        if (!isSystemInk) {
+            // Current and legacy yellow/skin RGB values share the palette treatment.
+            const isYellowOrSkin = varName === '--c-p-yellow' || varName === '--c-p-skin'
+                || (ink?.r === 227 && ink.g === 179 && ink.b === 8)
+                || (ink?.r === 201 && ink.g === 138 && ink.b === 114)
+                || (ink?.r === 250 && ink.g === 204 && ink.b === 21)
+                || (ink?.r === 254 && ink.g === 215 && ink.b === 170);
+            if (isYellowOrSkin) return { ...styles, textShadow: 'none' };
+        }
         const isSystemText = varName?.includes('txt-primary') || varName?.includes('txt-secondary');
         const shouldProtectLight = !isSystemText && (tone === 'light' || (!!ink && (isSystemInk
             ? perceivedLuminance(ink) > 170
@@ -161,8 +170,6 @@ export const getContrastTextStyles = (
 
         if (shouldProtectLight) {
             if (!isSystemInk) {
-                // Only the three existing light player inks change. Keep raw
-                // RGB/HEX equivalents aligned without resolving palette variables.
                 const isWhite = varName === '--c-p-white'
                     || (ink?.r === 255 && ink.g === 255 && ink.b === 255);
                 if (isWhite) {
@@ -171,10 +178,6 @@ export const getContrastTextStyles = (
                         textShadow: '1px 0 0 rgba(0,0,0,1), -1px 0 0 rgba(0,0,0,1), 0 1px 0 rgba(0,0,0,1), 0 -1px 0 rgba(0,0,0,1)',
                     };
                 }
-                const isYellowOrSkin = varName === '--c-p-yellow' || varName === '--c-p-skin'
-                    || (ink?.r === 250 && ink.g === 204 && ink.b === 21)
-                    || (ink?.r === 254 && ink.g === 215 && ink.b === 170);
-                if (isYellowOrSkin) return { ...styles, textShadow: 'none' };
             }
             // Other unregistered light inks and semantic text keep their policy.
             return {

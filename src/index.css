@@ -103,7 +103,7 @@
   /* Player Palette (Source of Truth) */
   --c-p-emerald: 16 185 129;
   --c-p-blue: 59 130 246;
-  --c-p-yellow: 250 204 21;
+  --c-p-yellow: 227 179 8;
   --c-p-red: 239 68 68;
   --c-p-orange: 249 115 22;
   --c-p-violet: 139 92 246;
@@ -117,7 +117,7 @@
   --c-p-teal: 20 184 166;
   --c-p-brown: 161 98 7;
   --c-p-gray: 107 114 128;
-  --c-p-skin: 254 215 170;
+  --c-p-skin: 201 138 114;
 }
 
 html[data-ios='true'] {

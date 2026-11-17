@@ -1,6 +1,6 @@
 import type { RgbaColor } from './color';
 
-// Midpoints between the existing 17-color palette's labeled Oklab L ranges:
+// Midpoints from the original 17-color palette's labeled Oklab L ranges:
 // dark indigo / neutral violet, and neutral amber / light yellow.
 // Keep these fixed; explicit COLOR_TONES labels remain authoritative.
 const DARK_LIMIT = (0.5854043099280906 + 0.6056307524243788) / 2;
