@@ -27,6 +27,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Score items can be set to show their values on player cards in shared photos.' },
       { kind: 'improved', zh: '分享照片的成績改為表格呈現，屬性依玩家對齊，選項標籤保留原本顏色。成績區底色隨照片明暗柔和調整。',
         en: 'Shared photos show results as a score table, align attributes by player and keep option label colors. The results background adjusts more gradually to the photo’s brightness.' },
+      { kind: 'improved', zh: '加深內建的黃色與膚色色票，讓淺底上的玩家名稱更容易辨識。引用這兩個色票的舊紀錄也會顯示新色。',
+        en: 'The built-in yellow and skin tone colors are deeper for easier reading on light backgrounds. Existing records that use these palette colors also show the new shades.' },
       { kind: 'fixed', zh: '同一款 BGG 遊戲存有多個名稱時，遊戲選單只顯示一筆。',
         en: 'The game picker lists a BGG game once, even when it is saved under several names.' },
       { kind: 'fixed', zh: '系統資料檢視器依歷史紀錄重建資料時，不再多建立重複的遊戲。',
