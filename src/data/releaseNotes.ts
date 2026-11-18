@@ -22,6 +22,7 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    date: '2026-11-18',
     items: [
       { kind: 'new', zh: '項目可透過進階設定「照片分享」添加到分享照片成績的圖裡。',
         en: 'Items can be added to the results in shared photos with the Photo option in advanced settings.' },
