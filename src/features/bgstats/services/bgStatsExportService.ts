@@ -159,7 +159,6 @@ class BgStatsExportService {
 
             // --- Player Scores Resolution ---
             const ranks = computeBgStatsRanks(record);
-            const noWinLoss = isNoWinLossRule(scoringRule);
             const playerScores = record.players.map((p, index) => {
                 // Determine Identity
                 // If linkedPlayerId exists, map to that. Otherwise map to name (anonymous)
@@ -196,8 +195,8 @@ class BgStatsExportService {
 
                 return {
                     playerRefId: playerRefId,
-                    score: !noWinLoss || hasRecordedBgStatsScore(p, record.snapshotTemplate?.columns)
-                        ? p.totalScore.toString() : '',
+                    // A blank score stays blank so BG Stats can tell it apart from an entered 0.
+                    score: hasRecordedBgStatsScore(p, record.snapshotTemplate?.columns) ? p.totalScore.toString() : '',
                     winner: isRecordWinner(record, p),
                     startPlayer: !!p.isStarter,
                     newPlayer: !!p.linkedPlayerId && firstPlays.has(`${record.id}|${p.linkedPlayerId}`),
@@ -206,8 +205,11 @@ class BgStatsExportService {
                 };
             });
             const hasRecordedScores = playerScores.some(player => player.score !== '');
-            // The game flag applies to every exported play of this game.
-            if (!noWinLoss || hasRecordedScores) gamesMap.get(gameRefId)!.noPoints = false;
+            // noPoints means the game records no points; it applies to every exported play of this game.
+            if (hasRecordedScores) gamesMap.get(gameRefId)!.noPoints = false;
+            // ScorePad's no win/loss plays travel as ignored plays. Plays that still carry winners
+            // (older imports of BG Stats no-points plays) keep their winners and stay counted.
+            const ignored = isNoWinLossRule(scoringRule) && !record.players.some(p => isRecordWinner(record, p));
 
             // --- Play Object ---
             plays.push({
@@ -222,7 +224,7 @@ class BgStatsExportService {
                 playerScores: playerScores,
                 rounds: 0,
                 manualWinner: isManualWinner(record, hasRecordedScores),
-                ignored: false,
+                ignored,
                 importPlayId: 0,
                 modificationDate: formatDate(record.updatedAt || record.endTime),
                 entryDate: formatDate(record.startTime),

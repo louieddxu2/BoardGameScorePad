@@ -4,6 +4,7 @@ import { HistoryRecord, GameTemplate, Player, ScoringRule, SavedListItem } from 
 import { generateId } from '../../../utils/idGenerator';
 import { BgStatsExport, BgStatsGame } from '../types';
 import { fillHistoryBggId, normalizeBggId } from './bgStatsBggData';
+import { scoringRuleFromBgStats, withImportedOutcome } from './bgStatsPlayOutcome';
 
 export class HistoryBatchProcessor {
     private existingIds: Set<string> = new Set();
@@ -196,17 +197,9 @@ export class HistoryBatchProcessor {
                 });
             }
 
-            const snapshotTemplate = this.createEmptySnapshot(sourceGame);
+            const scoringRule = scoringRuleFromBgStats(sourceGame, play.ignored === true || play.ignored === 1);
+            const snapshotTemplate = this.createEmptySnapshot(sourceGame, scoringRule);
             snapshotTemplate.bggId = bggId;
-            
-            let scoringRule: ScoringRule = 'HIGHEST_WINS';
-            if (sourceGame.cooperative) {
-                scoringRule = sourceGame.noPoints ? 'COOP_NO_SCORE' : 'COOP';
-            } else if (sourceGame.noPoints) {
-                scoringRule = 'COMPETITIVE_NO_SCORE';
-            } else if (!sourceGame.highestWins) {
-                scoringRule = 'LOWEST_WINS';
-            }
 
             const record: HistoryRecord = {
                 id: play.uuid || generateId(),
@@ -217,7 +210,7 @@ export class HistoryBatchProcessor {
                 endTime: this.parseDate(play.playDate) + (play.durationMin || 0) * 60000,
                 // BG Stats records when the play was last changed; keep it as the record's modification time.
                 updatedAt: this.parseDate(play.modificationDate),
-                players: players,
+                players: withImportedOutcome(players, winnerIds, scoringRule),
                 winnerIds: winnerIds,
                 snapshotTemplate: snapshotTemplate,
                 location: localLocationName,
@@ -241,15 +234,7 @@ export class HistoryBatchProcessor {
         return Date.now();
     }
 
-    private createEmptySnapshot(sourceGame: BgStatsGame): GameTemplate {
-        let scoringRule: ScoringRule = 'HIGHEST_WINS';
-        if (sourceGame.cooperative) {
-            scoringRule = sourceGame.noPoints ? 'COOP_NO_SCORE' : 'COOP';
-        } else if (sourceGame.noPoints) {
-            scoringRule = 'COMPETITIVE_NO_SCORE';
-        } else if (!sourceGame.highestWins) {
-            scoringRule = 'LOWEST_WINS';
-        }
+    private createEmptySnapshot(sourceGame: BgStatsGame, scoringRule: ScoringRule): GameTemplate {
 
         return {
             id: generateId(), 

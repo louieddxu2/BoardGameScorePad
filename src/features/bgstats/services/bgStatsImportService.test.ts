@@ -80,6 +80,7 @@ vi.mock('../../../db', () => ({ db: testDb.db }));
 
 import { bgStatsImportService } from './bgStatsImportService';
 import { bgStatsExportService } from './bgStatsExportService';
+import { calculateWinners } from '../../../utils/templateUtils';
 
 const links = (): ImportManualLinks => ({ games: new Map(), players: new Map(), locations: new Map() });
 const savedGame = (id: string, name = 'Sky Totems', bggId?: string): SavedListItem => ({
@@ -360,5 +361,80 @@ describe('BG Stats BGG ID enrichment', () => {
 
         expect(await bgStatsImportService.importData(data, links())).toBe(0);
         expect(testDb.tables.history.rows.get(original.id)).toEqual(original);
+    });
+});
+
+describe('BG Stats play outcomes', () => {
+    const local = (id: string, scoringRule: HistoryRecord['scoringRule'], totals: number[], winners: number[], gameName = 'Sky Totems'): HistoryRecord => ({
+        ...history(id, `template-${gameName}`), gameName, scoringRule,
+        players: totals.map((total, index) => ({
+            id: `seat${index + 1}`, name: `Guest ${index + 1}`, color: '#123456', totalScore: total,
+            scores: { score: { parts: [total] } }
+        })),
+        winnerIds: winners.map(index => `seat${index + 1}`)
+    });
+    const roundTrip = async (records: HistoryRecord[]) => {
+        records.forEach(record => testDb.tables.history.rows.set(record.id, structuredClone(record)));
+        const exported = await bgStatsExportService.exportData();
+        for (const table of Object.values(testDb.tables)) table.rows.clear();
+        await bgStatsImportService.importData(exported, links());
+        return { exported, imported: (id: string) => testDb.tables.history.rows.get(id) as HistoryRecord };
+    };
+    const recalculated = (record: HistoryRecord) => calculateWinners(record.players, record.scoringRule);
+
+    it('keeps no win/loss modes and their scores as ignored plays without changing other plays of the game', async () => {
+        const { exported, imported } = await roundTrip([
+            local('none', 'COMPETITIVE_NO_SCORE', [42, 9], []),
+            local('scored', 'HIGHEST_WINS', [42, 9], [0]),
+            local('coop', 'COOP_NO_SCORE', [42, 9], [], 'Team Game'),
+        ]);
+
+        expect(Object.fromEntries((exported.plays || []).map(p => [p.uuid, p.ignored])))
+            .toEqual({ none: true, scored: false, coop: true });
+        expect(imported('none')).toMatchObject({ scoringRule: 'COMPETITIVE_NO_SCORE', winnerIds: [] });
+        expect(imported('coop')).toMatchObject({ scoringRule: 'COOP_NO_SCORE', winnerIds: [] });
+        expect(imported('scored')).toMatchObject({ scoringRule: 'HIGHEST_WINS', winnerIds: ['player_1'] });
+        for (const id of ['none', 'coop', 'scored']) {
+            expect(imported(id).players.map(p => p.totalScore)).toEqual([42, 9]);
+            expect(recalculated(imported(id))).toEqual(imported(id).winnerIds);
+        }
+    });
+
+    it('keeps the winners of a no win/loss play that has them as a counted play', async () => {
+        const { exported } = await roundTrip([local('legacy', 'COMPETITIVE_NO_SCORE', [0, 0], [1])]);
+        expect(exported.plays?.[0]).toMatchObject({ ignored: false });
+        expect(exported.plays?.[0].playerScores.map((s: { winner: boolean }) => s.winner)).toEqual([false, true]);
+    });
+
+    it('imports no-points games in their scoring mode and keeps the chosen winners after recalculation', async () => {
+        const games = [
+            { ...sourceGame(1, 'no-points', 40405), noPoints: true },
+            { ...sourceGame(2, 'coop-no-points', 40406, 'Team Game'), noPoints: true, cooperative: true },
+            { ...sourceGame(3, 'lowest', 40407, 'Low Game'), highestWins: false },
+        ];
+        const scores = (values: string[], winners: number[]) =>
+            values.map((score, index) => ({ score, winner: winners.includes(index) }));
+        await bgStatsImportService.importData({ games, plays: [
+            { ...play('blank-win'), playerScores: scores(['', '', ''], [1]) },
+            { ...play('manual-win'), playerScores: scores(['10', '30', '30'], [0]) },
+            { ...play('coop-loss', 2), playerScores: scores(['', ''], []) },
+            { ...play('coop-win', 2), playerScores: scores(['', ''], [0, 1]) },
+            { ...play('low-tie', 3), playerScores: scores(['5', '5', '9'], [1]) },
+        ] }, links());
+        const imported = (id: string) => testDb.tables.history.rows.get(id) as HistoryRecord;
+
+        expect(Object.fromEntries(['blank-win', 'manual-win', 'coop-loss', 'coop-win', 'low-tie']
+            .map(id => [id, imported(id).scoringRule]))).toEqual({
+            'blank-win': 'HIGHEST_WINS', 'manual-win': 'HIGHEST_WINS',
+            'coop-loss': 'COOP', 'coop-win': 'COOP', 'low-tie': 'LOWEST_WINS'
+        });
+        expect(imported('blank-win').players.map(p => !!p.tieBreaker)).toEqual([false, true, false]);
+        expect(imported('manual-win').players.map(p => !!p.isForceLost)).toEqual([false, true, true]);
+        expect(imported('coop-loss').players.map(p => !!p.isForceLost)).toEqual([true, true]);
+        expect(imported('coop-win').players.some(p => p.isForceLost || p.tieBreaker)).toBe(false);
+        expect(imported('low-tie').players.map(p => !!p.tieBreaker)).toEqual([false, true, false]);
+        for (const id of ['blank-win', 'manual-win', 'coop-loss', 'coop-win', 'low-tie']) {
+            expect(recalculated(imported(id))).toEqual(imported(id).winnerIds);
+        }
     });
 });
