@@ -25,7 +25,17 @@ const reviewedExceptions = [
     // and postcss-nested require parser 6; do not force a major-version override.
     reason: 'Only trusted repository CSS is parsed during builds; no untrusted request input.',
   },
+  {
+    package: 'picomatch',
+    // Tailwind 3 tooling uses 2.x; Vite, Vitest and tinyglobby use 4.x.
+    versions: ['2.3.2', '4.0.7'],
+    severity: 'high',
+    url: 'https://github.com/advisories/GHSA-fc5q-39xc-vjpf',
+    expiresAt: '2026-12-18T00:00:00.000Z',
+    reason: 'Only fixed repository build/test globs are matched; no patched version is available.',
+  },
 ];
+const reviewedVersions = exception => exception.versions ?? [exception.version];
 export function evaluateAuditReport(report, lockfile, now = new Date()) {
   if (report?.error || report?.auditReportVersion !== 2
     || !report.vulnerabilities || typeof report.vulnerabilities !== 'object'
@@ -65,7 +75,7 @@ export function evaluateAuditReport(report, lockfile, now = new Date()) {
     && advisory.severity === exception.severity
     && vulnerability.name === exception.package
     && isBuildOnly(vulnerability)
-    && vulnerability.nodes.every(node => lockfile.packages[node].version === exception.version));
+    && vulnerability.nodes.every(node => reviewedVersions(exception).includes(lockfile.packages[node].version)));
 
   const blocking = [];
   const acceptedPackages = [];
@@ -105,7 +115,7 @@ function main() {
   const result = evaluateAuditReport(report, lockfile);
   for (const exception of result.acceptedAdvisories) {
     console.log(`Reviewed build-only advisory accepted until ${exception.expiresAt}: ${exception.url}`);
-    console.log(`  ${exception.package}@${exception.version}: ${exception.reason}`);
+    console.log(`  ${exception.package}@${reviewedVersions(exception).join(', ')}: ${exception.reason}`);
   }
   if (result.blocking.length > 0) {
     for (const item of result.blocking) {

@@ -87,6 +87,26 @@ describe('reviewed build dependency audit exceptions', () => {
     expect(() => evaluateAuditReport(report, lockfile, withinException)).toThrow();
   });
 
+  it('accepts every reviewed picomatch version and blocks other copies', () => {
+    const url = 'https://github.com/advisories/GHSA-fc5q-39xc-vjpf';
+    const nodes = ['node_modules/picomatch', 'node_modules/vite/node_modules/picomatch'];
+    const report = { auditReportVersion: 2, vulnerabilities: {
+      picomatch: { name: 'picomatch', severity: 'high', nodes,
+        via: [{ name: 'picomatch', dependency: 'picomatch', severity: 'high', url }] },
+      vite: { name: 'vite', severity: 'high', nodes: ['node_modules/vite'], via: ['picomatch'] },
+    } };
+    const lockfile = { packages: {
+      'node_modules/picomatch': { version: '2.3.2', dev: true },
+      'node_modules/vite/node_modules/picomatch': { version: '4.0.7', dev: true },
+      'node_modules/vite': { version: '6.4.5', dev: true },
+    } };
+    const reviewed = new Date('2026-11-18T00:00:00Z');
+    expect(evaluateAuditReport(report, lockfile, reviewed).blocking).toEqual([]);
+    expect(evaluateAuditReport(report, lockfile, new Date('2026-12-18T00:00:00Z')).blocking).toHaveLength(2);
+    lockfile.packages['node_modules/vite/node_modules/picomatch'].version = '4.0.8';
+    expect(evaluateAuditReport(report, lockfile, reviewed).blocking.map(item => item.name)).toEqual(['picomatch', 'vite']);
+  });
+
   it('passes a clean audit even after the exception expires', () => {
     expect(evaluateAuditReport({ auditReportVersion: 2, vulnerabilities: {} }, { packages: {} }, new Date('2027-01-01')).blocking).toEqual([]);
   });
