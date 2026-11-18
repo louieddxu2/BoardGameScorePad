@@ -23,7 +23,7 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '項目可透過進階設定「照片分享」添加到分享照片的成績圖裡。',
+      { kind: 'new', zh: '項目可透過進階設定「照片分享」添加到分享照片成績的圖裡。',
         en: 'Items can be added to the results in shared photos with the Photo option in advanced settings.' },
       { kind: 'improved', zh: '分享照片的成績底色會隨照片明暗調整。',
         en: 'The results background in shared photos adjusts to the photo’s brightness.' },
