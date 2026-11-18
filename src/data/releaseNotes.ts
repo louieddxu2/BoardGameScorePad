@@ -23,8 +23,8 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '分享照片可加入指定的計分項目。',
-        en: 'Shared photos can include selected score items.' },
+      { kind: 'new', zh: '項目可透過進階設定「照片分享」添加到分享照片的成績圖裡。',
+        en: 'Items can be added to the results in shared photos with the Photo option in advanced settings.' },
       { kind: 'improved', zh: '分享照片的成績底色會隨照片明暗調整。',
         en: 'The results background in shared photos adjusts to the photo’s brightness.' },
       { kind: 'improved', zh: '內建的黃色與膚色加深，在淺色背景上更好辨識，舊紀錄也會套用。',
