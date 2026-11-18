@@ -120,6 +120,7 @@ export interface Player {
   color: string;
   scores: Record<string, ScoreValue>;
   totalScore: number;
+  hasImportedZeroScore?: boolean; // BG Stats supplied a numeric zero instead of leaving the score blank.
   isStarter?: boolean; // New: Starting player marker
   isIdentityManuallySet?: boolean; // Player identity was explicitly entered or selected by the user
   linkedPlayerId?: string; // [New] 指向歷史紀錄的 UUID，用於關聯分析

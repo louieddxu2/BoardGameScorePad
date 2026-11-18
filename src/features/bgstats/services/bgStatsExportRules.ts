@@ -1,24 +1,31 @@
-import type { HistoryRecord, ScoringRule } from '../../../types';
+import type { HistoryRecord, Player, ScoringRule } from '../../../types';
 import { getRecordScoringRule } from '../../../utils/historyUtils';
 
-/** Rules under which a play records no points; BG Stats leaves those scores blank. */
-export const isNoPointsRule = (rule: ScoringRule): boolean =>
+export const isNoWinLossRule = (rule: ScoringRule): boolean =>
     rule === 'COMPETITIVE_NO_SCORE' || rule === 'COOP_NO_SCORE';
+
+export const hasRecordedBgStatsScore = (player: Player, columns: HistoryRecord['snapshotTemplate']['columns'] | undefined): boolean => {
+    if (player.totalScore !== 0 || player.hasImportedZeroScore || player.bonusScore) return true;
+    const columnIds = columns?.length ? columns.filter(column => column.isScoring).map(column => column.id) : Object.keys(player.scores);
+    return columnIds.some(id => {
+        const score = player.scores[id];
+        return score != null && (!Array.isArray(score.parts) || score.parts.length > 0);
+    });
+};
 
 export const isRecordWinner = (record: HistoryRecord, player: HistoryRecord['players'][number]): boolean =>
     record.winnerIds.includes(player.id) || (!!player.linkedPlayerId && record.winnerIds.includes(player.linkedPlayerId));
 
 /**
  * Ranks as BG Stats assigns them: winners first, then by score in the game's direction
- * (no-points plays compare winners only), with tied players sharing a rank and the next
- * rank skipped (1, 1, 3).
+ * with tied players sharing a rank and the next rank skipped (1, 1, 3).
  */
 export const computeBgStatsRanks = (record: HistoryRecord): number[] => {
     const rule = getRecordScoringRule(record);
     const sign = rule === 'LOWEST_WINS' ? -1 : 1;
     const keys = record.players.map(player => [
         isRecordWinner(record, player) ? 1 : 0,
-        isNoPointsRule(rule) ? 0 : sign * player.totalScore,
+        sign * player.totalScore,
     ]);
     const beats = (a: number[], b: number[]) => a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]);
     return keys.map(key => 1 + keys.filter(other => beats(other, key)).length);
@@ -31,11 +38,12 @@ export const computeBgStatsRanks = (record: HistoryRecord): number[] => {
  * is 0, nobody winning despite recorded scores, or any winner of a cooperative or no-points
  * play. Automatic: winners exactly the best scores, or no winner and no scores.
  */
-export const isManualWinner = (record: HistoryRecord): boolean => {
+export const isManualWinner = (record: HistoryRecord, hasRecordedScores: boolean): boolean => {
     const winners = record.players.map(player => isRecordWinner(record, player));
     const rule = getRecordScoringRule(record);
     const totals = record.players.map(player => player.totalScore);
-    const hasScores = !isNoPointsRule(rule) && totals.some(total => total !== 0);
+    if (isNoWinLossRule(rule)) return winners.some(Boolean) || hasRecordedScores;
+    const hasScores = totals.some(total => total !== 0);
     if (!winners.some(Boolean)) return hasScores;
     if (!hasScores || rule === 'COOP') return true;
     const best = rule === 'LOWEST_WINS' ? Math.min(...totals) : Math.max(...totals);

@@ -174,7 +174,7 @@ export class HistoryBatchProcessor {
                         }
                     }
 
-                    const scoreStr = ps.score || "0";
+                    const scoreStr = String(ps.score ?? '').trim();
                     const scoreNum = parseFloat(scoreStr);
                     const validScore = isNaN(scoreNum) ? 0 : scoreNum;
                     const sessionPlayerId = `player_${index + 1}`;
@@ -185,6 +185,7 @@ export class HistoryBatchProcessor {
                         color: 'transparent',
                         scores: {},
                         totalScore: validScore,
+                        ...(scoreNum === 0 && { hasImportedZeroScore: true }),
                         linkedPlayerId: localPlayerId,
                         isStarter: ps.startPlayer === true || ps.startPlayer === 1
                     });

@@ -58,6 +58,21 @@ describe('bgStatsExportService ranks', () => {
     ]);
   });
 
+  it.each(['COMPETITIVE_NO_SCORE', 'COOP_NO_SCORE'] as const)('keeps points in %s without adding a winner', async rule => {
+    const scored = play('scored', rule, [42, 0, 0], []);
+    scored.players[1].scores = { score: { parts: [0] } };
+    const blank = { ...play('blank', rule, [0], []), gameName: scored.gameName };
+    tables.history.rows.push(blank, scored);
+
+    const data = await bgStatsExportService.exportData();
+
+    expect(data.games).toMatchObject([{ noPoints: false }]);
+    expect(data.plays?.[0].playerScores[0].score).toBe('');
+    expect(data.plays?.[1].manualWinner).toBe(true);
+    expect(data.plays?.[1].playerScores.map(({ score, winner }: { score: string; winner: boolean }) => ({ score, winner })))
+      .toEqual([{ score: '42', winner: false }, { score: '0', winner: false }, { score: '', winner: false }]);
+  });
+
   it('ranks the lowest score first when the lowest score wins', async () => {
     tables.history.rows.push(play('low', 'LOWEST_WINS', [12, 30, 21], [0]));
     expect(await ranksOf('low')).toEqual([
@@ -166,7 +181,7 @@ describe('bgStatsExportService uuids', () => {
     templateId: 'local-game', location: 'Cafe', locationId: 'local-cafe',
     players: play('u', 'HIGHEST_WINS', [1, 2], [1]).players.map((p, i) => ({ ...p, linkedPlayerId: i ? 'local-bob' : 'local-ann' })),
   }) as HistoryRecord;
-  const saved = (id: string, uuids?: string[]) => ({ id, name: id, lastUsed: 0, usageCount: 0, meta: uuids ? { bgStatsUuids: uuids } : {} });
+  const saved = (id: string, uuids?: string[], bggId?: string) => ({ id, name: id, bggId, lastUsed: 0, usageCount: 0, meta: uuids ? { bgStatsUuids: uuids } : {} });
 
   it('exports the remembered BG Stats uuid of linked games, locations and players', async () => {
     tables.history.rows.push(linkedPlay());
@@ -185,5 +200,27 @@ describe('bgStatsExportService uuids', () => {
     expect(data.games?.[0].uuid).toBe('local-game');
     expect(data.locations?.[0].uuid).toBe('local-cafe');
     expect((data.players || []).map(p => p.uuid)).toEqual(['local-ann', 'local-bob']);
+  });
+
+  it('uses the remembered UUID for a shared BGG ID regardless of play order or name', async () => {
+    const local = { ...play('local', 'HIGHEST_WINS', [12], []), bggId: '40405' };
+    const imported = { ...linkedPlay(), gameName: 'Imported title' };
+    tables.savedGames.rows.push(saved('other-alias', undefined, '40405'), saved(imported.templateId, ['BGS-GAME'], '040405'));
+
+    for (const records of [[local, imported], [imported, local]]) {
+      tables.history.rows.splice(0, tables.history.rows.length, ...records);
+      const data = await bgStatsExportService.exportData();
+      expect(data.games).toMatchObject([{ uuid: 'BGS-GAME', bggId: 40405 }]);
+      expect(data.plays?.map(p => p.gameRefId)).toEqual([data.games?.[0].id, data.games?.[0].id]);
+    }
+  });
+
+  it('uses the saved game ID of a directly imported game matched by BGG ID', async () => {
+    tables.history.rows.push({ ...linkedPlay(), templateId: 'scoreboard', bggId: '40405' });
+    tables.savedGames.rows.push(saved('BGS-GAME', undefined, '40405'));
+
+    const data = await bgStatsExportService.exportData();
+
+    expect(data.games).toMatchObject([{ uuid: 'BGS-GAME', bggId: 40405 }]);
   });
 });

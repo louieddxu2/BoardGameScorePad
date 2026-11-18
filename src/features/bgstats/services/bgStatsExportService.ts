@@ -1,13 +1,13 @@
 
 import { db } from '../../../db';
 import { BgStatsExport, BgStatsGame, BgStatsPlayer, BgStatsLocation } from '../types';
-import { HistoryRecord, BggGame } from '../../../types';
-import { computeBgStatsRanks, findFirstPlays, isManualWinner, isNoPointsRule, isRecordWinner } from './bgStatsExportRules';
+import { HistoryRecord, BggGame, SavedListItem } from '../../../types';
+import { computeBgStatsRanks, findFirstPlays, hasRecordedBgStatsScore, isManualWinner, isNoWinLossRule, isRecordWinner } from './bgStatsExportRules';
 import { generateId } from '../../../utils/idGenerator';
 import { getRecordScoringRule } from '../../../utils/historyUtils';
-import { getHistoryBggId } from './bgStatsBggData';
+import { getHistoryBggId, normalizeBggId } from './bgStatsBggData';
 import { isDefaultPlayerName } from '../../../utils/historyGameEntries';
-import { exportUuidOf } from './bgStatsLinkMemory';
+import { exportUuidOf, sourceUuidsOf } from './bgStatsLinkMemory';
 
 // BG Stats 以單一「匿名玩家」代表所有沒有身分的參與者。
 // ScorePad 中未連結且仍用預設名稱（玩家 N / Player N）的玩家都匯出成這一位；
@@ -62,6 +62,26 @@ class BgStatsExportService {
         const playerLookup = new Map(savedPlayers.map(p => [p.id, p]));
         const locationLookup = new Map(savedLocations.map(l => [l.id, l]));
         const gameLookup = new Map(savedGames.map(g => [g.id, g]));
+        const bggIdOf = (record: HistoryRecord) => getHistoryBggId(record) ?? normalizeBggId(gameLookup.get(record.templateId)?.bggId);
+
+        // Match the whole BGG group before emitting games. A saved game can carry the
+        // source UUID in its link metadata or as its own ID when created by import.
+        const savedGameByBggId = new Map<string, SavedListItem>();
+        const indexSavedGame = (bggId: string, game: SavedListItem) => {
+            const existing = savedGameByBggId.get(bggId);
+            if (!existing || (!sourceUuidsOf(existing).length && sourceUuidsOf(game).length)) {
+                savedGameByBggId.set(bggId, game);
+            }
+        };
+        for (const game of savedGames) {
+            const bggId = normalizeBggId(game.bggId);
+            if (bggId) indexSavedGame(bggId, game);
+        }
+        for (const record of allHistory) {
+            const savedGame = gameLookup.get(record.templateId);
+            const bggId = getHistoryBggId(record);
+            if (bggId && savedGame && !normalizeBggId(savedGame.bggId)) indexSavedGame(bggId, savedGame);
+        }
         
         // ID Mappers for Export Integer IDs
         const gameMapper = new IntIdMapper();
@@ -74,9 +94,8 @@ class BgStatsExportService {
         const locationsMap = new Map<number, BgStatsLocation>();
 
         const plays: any[] = [];
-        // Use Template Name as unique key for Game unless BGG ID is present
         const gameKeyOf = (record: HistoryRecord) => {
-            const id = getHistoryBggId(record);
+            const id = bggIdOf(record);
             return id ? `bgg:${id}` : `name:${record.gameName}`;
         };
         const firstPlays = findFirstPlays(allHistory, gameKeyOf);
@@ -84,8 +103,9 @@ class BgStatsExportService {
         // 2. Process History Records -> Plays
         for (const record of allHistory) {
             // --- Game Resolution ---
-            const bggId = getHistoryBggId(record);
+            const bggId = bggIdOf(record);
             const gameKey = gameKeyOf(record);
+            const scoringRule = getRecordScoringRule(record);
 
             const gameRefId = gameMapper.getId(gameKey);
 
@@ -93,10 +113,8 @@ class BgStatsExportService {
                 // Construct Game Object
                 const bggData = bggId ? bggLookup.get(bggId) : undefined;
                 
-                // A game linked to a BG Stats game keeps that game's uuid; otherwise the local id.
-                const originalUuid = exportUuidOf(gameLookup.get(record.templateId), record.templateId);
-
-                const scoringRule = getRecordScoringRule(record);
+                const savedGame = bggId ? savedGameByBggId.get(bggId) : gameLookup.get(record.templateId);
+                const originalUuid = exportUuidOf(savedGame, savedGame?.id ?? record.templateId);
 
                 gamesMap.set(gameRefId, {
                     id: gameRefId,
@@ -108,7 +126,7 @@ class BgStatsExportService {
                     designers: bggData?.designers,
                     // BG Stats keeps highestWins true for cooperative and no-points games.
                     highestWins: scoringRule !== 'LOWEST_WINS',
-                    noPoints: isNoPointsRule(scoringRule),
+                    noPoints: true,
                     cooperative: scoringRule === 'COOP' || scoringRule === 'COOP_NO_SCORE',
                     modificationDate: formatDate(record.updatedAt || record.endTime),
                     isBaseGame: 1,
@@ -141,7 +159,7 @@ class BgStatsExportService {
 
             // --- Player Scores Resolution ---
             const ranks = computeBgStatsRanks(record);
-            const noPoints = isNoPointsRule(getRecordScoringRule(record));
+            const noWinLoss = isNoWinLossRule(scoringRule);
             const playerScores = record.players.map((p, index) => {
                 // Determine Identity
                 // If linkedPlayerId exists, map to that. Otherwise map to name (anonymous)
@@ -178,8 +196,8 @@ class BgStatsExportService {
 
                 return {
                     playerRefId: playerRefId,
-                    // A no-points play has no scores; BG Stats stores them blank.
-                    score: noPoints ? '' : p.totalScore.toString(),
+                    score: !noWinLoss || hasRecordedBgStatsScore(p, record.snapshotTemplate?.columns)
+                        ? p.totalScore.toString() : '',
                     winner: isRecordWinner(record, p),
                     startPlayer: !!p.isStarter,
                     newPlayer: !!p.linkedPlayerId && firstPlays.has(`${record.id}|${p.linkedPlayerId}`),
@@ -187,6 +205,9 @@ class BgStatsExportService {
                     seatOrder: index
                 };
             });
+            const hasRecordedScores = playerScores.some(player => player.score !== '');
+            // The game flag applies to every exported play of this game.
+            if (!noWinLoss || hasRecordedScores) gamesMap.get(gameRefId)!.noPoints = false;
 
             // --- Play Object ---
             plays.push({
@@ -200,7 +221,7 @@ class BgStatsExportService {
                 scoringSetting: 0,
                 playerScores: playerScores,
                 rounds: 0,
-                manualWinner: isManualWinner(record),
+                manualWinner: isManualWinner(record, hasRecordedScores),
                 ignored: false,
                 importPlayId: 0,
                 modificationDate: formatDate(record.updatedAt || record.endTime),

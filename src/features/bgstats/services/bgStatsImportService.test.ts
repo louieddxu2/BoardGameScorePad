@@ -117,6 +117,22 @@ beforeEach(() => {
     vi.spyOn(Date, 'now').mockReturnValue(10000);
 });
 
+it('preserves existing points and explicit zero when importing and re-exporting a no-points game', async () => {
+    const data = {
+        games: [{ ...sourceGame(1, 'source-game', 40405), noPoints: true }],
+        plays: [{
+            ...play('imported'),
+            playerScores: ['42', '0', ''].map(score => ({ score, winner: false }))
+        }]
+    };
+
+    expect(await bgStatsImportService.importData(data, links())).toBe(1);
+    const exported = await bgStatsExportService.exportData();
+
+    expect(exported.games).toMatchObject([{ uuid: 'source-game', noPoints: false }]);
+    expect(exported.plays?.[0].playerScores.map(({ score }: { score: string }) => score)).toEqual(['42', '0', '']);
+});
+
 describe('BG Stats BGG ID enrichment', () => {
     it('patches the same play UUID across custom, built-in, disposable and separately linked templates without replacing play data', async () => {
         const records = [history('play1', 'custom01'), history('play2', 'builtin1'), history('play3', 'deleted1'),
