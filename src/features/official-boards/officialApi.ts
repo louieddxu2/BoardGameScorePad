@@ -90,6 +90,21 @@ export const publishOfficialTemplate = (body: {
   expectedVersion: number;
 }) => adminRequest<OfficialPublishResult>('/api/admin/official/publish', { method: 'POST', body: JSON.stringify(body) });
 
+export interface BuiltinRegistration {
+  id: string;
+  bggId: string;
+  lang: string;
+  name: string;
+  payload: unknown;
+}
+
+/** Store bundled built-ins as version 0; the Worker accepts at most 10 per request. */
+export const registerBundledBuiltins = (items: BuiltinRegistration[]) =>
+  adminRequest<{ registered: number; skipped: number; rejected: string[] }>('/api/admin/official/register-builtins', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  });
+
 export const updateOfficialSettings = (id: string, settings: { bundled?: boolean; enName?: string }) =>
   adminRequest<OfficialCatalogEntry>(`/api/admin/official/${encodeURIComponent(id)}`, {
     method: 'PATCH',

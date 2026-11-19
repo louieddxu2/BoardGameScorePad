@@ -139,12 +139,10 @@ const OfficialCatalogList: React.FC<OfficialCatalogListProps> = ({ isAdmin }) =>
                   <input type="checkbox" checked={entry.bundled} disabled={busy} onChange={() => toggleBundled(entry)} />
                   {t('official_admin_bundled_toggle')}
                 </label>
-                {entry.version > 0 && (
-                  <button onClick={() => toggleHistory(entry)} disabled={busy} className="flex items-center gap-1 text-txt-secondary">
-                    {historyFor === entry.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                    {historyFor === entry.id ? t('official_admin_history_hide') : t('official_admin_history')}
-                  </button>
-                )}
+                <button onClick={() => toggleHistory(entry)} disabled={busy} className="flex items-center gap-1 text-txt-secondary">
+                  {historyFor === entry.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  {historyFor === entry.id ? t('official_admin_history_hide') : t('official_admin_history')}
+                </button>
               </div>
             )}
 
@@ -155,7 +153,7 @@ const OfficialCatalogList: React.FC<OfficialCatalogListProps> = ({ isAdmin }) =>
                     <span className="font-bold text-txt-primary w-8">v{v.version}</span>
                     <span className="flex-1 text-txt-muted truncate">
                       {new Date(v.createdAt).toLocaleString()}
-                      {v.restoredFrom ? ` · ${t('official_admin_restored_from', { version: v.restoredFrom })}` : ''}
+                      {v.restoredFrom !== undefined ? ` · ${t('official_admin_restored_from', { version: v.restoredFrom })}` : ''}
                     </span>
                     {v.version === entry.version ? (
                       <span className="text-brand-primary">{t('official_admin_current')}</span>
