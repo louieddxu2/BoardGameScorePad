@@ -31,7 +31,8 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
     
     const isSelected = isDocked;
     const isVirtual = option.uid === '__CREATE_NEW__';
-    const isSimple = !option.templateId && !isVirtual;
+    const officialBoardStatus = isDocked ? option.officialBoardStatus : undefined;
+    const isSimple = !option.templateId && !option.officialBoardStatus && !isVirtual;
 
     const heightClass = isDocked ? BOTTOM_ROW_HEIGHT_CLASS : LIST_ITEM_HEIGHT;
 
@@ -97,13 +98,18 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                         </div>
 
                         <div className="text-[10px] flex items-center h-5">
+                            {officialBoardStatus && (
+                                <span className={`mr-1.5 shrink-0 whitespace-nowrap text-[11px] font-semibold ${officialBoardStatus === 'needs_connection' ? 'text-status-warning' : 'text-brand-primary'}`}>
+                                    {t(`selector_board_${officialBoardStatus}`)}
+                                </span>
+                            )}
                             {isVirtual ? (
                                 <div className="flex items-center gap-1 opacity-60">
                                     <Plus size={10} />
                                     <span>{t('selector_quick_start')}</span>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar py-0.5 w-full">
+                                <div className="flex items-center gap-0.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 w-full">
                                     {[
                                         isRatingHighlighted && ratingVal && (
                                             <span key="rating" className="inline-flex items-center bg-amber-500/10 text-amber-500 border border-amber-500/40 shadow-[0_0_6px_rgba(245,158,11,0.2)] px-1 py-0.5 rounded text-[9px] leading-none shrink-0 font-medium transition-colors">
@@ -178,7 +184,7 @@ export const GameOptionItem: React.FC<GameOptionItemProps> = ({
                                             .map(item => <React.Fragment key={item.key}>{item.node}</React.Fragment>)
                                     ].filter(Boolean)}
 
-                                    {!bestPlayersStr && !supportedPlayersStr && !complexityVal && !yearVal && !isCoopHighlighted && !isPartyHighlighted && !isFamilyHighlighted && !isSmallTableHighlighted && !isTimeHighlighted && !isRatingHighlighted && (
+                                    {!officialBoardStatus && !bestPlayersStr && !supportedPlayersStr && !complexityVal && !yearVal && !isCoopHighlighted && !isPartyHighlighted && !isFamilyHighlighted && !isSmallTableHighlighted && !isTimeHighlighted && !isRatingHighlighted && (
                                         <span className="text-[10px] text-txt-muted opacity-60">{t('selector_meta_not_set')}</span>
                                     )}
                                 </div>

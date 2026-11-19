@@ -1,4 +1,6 @@
 
+export type OfficialBoardLaunchStatus = 'needs_download' | 'needs_connection' | 'update_available';
+
 export interface GameOption {
   // --- 1. 索引指標 (Data Pointers) ---
   // 這些 ID 用於決定點擊後的行為與資料來源
@@ -8,6 +10,9 @@ export interface GameOption {
    * 若存在，代表此遊戲有「專屬計分板結構」(Columns) 
    */
   templateId?: string;
+
+  /** Status when an official scoreboard is the launch target and needs a download or update. */
+  officialBoardStatus?: OfficialBoardLaunchStatus;
 
   /** 
    * 指向 savedGames 表
