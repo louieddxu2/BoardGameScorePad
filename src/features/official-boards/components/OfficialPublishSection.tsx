@@ -28,6 +28,14 @@ const defaultLang = (template: GameTemplate, appLang: string): Lang => {
   return appLang.startsWith('en') ? 'en' : 'zh-TW';
 };
 
+/** The bundled built-in this draft replaces, when it comes from one with the same BGG ID and language. */
+const findBundledBuiltin = async (template: GameTemplate, bggId: string, lang: Lang): Promise<GameTemplate | null> => {
+  const source = template.sourceTemplateId || template.id;
+  if (!source.startsWith('Built-in-') || source.startsWith('Built-in-EN-') !== (lang === 'en')) return null;
+  const builtin = await db.builtins.get(source);
+  return builtin?.bggId?.trim() === bggId ? builtin : null;
+};
+
 const diffColumns = (base: { id: string; name: string }[], draft: { id: string; name: string }[]): ColumnDiff => {
   const baseNames = new Map(base.map((c) => [c.id, c.name]));
   const draftIds = new Set(draft.map((c) => c.id));
@@ -51,6 +59,7 @@ const OfficialPublishSection: React.FC<OfficialPublishSectionProps> = ({ templat
   const [diff, setDiff] = useState<ColumnDiff | null>(null);
   const [enName, setEnName] = useState('');
   const [bundled, setBundled] = useState(false);
+  const [builtin, setBuiltin] = useState<GameTemplate | null>(null);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -64,14 +73,16 @@ const OfficialPublishSection: React.FC<OfficialPublishSectionProps> = ({ templat
     try {
       const full = template.columns?.length ? template : (await onGetFullTemplate(template.id)) ?? template;
       const next = await fetchPublishTarget(bggId, lang);
-      // Version 0 lives only in the app bundle, so compare with the local built-in copy.
+      // A built-in is not in the cloud until its first publish; version 0 is the app's own copy.
+      const bundledSource = next.exists ? null : await findBundledBuiltin(full, bggId, lang);
       const baseColumns = next.latestPayload?.columns
-        ?? (next.exists && next.id ? (await db.builtins.get(next.id))?.columns : undefined);
+        ?? (next.exists && next.id ? (await db.builtins.get(next.id))?.columns : bundledSource?.columns);
       const bgg = await db.bggGames.get(bggId);
       setDraft(full);
       setTarget(next);
       setDiff(baseColumns ? diffColumns(baseColumns, full.columns || []) : null);
-      setBundled(next.exists ? !!next.bundled : false);
+      setBuiltin(bundledSource);
+      setBundled(next.exists ? !!next.bundled : !!bundledSource);
       setEnName(next.enName || bgg?.name || '');
     } catch (error) {
       setTarget(null);
@@ -109,6 +120,7 @@ const OfficialPublishSection: React.FC<OfficialPublishSectionProps> = ({ templat
         enName: enName.trim() || undefined,
         payload,
         bundled,
+        builtinId: builtin?.id,
         expectedVersion: target.exists ? target.version ?? 0 : 0,
       });
       // Pull the change into the local catalog right away so the result is visible here.
@@ -174,11 +186,11 @@ const OfficialPublishSection: React.FC<OfficialPublishSectionProps> = ({ templat
               {!loading && target && (
                 <div className="space-y-2 text-xs">
                   <p className="font-bold text-txt-primary">
-                    {target.exists
-                      ? t('official_publish_update', { name: target.name || '', from: target.version ?? 0, to: nextVersion })
+                    {target.exists || builtin
+                      ? t('official_publish_update', { name: target.name || builtin?.name || '', from: target.version ?? 0, to: nextVersion })
                       : t('official_publish_create')}
                   </p>
-                  {target.exists && target.version === 0 && <p className="text-txt-muted">{t('official_publish_bundled_v0')}</p>}
+                  {(target.exists ? target.version === 0 : !!builtin) && <p className="text-txt-muted">{t('official_publish_bundled_v0')}</p>}
                   {diff && (
                     <p className="text-txt-secondary">
                       {diff.added + diff.removed + diff.renamed === 0

@@ -1,7 +1,7 @@
 /**
  * Local-first catalog sync (same rhythm as BoardGameHelper's game list):
  * - The app always reads the local copy in IndexedDB.
- * - Changes after the local version are checked at most every 10 minutes.
+ * - Changes after the local version are checked at most every 6 hours.
  * - The full snapshot is re-downloaded weekly, or when there is no local copy.
  * A manual refresh can force either step.
  */
@@ -10,7 +10,7 @@ import { db } from '../../db';
 import { fetchCatalogChanges, fetchCatalogSnapshot } from './officialApi';
 import type { CatalogKind, CatalogSyncState, OfficialCatalogEntry, ShareCatalogEntry } from './types';
 
-export const CHANGES_CHECK_INTERVAL_MS = 10 * 60 * 1000;
+export const CHANGES_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const SNAPSHOT_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_CHANGE_PAGES = 20;
 

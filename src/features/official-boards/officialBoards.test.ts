@@ -130,7 +130,7 @@ describe('official boards (local)', () => {
     expect(first).toMatchObject({ ran: 'snapshot', changed: 4, state: { throughVersion: 12, generation: 3 } });
     expect((await db.officialCatalog.toArray()).map((e) => [e.id, e.version])).toEqual([['Built-in-A', 2]]);
 
-    // Within 10 minutes an automatic sync does nothing; a manual check asks for changes after 12.
+    // Within 6 hours an automatic sync does nothing; a manual check asks for changes after 12.
     expect((await syncCatalog('official')).ran).toBe('none');
     const manual = await syncCatalog('official', 'changes');
     expect(manual).toMatchObject({ ran: 'changes', changed: 0 });

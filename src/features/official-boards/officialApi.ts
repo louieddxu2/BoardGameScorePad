@@ -85,14 +85,10 @@ export const publishOfficialTemplate = (body: {
   enName?: string;
   payload: unknown;
   bundled: boolean;
+  /** Bundled built-in this publish takes over; the Worker keeps its ID. */
+  builtinId?: string;
   expectedVersion: number;
 }) => adminRequest<OfficialPublishResult>('/api/admin/official/publish', { method: 'POST', body: JSON.stringify(body) });
-
-export const registerBundledBuiltins = (items: { id: string; bggId: string; lang: string; name: string }[]) =>
-  adminRequest<{ registered: number; skipped: number; rejected: string[] }>('/api/admin/official/register-builtins', {
-    method: 'POST',
-    body: JSON.stringify({ items }),
-  });
 
 export const updateOfficialSettings = (id: string, settings: { bundled?: boolean; enName?: string }) =>
   adminRequest<OfficialCatalogEntry>(`/api/admin/official/${encodeURIComponent(id)}`, {
