@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
-import { Hammer, Loader2, LogOut, ShieldCheck, ListPlus } from 'lucide-react';
+import { Hammer, Loader2, ListPlus } from 'lucide-react';
 import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
-import { OfficialApiError, fetchAdminIdentity, rebuildCatalogSnapshot, registerBundledBuiltins } from '../officialApi';
-import { setOfficialAdminVerified } from '../officialBoards';
+import { OfficialApiError, rebuildCatalogSnapshot, registerBundledBuiltins } from '../officialApi';
 import { syncCatalog } from '../catalogSync';
 import type { GameTemplate } from '../../../types';
-
-interface OfficialAdminCardProps {
-  isAdmin: boolean;
-  onAdminChange: (isAdmin: boolean) => void;
-}
 
 const errorCode = (error: unknown) => (error instanceof OfficialApiError ? error.code : String((error as Error)?.message || error));
 
@@ -24,13 +18,13 @@ const loadBundledRegistrations = async () => {
     .map((t) => ({ id: t.id, bggId: t.bggId!, lang: t.id.startsWith('Built-in-EN-') ? 'en' : 'zh-TW', name: t.name }));
 };
 
-/** Admin verification and catalog maintenance tools. */
-const OfficialAdminCard: React.FC<OfficialAdminCardProps> = ({ isAdmin, onAdminChange }) => {
+/** Catalog maintenance tools for the owner account. */
+const OfficialAdminCard: React.FC = () => {
   const { t } = useOfficialBoardsTranslation();
-  const [busy, setBusy] = useState<'verify' | 'register' | 'rebuild' | null>(null);
+  const [busy, setBusy] = useState<'register' | 'rebuild' | null>(null);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
 
-  const run = async (kind: 'verify' | 'register' | 'rebuild', task: () => Promise<string>) => {
+  const run = async (kind: 'register' | 'rebuild', task: () => Promise<string>) => {
     setBusy(kind);
     setMessage(null);
     try {
@@ -41,14 +35,6 @@ const OfficialAdminCard: React.FC<OfficialAdminCardProps> = ({ isAdmin, onAdminC
       setBusy(null);
     }
   };
-
-  const verify = () =>
-    run('verify', async () => {
-      const identity = await fetchAdminIdentity(true);
-      setOfficialAdminVerified(identity.isAdmin ? identity.sub : null);
-      onAdminChange(identity.isAdmin);
-      return identity.isAdmin ? t('official_admin_verified') : t('official_admin_not_admin', { sub: identity.sub });
-    });
 
   const register = () =>
     run('register', async () => {
@@ -67,12 +53,6 @@ const OfficialAdminCard: React.FC<OfficialAdminCardProps> = ({ isAdmin, onAdminC
       return t('official_admin_rebuild_done', { official: describe(official), share: describe(share) });
     });
 
-  const forget = () => {
-    setOfficialAdminVerified(null);
-    onAdminChange(false);
-    setMessage(null);
-  };
-
   const buttonClass = 'flex items-center justify-center gap-1.5 py-2 btn-modal-secondary rounded-lg text-xs font-bold disabled:opacity-60';
   const icon = (kind: typeof busy, Icon: typeof Hammer) =>
     busy === kind ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />;
@@ -80,23 +60,14 @@ const OfficialAdminCard: React.FC<OfficialAdminCardProps> = ({ isAdmin, onAdminC
   return (
     <div className="modal-bg-elevated rounded-xl p-3 border border-status-warning/30 space-y-2">
       <div className="text-xs font-bold text-txt-muted uppercase tracking-wider">{t('official_admin_title')}</div>
-      {!isAdmin ? (
-        <button onClick={verify} disabled={!!busy} className={`w-full ${buttonClass}`}>
-          {icon('verify', ShieldCheck)} {t('official_admin_verify')}
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={register} disabled={!!busy} className={buttonClass}>
+          {icon('register', ListPlus)} {t('official_admin_register')}
         </button>
-      ) : (
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={register} disabled={!!busy} className={buttonClass}>
-            {icon('register', ListPlus)} {t('official_admin_register')}
-          </button>
-          <button onClick={rebuild} disabled={!!busy} className={buttonClass}>
-            {icon('rebuild', Hammer)} {t('official_admin_rebuild')}
-          </button>
-          <button onClick={forget} disabled={!!busy} className={`col-span-2 ${buttonClass}`}>
-            <LogOut size={14} /> {t('official_admin_forget')}
-          </button>
-        </div>
-      )}
+        <button onClick={rebuild} disabled={!!busy} className={buttonClass}>
+          {icon('rebuild', Hammer)} {t('official_admin_rebuild')}
+        </button>
+      </div>
       {message && <p className={`text-xs ${message.error ? 'text-status-danger' : 'text-brand-primary'}`}>{message.text}</p>}
     </div>
   );

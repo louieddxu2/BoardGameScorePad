@@ -130,26 +130,3 @@ export const computeOfficialLaunchStates = (
   }
   return states;
 };
-
-// ---------------------------------------------------------------------------
-// Admin verification (remembered on this device after the Worker confirms it)
-// ---------------------------------------------------------------------------
-
-const ADMIN_FLAG_KEY = 'official_admin_verified_sub';
-
-export const isOfficialAdminVerified = (): boolean => {
-  try {
-    return !!localStorage.getItem(ADMIN_FLAG_KEY);
-  } catch {
-    return false;
-  }
-};
-
-export const setOfficialAdminVerified = (sub: string | null) => {
-  try {
-    if (sub) localStorage.setItem(ADMIN_FLAG_KEY, sub);
-    else localStorage.removeItem(ADMIN_FLAG_KEY);
-  } catch {
-    // Storage may be unavailable (private mode); verification simply is not remembered.
-  }
-};

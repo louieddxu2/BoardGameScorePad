@@ -23,6 +23,7 @@ import { DashboardModals } from './parts/DashboardModals';
 import DashboardFAB from './parts/DashboardFAB';
 import HistoryStatsPanel from './HistoryStatsPanel';
 import ShareTemplateModal from './modals/ShareTemplateModal';
+import { isOwnerEmail } from '../../utils/ownerAccount';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import SearchTemplateOnlineModal from './modals/SearchTemplateOnlineModal';
 import { useDashboardTranslation } from '../../i18n/dashboard';
@@ -554,6 +555,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           onClose={() => dashboardActions.setSharingTemplate(null)}
           template={dashboardActions.sharingTemplate}
           onGetFullTemplate={onGetFullTemplate}
+          isOwner={isConnected && isOwnerEmail(userEmail)}
         />
       )}
     </div>

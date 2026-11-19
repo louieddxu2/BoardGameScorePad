@@ -9,20 +9,22 @@ import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
 import OfficialPublishSection from '../../../features/official-boards/components/OfficialPublishSection';
-import { isOfficialAdminVerified } from '../../../features/official-boards/officialBoards';
 
 interface ShareTemplateModalProps {
     isOpen: boolean;
     onClose: () => void;
     template: GameTemplate;
     onGetFullTemplate: (id: string) => Promise<GameTemplate | null>;
+    /** Signed in with the owner's Google account: show official publishing. */
+    isOwner?: boolean;
 }
 
 const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
     isOpen,
     onClose,
     template,
-    onGetFullTemplate
+    onGetFullTemplate,
+    isOwner = false
 }) => {
     const { t } = useDashboardTranslation();
     const { t: tCommon } = useCommonTranslation();
@@ -298,8 +300,8 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                     </div>
                 </div>
 
-                {/* Admin only: publish as an official (cloud built-in) scoreboard */}
-                {isOfficialAdminVerified() && (
+                {/* Owner only: publish as an official (cloud built-in) scoreboard */}
+                {isOwner && (
                     <OfficialPublishSection template={template} onGetFullTemplate={onGetFullTemplate} />
                 )}
             </div>

@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
+import { isOwnerEmail } from '../../../utils/ownerAccount';
 import { GameTemplate, GameSession } from '../../../types';
 import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud, Zap } from 'lucide-react';
 import DashboardSection from '../parts/DashboardSection';
@@ -189,7 +190,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 onToggle={() => setIsUserLibOpen(!isUserLibOpen)}
                 actionButton={
                     <div className="flex items-center gap-2">
-                        {isConnected && userEmail === 'louieddxu2@gmail.com' && (
+                        {isConnected && isOwnerEmail(userEmail) && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }} 
                                 className="btn-ghost-action animate-pulse"

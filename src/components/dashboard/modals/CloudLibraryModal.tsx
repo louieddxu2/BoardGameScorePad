@@ -5,6 +5,7 @@ import { useCloudLibraryTranslation } from '../../../i18n/cloud_library';
 import OfficialBoardsPanel from '../../../features/official-boards/components/OfficialBoardsPanel';
 import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 import ShareCatalogTab from './cloud-library/ShareCatalogTab';
+import { isOwnerEmail } from '../../../utils/ownerAccount';
 
 interface CloudLibraryModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ interface CloudLibraryModalProps {
  * Shared scoreboards (user uploads) and cloud built-in (official) scoreboards are
  * separate collections, each read from its own local catalog.
  */
-const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, userTemplates, onImport }) => {
+const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, userTemplates, onImport, userEmail }) => {
   const { t } = useCloudLibraryTranslation();
   const { t: tOfficial } = useOfficialBoardsTranslation();
   const [tab, setTab] = useState<'share' | 'official'>('share');
@@ -67,7 +68,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, 
         {/* Body */}
         <div className="modal-body flex-1 p-4 overflow-y-auto no-scrollbar min-h-0">
           {tab === 'official' ? (
-            <OfficialBoardsPanel />
+            <OfficialBoardsPanel isAdmin={isOwnerEmail(userEmail)} />
           ) : (
             <ShareCatalogTab userTemplates={userTemplates} onImport={onImport} onClose={onClose} onBusyChange={setIsBusy} />
           )}

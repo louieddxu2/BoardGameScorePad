@@ -73,9 +73,6 @@ const adminRequest = async <T>(path: string, init: RequestInit = {}, interactive
   return request<T>(path, { ...init, headers });
 };
 
-export const fetchAdminIdentity = (interactive: boolean) =>
-  adminRequest<{ isAdmin: boolean; sub: string; email?: string }>('/api/admin/me', {}, interactive);
-
 export const fetchPublishTarget = (bggId: string, lang: string) =>
   adminRequest<OfficialPublishTarget>(
     `/api/admin/official/target?bggId=${encodeURIComponent(bggId)}&lang=${encodeURIComponent(lang)}`
