@@ -80,6 +80,12 @@ export const officialBoardsTranslations = {
         official_publish_conflict: "雲端版本已變更，已重新載入目標，請再確認一次。",
         official_publish_failed: "發布失敗：{error}",
         official_publish_retry: "重試",
+        // Shared catalog (cloud library share tab)
+        share_list_stale: "無法更新雲端分享目錄，先顯示本機資料。",
+        share_import_failed: "匯入失敗：{error}",
+        share_import_missing: "「{name}」已不在雲端",
+        share_count_weekly: "下載次數每週更新",
+        share_import_progress: "匯入中 {done}/{total}",
     },
     'en': {
         official_downloading: "Downloading the official scoreboard…",
@@ -154,6 +160,11 @@ export const officialBoardsTranslations = {
         official_publish_conflict: "The cloud version changed. The target was reloaded; please check it again.",
         official_publish_failed: "Publish failed: {error}",
         official_publish_retry: "Retry",
+        share_list_stale: "Couldn't update the shared catalog; showing the local copy.",
+        share_import_failed: "Import failed: {error}",
+        share_import_missing: "\"{name}\" is no longer in the cloud",
+        share_count_weekly: "Download counts update weekly",
+        share_import_progress: "Importing {done}/{total}",
     }
 };
 

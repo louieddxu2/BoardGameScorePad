@@ -14,6 +14,7 @@ const EXTERNAL_MANAGED_MODALS = new Set([
   'GameSetupModal.tsx',       // 其生命週期與視圖切換綁定
   'ImportTemplateModal.tsx',   // 由 TextureMapper 承載的次級彈窗
   'SyncDashboard.tsx',         // 作為 CloudManager 的嵌入子組件
+  'ShareCatalogTab.tsx',       // CloudLibraryModal 的嵌入分頁
   'ShareMenu.tsx',             // 由 useSessionEvents.ts 統一在外部管理
   'ConfirmationModal.tsx',     // 通用對話框，通常由 Hook 或外部渲染
   'GameCatalogImportModal.tsx',        // 由 useDashboardModals.ts 統一管理
