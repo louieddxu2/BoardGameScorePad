@@ -6,6 +6,8 @@ import { generateId } from '../../../utils/idGenerator';
 import { useAppTranslation } from '../../../i18n/app';
 import { createTemplateFromOption } from '../../../utils/templateUtils';
 import type { RecentGameTemplateIdentity } from '../../../utils/recentTemplateResolution';
+import { ensureOfficialBoard } from '../../official-boards/officialBoards';
+import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 
 interface UseGameLauncherProps {
   allVisibleTemplates: GameTemplate[];
@@ -30,6 +32,7 @@ export const useGameLauncher = ({
 }: UseGameLauncherProps) => {
   const { showToast } = useToast();
   const { t } = useAppTranslation();
+  const { t: tOfficial } = useOfficialBoardsTranslation();
   
   // 暫存即將啟動的參數，用於觸發彈窗
   const [pendingLaunch, setPendingLaunch] = useState<PendingLaunchData | null>(null);
@@ -46,7 +49,17 @@ export const useGameLauncher = ({
     let resolvedPendingTemplate = false;
 
     // 1. 解析 Template 來源
-    if (option.templateId) {
+    if (option.templateId && option.officialBoardStatus) {
+      // Official board missing locally or with a newer catalog version: download on start.
+      const ensured = await ensureOfficialBoard(option.templateId);
+      if (ensured.status === 'unavailable') {
+        // Stay on the panel so the chosen settings are kept for a retry.
+        showToast({ message: tOfficial('official_download_failed'), type: 'error' });
+        return;
+      }
+      if (ensured.status === 'fallback') showToast({ message: tOfficial('official_using_local'), type: 'warning' });
+      templateToStart = ensured.template;
+    } else if (option.templateId) {
       let found: GameTemplate | undefined | null = allVisibleTemplates.find(t => t.id === option.templateId);
       if (!found) found = await onGetFullTemplate(option.templateId);
       

@@ -8,6 +8,8 @@ import { useToast } from '../../../hooks/useToast';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import OfficialPublishSection from '../../../features/official-boards/components/OfficialPublishSection';
+import { isOfficialAdminVerified } from '../../../features/official-boards/officialBoards';
 
 interface ShareTemplateModalProps {
     isOpen: boolean;
@@ -200,7 +202,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
             }}
         >
             <div
-                className="modal-container p-6 animate-in zoom-in-95 duration-200"
+                className="modal-container p-6 max-h-[90vh] !overflow-y-auto animate-in zoom-in-95 duration-200"
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
             >
@@ -295,6 +297,11 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                         )}
                     </div>
                 </div>
+
+                {/* Admin only: publish as an official (cloud built-in) scoreboard */}
+                {isOfficialAdminVerified() && (
+                    <OfficialPublishSection template={template} onGetFullTemplate={onGetFullTemplate} />
+                )}
             </div>
         </div>
     );

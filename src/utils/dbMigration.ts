@@ -3,6 +3,7 @@ import { db } from '../db';
 import { migrateTemplate, migrateScores } from './dataMigration';
 import { GameTemplate, GameSession } from '../types';
 import { generateId } from './idGenerator';
+import { reapplyDownloadedOfficialVersions } from '../features/official-boards/officialBoards';
 
 // Bump when built-in template content changes so existing installs refresh it.
 const CURRENT_BUILTIN_VERSION = 22;
@@ -43,6 +44,8 @@ export const migrateFromLocalStorage = async () => {
             const normalizedDefaults = DEFAULT_TEMPLATES.map(t => migrateTemplate(t));
             const normalizedDefaultsEN = DEFAULT_TEMPLATES_EN.map(t => migrateTemplate(t));
             await db.builtins.bulkPut([...normalizedDefaults, ...normalizedDefaultsEN]);
+            // Downloaded official versions newer than the bundled copy survive the rebuild.
+            await reapplyDownloadedOfficialVersions();
             localStorage.setItem(VERSION_KEY, String(CURRENT_BUILTIN_VERSION));
         }
 

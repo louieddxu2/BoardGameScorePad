@@ -60,6 +60,7 @@ export interface TemplateSummary extends BaseSummary<TemplateSearchIndex>, Templ
 
   // [Logic]
   sourceTemplateId?: string;
+  officialVersion?: number;
 
   // [UX]
   lastPlayerCount?: number;
@@ -192,6 +193,7 @@ export const extractTemplateSummary = (
     imageId: template.imageId,
     cloudImageId: template.cloudImageId,
     sourceTemplateId: template.sourceTemplateId,
+    officialVersion: template.officialVersion,
 
     lastPlayerCount: template.lastPlayerCount,
     defaultScoringRule: template.defaultScoringRule,

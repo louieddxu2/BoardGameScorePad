@@ -1,0 +1,86 @@
+/** One official (cloud built-in) scoreboard as listed in the catalog: metadata only. */
+export interface OfficialCatalogEntry {
+  id: string;
+  bggId: string;
+  lang: string;
+  name: string;
+  enName?: string | null;
+  /** Latest published version; 0 means only the copy bundled with the app exists. */
+  version: number;
+  bundled: boolean;
+  updatedAt: number;
+}
+
+/** One user-shared cloud scoreboard as listed in the share catalog. */
+export interface ShareCatalogEntry {
+  id: string;
+  name: string;
+  lang?: string | null;
+  bggId?: string | null;
+  bggName?: string | null;
+  createdAt: number;
+  /** Present only in weekly snapshots. */
+  downloadCount?: number;
+}
+
+export type CatalogKind = 'official' | 'share';
+
+/** Local sync position for one catalog. */
+export interface CatalogSyncState {
+  kind: CatalogKind;
+  throughVersion: number;
+  generation: number;
+  /** When the full snapshot was last downloaded. */
+  snapshotAt: number;
+  /** When changes were last checked successfully. */
+  checkedAt: number;
+}
+
+/** A downloaded official version, kept so sessions and rebuilds can use it offline. */
+export interface OfficialVersionRecord {
+  id: string;
+  version: number;
+  template: import('../../types').GameTemplate;
+  downloadedAt: number;
+}
+
+export interface CatalogSnapshotPayload<T> {
+  generation: number;
+  throughVersion: number;
+  generatedAt: number;
+  templates: T[];
+}
+
+export interface CatalogChangesPayload<T> {
+  changes: { templateId: string; catalogVersion: number; deleted: boolean; template?: T }[];
+  throughVersion: number;
+  hasMore: boolean;
+}
+
+/** Worker answer for "what would publishing this BGG ID + language update?" */
+export interface OfficialPublishTarget {
+  exists: boolean;
+  bggId: string;
+  lang: string;
+  id?: string;
+  name?: string;
+  enName?: string | null;
+  version?: number;
+  bundled?: boolean;
+  nextVersion: number;
+  latestPayload?: { columns?: { id: string; name: string }[] } | null;
+}
+
+export interface OfficialPublishResult {
+  id: string;
+  version: number;
+  created?: boolean;
+  unchanged?: boolean;
+}
+
+export interface OfficialVersionSummary {
+  version: number;
+  name: string;
+  createdAt: number;
+  restoredFrom?: number;
+}

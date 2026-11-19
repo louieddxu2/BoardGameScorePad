@@ -195,6 +195,9 @@ export interface GameTemplate extends GameIdentity {
 
   // [New Phase 1] Fork Mechanism
   sourceTemplateId?: string;
+
+  /** Official cloud version of a Built-in-* board in this copy; absent means the bundled version 0. */
+  officialVersion?: number;
 }
 
 export type PhotoQuarterTurns = 0 | 1 | 2 | 3;
@@ -203,6 +206,8 @@ export type PhotoContentIds = Record<string, string>;
 export interface GameSession extends GameIdentity {
   id: string;
   templateId: string;
+  /** Official board version the session started on, so resuming keeps that version. */
+  officialVersion?: number;
 
   // name: string; // Inherited from GameIdentity
   // bggId?: string; // Inherited from GameIdentity

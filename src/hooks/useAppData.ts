@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
+import { syncCatalogsInBackground } from '../features/official-boards/catalogSync';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { googleDriveService, getAutoConnectPreference } from '../services/googleDrive';
 import { backupTemplateToCloud } from './sessionCloudBackup';
@@ -55,8 +56,12 @@ export const useAppData = () => {
         const init = async () => {
             await migrateFromLocalStorage();
             setIsDbReady(true);
+            // Catalogs are read locally; this only refreshes them when their check interval has passed.
+            syncCatalogsInBackground();
         };
         init();
+        window.addEventListener('online', syncCatalogsInBackground);
+        return () => window.removeEventListener('online', syncCatalogsInBackground);
     }, []);
 
     // --- 2. Queries, Library & Session Management ---

@@ -11,6 +11,9 @@ vi.mock('../../../hooks/useToast', () => ({
 vi.mock('../../../i18n/app', () => ({
   useAppTranslation: () => ({ t: (key: string) => key })
 }));
+vi.mock('../../../i18n/officialBoards', () => ({
+  useOfficialBoardsTranslation: () => ({ t: (key: string) => key })
+}));
 
 describe('useGameLauncher loading-state identity', () => {
   afterEach(() => { vi.restoreAllMocks(); });

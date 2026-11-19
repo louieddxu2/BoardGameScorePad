@@ -5,6 +5,7 @@ import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '.
 import { generateId } from '../utils/idGenerator';
 import { migrateTemplate } from '../utils/dataMigration';
 import { loadSessionActivation } from './sessionActivation';
+import { getOfficialTemplateAtVersion, isOfficialTemplateId, localOfficialVersion } from '../features/official-boards/officialBoards';
 import { applyTemplateToSession } from '../utils/sessionTemplateUpdate';
 import { calculateScoreSession } from '../utils/sessionScoring';
 import { imageService } from '../services/imageService';
@@ -108,6 +109,14 @@ export const useSessionManager = ({
         if (pending) await pending;
     };
 
+    /** Resume an official board on the version its session started with, even after an update. */
+    const getSessionTemplate = async (session: GameSession, id: string): Promise<GameTemplate | null> => {
+        const template = await getTemplate(id);
+        if (session.officialVersion === undefined || !isOfficialTemplateId(id)) return template;
+        if (template && localOfficialVersion(template) === session.officialVersion) return template;
+        return (await getOfficialTemplateAtVersion(id, session.officialVersion)) ?? template;
+    };
+
     const startSession = async (
         partialTemplate: GameTemplate,
         playerCount: number,
@@ -180,6 +189,8 @@ export const useSessionManager = ({
         const newSession: GameSession = {
             id: sessionId,
             templateId: migratedTemplate.id,
+            // Official boards may update later; resuming keeps the version this game started on.
+            officialVersion: isOfficialTemplateId(migratedTemplate.id) ? localOfficialVersion(migratedTemplate) : undefined,
             // [Identity Upgrade] Copy identity from template to session
             name: migratedTemplate.name,
             bggId: migratedTemplate.bggId,
@@ -224,7 +235,7 @@ export const useSessionManager = ({
 
     const activateSession = async (session: GameSession, isCurrent: () => boolean): Promise<boolean> => {
         try {
-            const loaded = await loadSessionActivation(session, getTemplate, isCurrent);
+            const loaded = await loadSessionActivation(session, (id) => getSessionTemplate(session, id), isCurrent);
             if (!loaded) return false;
             if (!isCurrent()) {
                 if (loaded.imageUrl) URL.revokeObjectURL(loaded.imageUrl);

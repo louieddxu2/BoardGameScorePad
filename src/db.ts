@@ -3,6 +3,7 @@ import Dexie, { Table } from 'dexie';
 import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord, MultiplayerDeviceRecord, MultiplayerSequenceRecord, MultiplayerOutboxRecord, MultiplayerPatchReceiptRecord, MultiplayerParticipantBindingRecord } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
+import type { CatalogSyncState, OfficialCatalogEntry, OfficialVersionRecord, ShareCatalogEntry } from './features/official-boards/types';
 
 export class ScorePadDatabase extends Dexie {
     templates!: Table<GameTemplate>;
@@ -30,6 +31,10 @@ export class ScorePadDatabase extends Dexie {
     analyticsLogs!: Table<AnalyticsLog>; // [v14] 統計處理記錄表
     weights!: Table<SystemWeightConfig>; // [v24] 系統權重設定表
     savedGameLifecycleContexts!: Table<SavedListItem>;
+    officialCatalog!: Table<OfficialCatalogEntry>; // [v34] 雲端內建目錄（本機副本）
+    officialVersions!: Table<OfficialVersionRecord>; // [v34] 已下載的雲端內建版本
+    shareCatalog!: Table<ShareCatalogEntry>; // [v34] 雲端分享目錄（本機副本）
+    catalogSync!: Table<CatalogSyncState>; // [v34] 各目錄的同步位置
 
     /** 
      * [Arch] 宣告式清理註冊表 
@@ -433,6 +438,14 @@ export class ScorePadDatabase extends Dexie {
                 meta: { relations: {}, confidence: {} }
             }));
             if (missing.length > 0) await table.bulkAdd(missing);
+        });
+
+        // Version 34: Local copies of the official and share catalogs, plus downloaded official versions.
+        (this as any).version(34).stores({
+            officialCatalog: 'id, bggId, lang',
+            officialVersions: '[id+version], id',
+            shareCatalog: 'id, bggId',
+            catalogSync: 'kind'
         });
     }
 }

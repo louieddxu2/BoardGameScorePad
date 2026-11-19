@@ -1,5 +1,5 @@
 
-import { useMemo } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { useTemplateQuery } from './useTemplateQuery';
@@ -10,6 +10,25 @@ import { GameOption } from '../../features/game-selector/types';
 import { BggGameSummary, extractBggGameSummary } from '../../utils/extractDataSummaries';
 import { GameTemplate, SavedListItem } from '../../types';
 import { getGameSearchNames, getRecentSearchUids, normalizeGameSearch } from '../../features/game-selector/utils/searchRanking';
+import { LanguageContext } from '../../i18n';
+import { computeOfficialLaunchStates, localOfficialVersion } from '../../features/official-boards/officialBoards';
+import type { OfficialCatalogEntry } from '../../features/official-boards/types';
+
+const EMPTY_CATALOG: OfficialCatalogEntry[] = [];
+
+const useIsOnline = () => {
+  const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
+  return online;
+};
 
 const EMPTY_TEMPLATES: GameTemplate[] = [];
 const EMPTY_SAVED_GAMES: SavedListItem[] = [];
@@ -47,11 +66,34 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   // 3. Aggregate Data (Merge & Deduplicate)
   // 將 BGG Summary 傳入，讓 Aggregator 進行名稱匹配與搜尋索引補完
   // [Update] Pass pinnedIds so Aggregator can determine isPinned status
-  const templatesForOptions = useMemo(
-    () => enabled ? [...allTemplates, ...allSystemTemplates] : EMPTY_TEMPLATES,
-    [enabled, allTemplates, allSystemTemplates]
+  // 3a. Official catalog (local copy) for the current language.
+  // Read the language without requiring a provider (zh-TW is the app default).
+  const isEnglish = (useContext(LanguageContext)?.language ?? 'zh-TW').startsWith('en');
+  const officialCatalog = useLiveQuery(
+    () => enabled ? db.officialCatalog.toArray() : EMPTY_CATALOG,
+    [enabled]
+  ) ?? EMPTY_CATALOG;
+  const languageCatalog = useMemo(
+    () => officialCatalog.filter(entry =>
+      typeof entry.version === 'number' && typeof entry.lang === 'string' && entry.lang.startsWith('en') === isEnglish),
+    [officialCatalog, isEnglish]
   );
-  const aggregatedOptions = useGameOptionAggregator(
+
+  // Official boards published only to the cloud have no local template yet. List
+  // them by name so they can be found and started (the board downloads on start).
+  const cloudOnlyTemplates = useMemo<GameTemplate[]>(() => {
+    if (!enabled || languageCatalog.length === 0) return EMPTY_TEMPLATES;
+    const present = new Set(allSystemTemplates.map(t => t.sourceTemplateId || t.id));
+    return languageCatalog
+      .filter(entry => !present.has(entry.id))
+      .map(entry => ({ id: entry.id, name: entry.name, bggId: entry.bggId, columns: [], createdAt: 0, updatedAt: entry.updatedAt }));
+  }, [enabled, languageCatalog, allSystemTemplates]);
+
+  const templatesForOptions = useMemo(
+    () => enabled ? [...allTemplates, ...allSystemTemplates, ...cloudOnlyTemplates] : EMPTY_TEMPLATES,
+    [enabled, allTemplates, allSystemTemplates, cloudOnlyTemplates]
+  );
+  const mergedOptions = useGameOptionAggregator(
     templatesForOptions,
     enabled ? allSavedGames : EMPTY_SAVED_GAMES,
     enabled ? allBggGames ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
@@ -59,6 +101,24 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     !!(templatesLoaded && savedGamesLoaded && allBggGames !== undefined),
     hiddenTemplateIdentities
   );
+
+  // 3b. Mark options whose official board must be downloaded or has a newer version.
+  // A user's own edited copy (shadow) has its own ID, so it never gets a status.
+  const isOnline = useIsOnline();
+  const aggregatedOptions = useMemo(() => {
+    if (languageCatalog.length === 0) return mergedOptions;
+    const localVersions = new Map<string, number>();
+    allSystemTemplates.forEach(t => {
+      if (!t.sourceTemplateId) localVersions.set(t.id, localOfficialVersion(t));
+    });
+    const states = computeOfficialLaunchStates(languageCatalog, localVersions);
+    if (states.size === 0) return mergedOptions;
+    return mergedOptions.map(option => {
+      const state = option.templateId ? states.get(option.templateId) : undefined;
+      if (!state) return option;
+      return { ...option, officialBoardStatus: state === 'needs_download' && !isOnline ? 'needs_connection' as const : state };
+    });
+  }, [mergedOptions, languageCatalog, allSystemTemplates, isOnline]);
 
   const recentSearchUids = useMemo(() => getRecentSearchUids(aggregatedOptions), [aggregatedOptions]);
 

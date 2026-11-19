@@ -1,7 +1,7 @@
 import { GameTemplate } from '../types';
 import { getTurnstileToken } from './turnstile';
 
-const CLOUD_SHARE_BASE_URL = import.meta.env.VITE_TEMPLATE_SHARE_API_BASE_URL || 'https://scoreboard-api.louieddxu2.workers.dev';
+export const CLOUD_SHARE_BASE_URL = import.meta.env.VITE_TEMPLATE_SHARE_API_BASE_URL || 'https://scoreboard-api.louieddxu2.workers.dev';
 
 type UploadResponse = { id: string; reused?: boolean };
 type FetchResponse = { id: string; name: string; payload: unknown; downloadCount?: number; createdAt: number };

@@ -8,6 +8,8 @@ import { generateId } from '../../../utils/idGenerator';
 import { DATA_LIMITS } from '../../../dataLimits';
 import { googleAuth } from '../../../services/cloud/googleAuth';
 import { useConfirm } from '../../../hooks/useConfirm';
+import OfficialBoardsPanel from '../../../features/official-boards/components/OfficialBoardsPanel';
+import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 
 interface CloudLibraryModalProps {
   isOpen: boolean;
@@ -35,6 +37,9 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
   const { t } = useCloudLibraryTranslation();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { t: tOfficial } = useOfficialBoardsTranslation();
+  // Shared (user uploads) and cloud built-in (official) scoreboards are separate collections.
+  const [tab, setTab] = useState<'share' | 'official'>('share');
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,11 +218,24 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({
           <p className="text-xs text-txt-muted mt-1.5 leading-relaxed">
             {t('lib_subtitle')}
           </p>
+          <div className="flex gap-2 mt-3">
+            {(['share', 'official'] as const).map((key) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${tab === key ? 'bg-brand-primary text-txt-on-color' : 'btn-modal-secondary'}`}
+              >
+                {key === 'share' ? tOfficial('official_tab_share') : tOfficial('official_tab_official')}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Body */}
         <div className="modal-body flex-1 p-4 overflow-y-auto no-scrollbar min-h-0">
-          {loading ? (
+          {tab === 'official' ? (
+            <OfficialBoardsPanel />
+          ) : loading ? (
             <div className="min-h-full flex flex-col items-center justify-center py-16 gap-3">
               <Loader2 size={36} className="text-brand-primary animate-spin" />
               <span className="text-sm font-semibold text-txt-secondary">{t('lib_loading')}</span>
