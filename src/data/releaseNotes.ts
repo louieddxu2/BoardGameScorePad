@@ -22,6 +22,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    items: [
+      { kind: 'new', zh: '內建計分板可從雲端取得新版。開局面板會標示需下載或有新版的計分板，按下開始才下載，下載後可離線使用；雲端新增的計分板也能搜尋，首次開局需連網。進行中的對局沿用開局時的版本。',
+        en: 'Built-in scoreboards can get new versions from the cloud. The start panel marks boards that need a download or have an update, the download happens when you press start, and downloaded boards work offline. Boards added in the cloud can also be found, and need a connection the first time. Games in progress keep the version they started with.' },
+      { kind: 'improved', zh: '所有內建計分板都已對應 BGG 編號。',
+        en: 'All built-in scoreboards are now linked to their BGG IDs.' },
+    ],
+  },
+  {
     date: '2026-11-18',
     items: [
       { kind: 'new', zh: '項目可透過進階設定「照片分享」添加到分享照片成績的圖裡。',
