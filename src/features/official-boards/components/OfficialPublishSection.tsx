@@ -6,6 +6,7 @@ import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 import { useAppTranslation } from '../../../i18n/app';
 import { OfficialApiError, fetchPublishTarget, publishOfficialTemplate } from '../officialApi';
 import { syncCatalog } from '../catalogSync';
+import { toOfficialGameInfo } from '../officialGameInfo';
 import type { OfficialPublishTarget } from '../types';
 
 interface OfficialPublishSectionProps {
@@ -113,6 +114,8 @@ const OfficialPublishSection: React.FC<OfficialPublishSectionProps> = ({ templat
     try {
       const payload: Record<string, unknown> = { ...draft };
       for (const key of LOCAL_ONLY_KEYS) delete payload[key];
+      // Aliases and other BGG data on this device go along, so nothing has to be typed in.
+      const localGame = await db.bggGames.get(bggId);
       const result = await publishOfficialTemplate({
         bggId,
         lang,
@@ -120,6 +123,7 @@ const OfficialPublishSection: React.FC<OfficialPublishSectionProps> = ({ templat
         enName: enName.trim() || undefined,
         payload,
         bundled,
+        gameInfo: localGame ? toOfficialGameInfo(localGame) : undefined,
         builtinId: builtin?.id,
         expectedVersion: target.exists ? target.version ?? 0 : 0,
       });

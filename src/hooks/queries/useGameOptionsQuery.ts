@@ -12,6 +12,7 @@ import { GameTemplate, SavedListItem } from '../../types';
 import { getGameSearchNames, getRecentSearchUids, normalizeGameSearch } from '../../features/game-selector/utils/searchRanking';
 import { LanguageContext } from '../../i18n';
 import { computeOfficialLaunchStates, localOfficialVersion } from '../../features/official-boards/officialBoards';
+import { mergeOfficialGameInfo } from '../../features/official-boards/officialGameInfo';
 import type { OfficialCatalogEntry } from '../../features/official-boards/types';
 
 const EMPTY_CATALOG: OfficialCatalogEntry[] = [];
@@ -79,6 +80,12 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     [officialCatalog, isEnglish]
   );
 
+  // Aliases and other game info from the official catalog fill in the local BGG dictionary.
+  const bggGamesForOptions = useMemo(
+    () => (allBggGames ? mergeOfficialGameInfo(allBggGames, officialCatalog) : allBggGames),
+    [allBggGames, officialCatalog]
+  );
+
   // Official boards published only to the cloud have no local template yet. List
   // them by name so they can be found and started (the board downloads on start).
   const cloudOnlyTemplates = useMemo<GameTemplate[]>(() => {
@@ -97,7 +104,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   const mergedOptions = useGameOptionAggregator(
     templatesForOptions,
     enabled ? allSavedGames : EMPTY_SAVED_GAMES,
-    enabled ? allBggGames ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
+    enabled ? bggGamesForOptions ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
     pinnedIds,
     !!(templatesLoaded && savedGamesLoaded && allBggGames !== undefined),
     hiddenTemplateIdentities
