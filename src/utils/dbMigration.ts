@@ -6,7 +6,7 @@ import { generateId } from './idGenerator';
 import { reapplyDownloadedOfficialVersions } from '../features/official-boards/officialBoards';
 
 // Bump when built-in template content changes so existing installs refresh it.
-const CURRENT_BUILTIN_VERSION = 22;
+const CURRENT_BUILTIN_VERSION = 23;
 
 export const migrateFromLocalStorage = async () => {
     const MIGRATION_KEY = 'sm_migration_v1_done';
