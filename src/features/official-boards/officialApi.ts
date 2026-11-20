@@ -10,7 +10,6 @@ import type {
   CatalogKind,
   CatalogSnapshotPayload,
   OfficialCatalogEntry,
-  OfficialGameInfo,
   OfficialPackPayload,
   OfficialPublishResult,
   OfficialPublishTarget,
@@ -93,8 +92,6 @@ export const publishOfficialTemplate = (body: {
   enName?: string;
   payload: unknown;
   bundled: boolean;
-  /** The admin's local BGG data for this game; merged into the cloud's game info. */
-  gameInfo?: OfficialGameInfo;
   /** Bundled built-in this publish takes over; the Worker keeps its ID. */
   builtinId?: string;
   expectedVersion: number;
@@ -111,13 +108,6 @@ export interface BuiltinRegistration {
 /** Store bundled built-ins as version 0; the Worker accepts at most 8 per request. */
 export const registerBundledBuiltins = (items: BuiltinRegistration[]) =>
   adminRequest<{ registered: number; skipped: number; rejected: string[] }>('/api/admin/official/register-builtins', {
-    method: 'POST',
-    body: JSON.stringify({ items }),
-  });
-
-/** Merge local BGG data into the cloud's game info; the Worker accepts at most 8 per request. */
-export const uploadOfficialGameInfo = (items: { bggId: string; info: OfficialGameInfo }[]) =>
-  adminRequest<{ updated: number; unchanged: number; rejected: string[] }>('/api/admin/official/game-info', {
     method: 'POST',
     body: JSON.stringify({ items }),
   });

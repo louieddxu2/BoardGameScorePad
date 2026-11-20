@@ -63,13 +63,13 @@ describe('useGameOptionsQuery', () => {
   it('finds official boards by aliases from the official catalog without a local BGG dictionary', () => {
     fixtures.officialCatalog = [{
       id: 'Built-in-Concordia', bggId: '124361', lang: 'zh-TW', name: '康考迪婭', version: 0, bundled: true, updatedAt: 1,
-      game: { name: 'Concordia', altNames: ['康考迪婭', '和諧羅馬'], minPlayers: 2, maxPlayers: 5 },
+      game: { name: 'Concordia', altNames: ['康考迪婭', '和諧羅馬'] },
     }];
     fixtures.systemTemplates = [{ id: 'Built-in-Concordia', name: '康考迪婭', bggId: '124361', columns: [], createdAt: 1 }];
     const { result, rerender } = renderHook(({ query }) => useGameOptionsQuery(query, []), { initialProps: { query: '和諧羅馬' } });
     expect(result.current.gameOptions.map(o => o.templateId)).toEqual(['Built-in-Concordia']);
     rerender({ query: 'Concordia' });
-    expect(result.current.gameOptions[0]).toMatchObject({ templateId: 'Built-in-Concordia', minPlayers: 2, maxPlayers: 5 });
+    expect(result.current.gameOptions[0]).toMatchObject({ templateId: 'Built-in-Concordia', bggId: '124361' });
   });
 
   it('keeps aggregated options stable when its source data has not changed', () => {

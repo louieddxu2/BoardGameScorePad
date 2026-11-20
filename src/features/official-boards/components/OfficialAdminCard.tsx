@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
-import { BookOpen, Hammer, ListPlus, Loader2 } from 'lucide-react';
+import { Hammer, ListPlus, Loader2 } from 'lucide-react';
 import { db } from '../../../db';
 import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 import {
   OfficialApiError,
   rebuildCatalogSnapshot,
   registerBundledBuiltins,
-  uploadOfficialGameInfo,
   type BuiltinRegistration,
 } from '../officialApi';
-import { toOfficialGameInfo } from '../officialGameInfo';
 import { syncCatalog } from '../catalogSync';
 import type { GameTemplate } from '../../../types';
 
 // The Worker registers at most 8 per request (each also writes its game info).
 const REGISTER_BATCH_SIZE = 8;
-const GAME_INFO_BATCH_SIZE = 8;
 
 const errorCode = (error: unknown) => (error instanceof OfficialApiError ? error.code : String((error as Error)?.message || error));
 
@@ -43,13 +40,11 @@ const loadUnregisteredBuiltins = async (): Promise<BuiltinRegistration[]> => {
  * Catalog maintenance for the owner account.
  * - Register stores bundled built-ins as version 0, sending only those the
  *   local catalog lacks, so pressing it again sends nothing.
- * - Game info sends this device's BGG data (aliases, players, ...) for every
- *   official game; the Worker merges it and skips games that would not change.
  * - Rebuild publishes a new snapshot; an unchanged catalog is not rebuilt.
  */
 const OfficialAdminCard: React.FC = () => {
   const { t } = useOfficialBoardsTranslation();
-  const [busy, setBusy] = useState<'register' | 'info' | 'rebuild' | null>(null);
+  const [busy, setBusy] = useState<'register' | 'rebuild' | null>(null);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
 
   const run = async (kind: NonNullable<typeof busy>, task: () => Promise<string>) => {
@@ -89,23 +84,6 @@ const OfficialAdminCard: React.FC = () => {
       return t('official_admin_register_done', { registered, skipped });
     });
 
-  const uploadGameInfo = () =>
-    run('info', async () => {
-      const bggIds = [...new Set((await db.officialCatalog.toArray()).map((e) => e.bggId).filter(Boolean))];
-      const local = (await db.bggGames.bulkGet(bggIds)).filter((g): g is NonNullable<typeof g> => !!g);
-      if (local.length === 0) return t('official_admin_info_none');
-      let updated = 0;
-      let unchanged = 0;
-      for (let i = 0; i < local.length; i += GAME_INFO_BATCH_SIZE) {
-        const batch = local.slice(i, i + GAME_INFO_BATCH_SIZE).map((g) => ({ bggId: g.id, info: toOfficialGameInfo(g) }));
-        const result = await uploadOfficialGameInfo(batch);
-        updated += result.updated;
-        unchanged += result.unchanged + result.rejected.length;
-      }
-      if (updated > 0) await syncCatalog('official', 'changes');
-      return t('official_admin_info_done', { updated, unchanged, missing: bggIds.length - local.length });
-    });
-
   const rebuild = () =>
     run('rebuild', async () => {
       const result = await rebuildOfficial();
@@ -122,9 +100,6 @@ const OfficialAdminCard: React.FC = () => {
       <div className="grid grid-cols-2 gap-2">
         <button onClick={register} disabled={!!busy} className={buttonClass}>
           {icon('register', ListPlus)} {t('official_admin_register')}
-        </button>
-        <button onClick={uploadGameInfo} disabled={!!busy} className={buttonClass}>
-          {icon('info', BookOpen)} {t('official_admin_info')}
         </button>
         <button onClick={rebuild} disabled={!!busy} className={buttonClass}>
           {icon('rebuild', Hammer)} {t('official_admin_rebuild')}

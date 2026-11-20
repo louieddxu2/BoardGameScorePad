@@ -9,27 +9,14 @@ export interface OfficialCatalogEntry {
   version: number;
   bundled: boolean;
   updatedAt: number;
-  /** Game information shared by every language's board of this BGG ID, when the cloud has it. */
+  /** The game's names from the rules site, shared by every language's board of this BGG ID, when known. */
   game?: OfficialGameInfo | null;
 }
 
-/** BGG-style game information kept by the cloud for official boards (no rank or rating). */
+/** Names of an official game kept by the cloud: the rules site's English name and aliases. */
 export interface OfficialGameInfo {
   name?: string;
   altNames?: string[];
-  year?: number;
-  designers?: string;
-  minPlayers?: number;
-  maxPlayers?: number;
-  playingTime?: number;
-  minAge?: number;
-  complexity?: number;
-  bestPlayers?: number[];
-  mechanisms?: string[];
-  categories?: string[];
-  domains?: string[];
-  families?: string[];
-  cooperative?: boolean;
 }
 
 /** First-run download: the latest content of every bundled official scoreboard of one language. */
