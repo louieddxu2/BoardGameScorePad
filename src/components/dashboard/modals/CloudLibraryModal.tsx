@@ -51,13 +51,15 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, 
             </button>
           </div>
           <p className="text-xs text-txt-muted mt-1.5 leading-relaxed">{t('lib_subtitle')}</p>
-          <div className="flex gap-2 mt-3">
+          {/* Equal-width segmented tabs; both use the same box so switching never resizes them. */}
+          <div className="flex gap-1 mt-3 p-1 rounded-xl modal-bg-recessed">
             {(['share', 'official'] as const).map((key) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
                 disabled={isBusy}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-60 ${tab === key ? 'bg-brand-primary text-txt-on-color' : 'btn-modal-secondary'}`}
+                aria-pressed={tab === key}
+                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-60 ${tab === key ? 'bg-brand-primary text-txt-on-color' : 'text-txt-secondary hover:text-txt-primary'}`}
               >
                 {key === 'share' ? tOfficial('official_tab_share') : tOfficial('official_tab_official')}
               </button>
