@@ -108,7 +108,7 @@ export interface BuiltinRegistration {
   payload: unknown;
 }
 
-/** Store bundled built-ins as version 0; the Worker accepts at most 10 per request. */
+/** Store bundled built-ins as version 0; the Worker accepts at most 8 per request. */
 export const registerBundledBuiltins = (items: BuiltinRegistration[]) =>
   adminRequest<{ registered: number; skipped: number; rejected: string[] }>('/api/admin/official/register-builtins', {
     method: 'POST',

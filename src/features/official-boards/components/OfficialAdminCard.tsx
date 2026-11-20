@@ -13,7 +13,8 @@ import { toOfficialGameInfo } from '../officialGameInfo';
 import { syncCatalog } from '../catalogSync';
 import type { GameTemplate } from '../../../types';
 
-const REGISTER_BATCH_SIZE = 10;
+// The Worker registers at most 8 per request (each also writes its game info).
+const REGISTER_BATCH_SIZE = 8;
 const GAME_INFO_BATCH_SIZE = 8;
 
 const errorCode = (error: unknown) => (error instanceof OfficialApiError ? error.code : String((error as Error)?.message || error));
