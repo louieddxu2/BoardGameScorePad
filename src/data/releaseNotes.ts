@@ -23,8 +23,8 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '內建計分板可從雲端取得新版。開局面板會標示需下載或有新版的計分板，按下開始才下載，下載後可離線使用；雲端新增的計分板也能搜尋，首次開局需連網。進行中的對局沿用開局時的版本。',
-        en: 'Built-in scoreboards can get new versions from the cloud. The start panel marks boards that need a download or have an update, the download happens when you press start, and downloaded boards work offline. Boards added in the cloud can also be found, and need a connection the first time. Games in progress keep the version they started with.' },
+      { kind: 'new', zh: '內建計分板可從雲端取得新版：首次開啟時會下載最新內容，之後開局面板會標示有新版的計分板，按下開始才下載；雲端無法連線或回應太慢時沿用本機版本，下載後可離線使用。雲端新增的計分板也能搜尋，首次開局需連網。進行中的對局沿用開局時的版本。',
+        en: 'Built-in scoreboards can get new versions from the cloud: the latest content is downloaded the first time the app opens, and after that the start panel marks boards with an update, which download when you press start. When the cloud is unreachable or too slow, the local version is used, and downloaded boards work offline. Boards added in the cloud can also be found, and need a connection the first time. Games in progress keep the version they started with.' },
       { kind: 'improved', zh: '所有內建計分板都已對應 BGG 編號。',
         en: 'All built-in scoreboards are now linked to their BGG IDs.' },
     ],

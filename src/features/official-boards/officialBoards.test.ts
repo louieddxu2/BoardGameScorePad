@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
 import type { GameTemplate } from '../../types';
 import { syncCatalog } from './catalogSync';
+import { installOfficialPack } from './officialPack';
 import {
   computeOfficialLaunchStates,
   ensureOfficialBoard,
@@ -139,5 +140,75 @@ describe('official boards (local)', () => {
       '/api/official/catalog/changes?after=10',
       '/api/official/catalog/changes?after=12',
     ]);
+  });
+
+  it('gives up on a slow download at start and uses the local copy', async () => {
+    await db.builtins.put(board('Built-in-Agricola', ['田地']));
+    await db.officialCatalog.put(entry('Built-in-Agricola', 2));
+    // A Worker that never answers: only the abort signal ends the request.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      (_input, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        })
+    );
+    const started = Date.now();
+    const result = await ensureOfficialBoard('Built-in-Agricola', 30);
+    expect(result.status).toBe('fallback');
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+});
+
+describe('official pack (first open)', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((table) => table.clear()));
+    localStorage.clear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const packItem = (id: string, version: number, columns: string[]) => ({
+    id,
+    bggId: '31260',
+    name: '農家樂',
+    version,
+    payload: { name: '農家樂', columns: columns.map((name, i) => ({ id: `c${i}`, name })) },
+  });
+
+  it('installs newer and missing boards once and keeps the bundled ones', async () => {
+    await db.builtins.put(board('Built-in-Agricola', ['田地']));
+    await db.builtins.put(board('Built-in-Same', ['A']));
+    const fetchMock = mockWorker(() => ({
+      lang: 'zh-TW',
+      throughVersion: 70,
+      builtAt: 1,
+      templates: [
+        packItem('Built-in-Agricola', 2, ['田地', '牧場']),
+        packItem('Built-in-Same', 0, ['changed in cloud']),
+        packItem('Built-in-CloudOnly', 0, ['X']),
+      ],
+    }));
+
+    expect(await installOfficialPack('zh-TW')).toBe(2);
+    expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).pathname + new URL(String(url)).search)).toEqual([
+      '/api/official/pack?lang=zh-TW',
+    ]);
+    expect((await db.builtins.get('Built-in-Agricola'))?.officialVersion).toBe(2);
+    expect((await db.builtins.get('Built-in-Same'))?.columns.map((c) => c.name)).toEqual(['A']);
+    expect((await db.builtins.get('Built-in-CloudOnly'))?.officialVersion).toBe(0);
+
+    // A board only the cloud has survives a rebuild of the bundled built-ins and can be resumed at v0.
+    await db.builtins.delete('Built-in-CloudOnly');
+    await reapplyDownloadedOfficialVersions();
+    expect((await getOfficialTemplateAtVersion('Built-in-CloudOnly', 0))?.columns.map((c) => c.name)).toEqual(['X']);
+
+    // Installed once per language: a later open does not download again.
+    expect(await installOfficialPack('zh-TW')).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries on a later open when the download fails', async () => {
+    mockWorker(() => new Response(JSON.stringify({ error: 'pack_not_found' }), { status: 404 }));
+    await expect(installOfficialPack('en')).rejects.toMatchObject({ code: 'pack_not_found' });
+    expect(localStorage.getItem('sm_official_pack_installed_en')).toBeNull();
   });
 });

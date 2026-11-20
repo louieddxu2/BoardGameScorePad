@@ -11,6 +11,14 @@ export interface OfficialCatalogEntry {
   updatedAt: number;
 }
 
+/** First-run download: the latest content of every bundled official scoreboard of one language. */
+export interface OfficialPackPayload {
+  lang: string;
+  throughVersion: number;
+  builtAt: number;
+  templates: { id: string; bggId: string; name: string; version: number; payload: Record<string, unknown> }[];
+}
+
 /** One user-shared cloud scoreboard as listed in the share catalog. */
 export interface ShareCatalogEntry {
   id: string;

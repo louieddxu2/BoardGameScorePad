@@ -9,6 +9,7 @@
  */
 import { db } from '../../db';
 import type { GameTemplate } from '../../types';
+import { migrateTemplate } from '../../utils/dataMigration';
 import { fetchOfficialTemplate } from './officialApi';
 import type { OfficialCatalogEntry } from './types';
 
@@ -18,24 +19,40 @@ export const isOfficialTemplateId = (id: string | undefined): id is string => !!
 export const localOfficialVersion = (template: Pick<GameTemplate, 'officialVersion'> | undefined | null): number =>
   template ? template.officialVersion ?? 0 : -1;
 
+/**
+ * How long starting or resuming a game waits for a download before using the
+ * local copy. A slow or unresponsive Worker must not hold the player up.
+ */
+export const START_DOWNLOAD_TIMEOUT_MS = 4000;
+
+/** Turn downloaded official content into the local template for that ID and version. */
+export const toOfficialTemplate = (
+  source: { payload: unknown; name: string; bggId: string },
+  id: string,
+  version: number,
+  existing: GameTemplate | undefined,
+  now: number
+): GameTemplate =>
+  migrateTemplate({
+    ...(source.payload as GameTemplate),
+    id,
+    name: source.name,
+    bggId: source.bggId,
+    officialVersion: version,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  });
+
 /** Download one published version and store it. Optionally make it the local copy in `builtins`. */
 export const downloadOfficialVersion = async (
   id: string,
   version: number,
-  options: { install: boolean }
+  options: { install: boolean; timeoutMs?: number }
 ): Promise<GameTemplate> => {
-  const response = await fetchOfficialTemplate(id, version);
+  const response = await fetchOfficialTemplate(id, version, options.timeoutMs);
   const now = Date.now();
   const existing = await db.builtins.get(id);
-  const template: GameTemplate = {
-    ...(response.payload as GameTemplate),
-    id,
-    name: response.name,
-    bggId: response.bggId,
-    officialVersion: version,
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-  };
+  const template = toOfficialTemplate(response, id, version, existing, now);
   await db.transaction('rw', db.officialVersions, db.builtins, async () => {
     await db.officialVersions.put({ id, version, template, downloadedAt: now });
     if (!options.install) return;
@@ -55,14 +72,14 @@ export type EnsureOfficialResult =
  * Make sure the catalog's version of an official board is local before starting.
  * Falls back to an older local copy when the download fails.
  */
-export const ensureOfficialBoard = async (id: string): Promise<EnsureOfficialResult> => {
+export const ensureOfficialBoard = async (id: string, timeoutMs = START_DOWNLOAD_TIMEOUT_MS): Promise<EnsureOfficialResult> => {
   const [entry, local] = await Promise.all([db.officialCatalog.get(id), db.builtins.get(id)]);
   const localVersion = localOfficialVersion(local);
   if (!entry || entry.version <= localVersion) {
     return local ? { status: 'ready', template: local, downloaded: false } : { status: 'unavailable', error: new Error('not_in_catalog') };
   }
   try {
-    const template = await downloadOfficialVersion(id, entry.version, { install: true });
+    const template = await downloadOfficialVersion(id, entry.version, { install: true, timeoutMs });
     return { status: 'ready', template, downloaded: true };
   } catch (error) {
     return local ? { status: 'fallback', template: local, error } : { status: 'unavailable', error };
@@ -84,11 +101,12 @@ const loadBundledTemplate = async (id: string): Promise<GameTemplate | null> => 
 export const getOfficialTemplateAtVersion = async (id: string, version: number): Promise<GameTemplate | null> => {
   const current = await db.builtins.get(id);
   if (current && localOfficialVersion(current) === version) return current;
-  if (version === 0) return loadBundledTemplate(id);
+  // Stored first: a version 0 installed from the cloud may not be in this app's bundle.
   const stored = await db.officialVersions.get([id, version]);
   if (stored) return stored.template;
+  if (version === 0) return loadBundledTemplate(id);
   try {
-    return await downloadOfficialVersion(id, version, { install: false });
+    return await downloadOfficialVersion(id, version, { install: false, timeoutMs: START_DOWNLOAD_TIMEOUT_MS });
   } catch {
     return null;
   }

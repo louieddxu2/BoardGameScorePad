@@ -10,6 +10,7 @@ import type {
   CatalogKind,
   CatalogSnapshotPayload,
   OfficialCatalogEntry,
+  OfficialPackPayload,
   OfficialPublishResult,
   OfficialPublishTarget,
   OfficialVersionSummary,
@@ -24,9 +25,9 @@ export class OfficialApiError extends Error {
   }
 }
 
-const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+const request = async <T>(path: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> => {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${CLOUD_SHARE_BASE_URL}${path}`, { ...init, signal: controller.signal });
     const text = await response.text();
@@ -49,10 +50,16 @@ export const fetchCatalogSnapshot = <T extends OfficialCatalogEntry | ShareCatal
 export const fetchCatalogChanges = <T extends OfficialCatalogEntry | ShareCatalogEntry>(kind: CatalogKind, after: number) =>
   request<CatalogChangesPayload<T>>(`${catalogPath(kind)}/changes?after=${after}`);
 
-export const fetchOfficialTemplate = (id: string, version: number) =>
+export const fetchOfficialTemplate = (id: string, version: number, timeoutMs?: number) =>
   request<OfficialCatalogEntry & { payload: GameTemplate }>(
-    `/api/official/template/${encodeURIComponent(id)}?version=${version}`
+    `/api/official/template/${encodeURIComponent(id)}?version=${version}`,
+    {},
+    timeoutMs
   );
+
+/** Every bundled official scoreboard of one language, served from a single D1 row. */
+export const fetchOfficialPack = (lang: string) =>
+  request<OfficialPackPayload>(`/api/official/pack?lang=${encodeURIComponent(lang)}`);
 
 // ---------------------------------------------------------------------------
 // Admin
