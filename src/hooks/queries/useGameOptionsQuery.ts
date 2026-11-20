@@ -82,12 +82,13 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   // Official boards published only to the cloud have no local template yet. List
   // them by name so they can be found and started (the board downloads on start).
   const cloudOnlyTemplates = useMemo<GameTemplate[]>(() => {
-    if (!enabled || languageCatalog.length === 0) return EMPTY_TEMPLATES;
+    // Until built-ins have loaded, every catalog entry would look cloud-only.
+    if (!enabled || !templatesLoaded || languageCatalog.length === 0) return EMPTY_TEMPLATES;
     const present = new Set(allSystemTemplates.map(t => t.sourceTemplateId || t.id));
     return languageCatalog
       .filter(entry => !present.has(entry.id))
       .map(entry => ({ id: entry.id, name: entry.name, bggId: entry.bggId, columns: [], createdAt: 0, updatedAt: entry.updatedAt }));
-  }, [enabled, languageCatalog, allSystemTemplates]);
+  }, [enabled, templatesLoaded, languageCatalog, allSystemTemplates]);
 
   const templatesForOptions = useMemo(
     () => enabled ? [...allTemplates, ...allSystemTemplates, ...cloudOnlyTemplates] : EMPTY_TEMPLATES,
@@ -106,7 +107,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   // A user's own edited copy (shadow) has its own ID, so it never gets a status.
   const isOnline = useIsOnline();
   const aggregatedOptions = useMemo(() => {
-    if (languageCatalog.length === 0) return mergedOptions;
+    if (!templatesLoaded || languageCatalog.length === 0) return mergedOptions;
     const localVersions = new Map<string, number>();
     allSystemTemplates.forEach(t => {
       if (!t.sourceTemplateId) localVersions.set(t.id, localOfficialVersion(t));
@@ -118,7 +119,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
       if (!state) return option;
       return { ...option, officialBoardStatus: state === 'needs_download' && !isOnline ? 'needs_connection' as const : state };
     });
-  }, [mergedOptions, languageCatalog, allSystemTemplates, isOnline]);
+  }, [mergedOptions, templatesLoaded, languageCatalog, allSystemTemplates, isOnline]);
 
   const recentSearchUids = useMemo(() => getRecentSearchUids(aggregatedOptions), [aggregatedOptions]);
 

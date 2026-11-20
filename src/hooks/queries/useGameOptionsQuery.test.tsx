@@ -13,6 +13,7 @@ const fixtures = vi.hoisted(() => ({
   savedGames: [] as SavedListItem[],
   savedGamesLoaded: true,
   bggGames: [] as BggGameSummary[] | undefined,
+  officialCatalog: [] as unknown[],
 }));
 
 vi.mock('./useTemplateQuery', () => ({
@@ -26,7 +27,10 @@ vi.mock('./useTemplateQuery', () => ({
 vi.mock('./useSavedGameQuery', () => ({
   useSavedGameQuery: () => ({ savedGames: fixtures.savedGames, savedGamesLoaded: fixtures.savedGamesLoaded }),
 }));
-vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => fixtures.bggGames }));
+vi.mock('dexie-react-hooks', () => ({
+  useLiveQuery: (query: () => unknown) =>
+    String(query).includes('officialCatalog') ? fixtures.officialCatalog : fixtures.bggGames,
+}));
 
 describe('useGameOptionsQuery', () => {
   beforeEach(() => {
@@ -37,6 +41,23 @@ describe('useGameOptionsQuery', () => {
     fixtures.savedGames = [];
     fixtures.savedGamesLoaded = true;
     fixtures.bggGames = [];
+    fixtures.officialCatalog = [];
+  });
+
+  it('lists official boards as cloud-only only after built-ins have loaded', () => {
+    const entry = (id: string, name: string) => ({ id, bggId: '1', lang: 'zh-TW', name, version: 0, bundled: true, updatedAt: 1 });
+    fixtures.officialCatalog = [entry('Built-in-Local', 'Local Board'), entry('Built-in-Cloud', 'Cloud Board')];
+    fixtures.templatesLoaded = false;
+    const { result, rerender } = renderHook(() => useGameOptionsQuery('', []));
+    expect(result.current.allOptions.filter(o => o.templateId?.startsWith('Built-in-'))).toHaveLength(0);
+
+    fixtures.templatesLoaded = true;
+    fixtures.systemTemplates = [{ id: 'Built-in-Local', name: 'Local Board', bggId: '2', columns: [], createdAt: 1 }];
+    rerender();
+    const local = result.current.allOptions.find(o => o.templateId === 'Built-in-Local');
+    const cloud = result.current.allOptions.find(o => o.templateId === 'Built-in-Cloud');
+    expect(local?.officialBoardStatus).toBeUndefined();
+    expect(cloud?.officialBoardStatus).toBe('needs_download');
   });
 
   it('keeps aggregated options stable when its source data has not changed', () => {
