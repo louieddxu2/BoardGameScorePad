@@ -1,4 +1,5 @@
 import Peer from 'peerjs';
+import type { GameTemplate } from '../../types';
 import { getOrCreateMultiplayerDeviceId, multiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { createLocalScoreStateSyncAdapter, multiplayerLocalStore } from './multiplayerLocalStore';
 import { multiplayerParticipantBindingStore, participantBindingKey } from './multiplayerParticipantBinding';
@@ -14,6 +15,7 @@ type RestoredRoom = { roomId: string; role: 'host' | 'player'; playerIds?: strin
 /** Restores a persisted room while preserving the participant tab claim across awaits. */
 export const restoreMultiplayerRoomForSession = async (options: {
   sessionId: string;
+  resumedOfficialTemplate?: GameTemplate;
   claimParticipantTab: (roomId: string) => MultiplayerTabClaim;
   ownsParticipantClaim: (claim: MultiplayerTabClaim) => boolean;
   isCurrentParticipantClaim: (claim: MultiplayerTabClaim) => boolean;
@@ -63,6 +65,7 @@ export const restoreMultiplayerRoomForSession = async (options: {
       const callbacks = multiplayerSessionManager.createRuntimeCallbacks(room.roomId);
       const runtime = await restoreMultiplayerHostRoomRuntime({
         roomId: room.roomId,
+        resumedOfficialTemplate: options.resumedOfficialTemplate,
         store: multiplayerLocalStore,
         deliveryStore: multiplayerDeliveryStore,
         transport,
@@ -95,6 +98,7 @@ export const restoreMultiplayerRoomForSession = async (options: {
     const callbacks = multiplayerSessionManager.createRuntimeCallbacks(room.roomId);
     const runtime = await restoreMultiplayerPlayerRoomRuntime({
       roomId: room.roomId,
+      resumedOfficialTemplate: options.resumedOfficialTemplate,
       deviceId,
       store: multiplayerLocalStore,
       bindingStore: multiplayerParticipantBindingStore,

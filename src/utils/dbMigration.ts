@@ -2,7 +2,7 @@
 import { db } from '../db';
 import { migrateTemplate } from './dataMigration';
 import { generateId } from './idGenerator';
-import { archiveOfficialVersion, localOfficialVersion, reapplyDownloadedOfficialVersions } from '../features/official-boards/officialBoards';
+import { archiveOfficialVersion, localOfficialVersion, pruneOfficialVersions, reapplyDownloadedOfficialVersions } from '../features/official-boards/officialBoards';
 
 // Bump when built-in template content changes so existing installs refresh it.
 const CURRENT_BUILTIN_VERSION = 23;
@@ -27,7 +27,7 @@ export const migrateFromLocalStorage = async () => {
 
             const defaults = [...DEFAULT_TEMPLATES, ...DEFAULT_TEMPLATES_EN].map(migrateTemplate);
             const versions = new Map(defaults.map(template => [template.id, localOfficialVersion(template)]));
-            const newArrivals = await db.transaction('rw', db.builtins, db.officialVersions, async () => {
+            const newArrivals = await db.transaction('rw', db.builtins, db.officialVersions, db.sessions, async () => {
                 const existingBuiltins = await db.builtins.toArray();
                 for (const template of existingBuiltins) {
                     if (versions.get(template.id) !== localOfficialVersion(template)) await archiveOfficialVersion(template);
@@ -35,6 +35,7 @@ export const migrateFromLocalStorage = async () => {
                 await db.builtins.clear();
                 await db.builtins.bulkPut(defaults);
                 await reapplyDownloadedOfficialVersions();
+                await pruneOfficialVersions();
                 if (!existingBuiltins.length) return [];
                 const existingIds = new Set(existingBuiltins.map(template => template.id));
                 return defaults.filter(template => !existingIds.has(template.id)).map(template => template.id);

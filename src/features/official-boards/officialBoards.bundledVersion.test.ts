@@ -69,15 +69,16 @@ describe('bundled copies that record their cloud version', () => {
   });
 
   it('resumes offline with the old columns after a bundled upgrade', async () => {
-    await db.builtins.bulkPut([oldBoard, { ...oldBoard, id: 'Built-in-Removed' }]);
-    await db.sessions.put(oldSession);
+    await db.builtins.bulkPut([oldBoard, { ...oldBoard, id: 'Built-in-Removed' }, { ...oldBoard, id: 'Built-in-Still-In-Use' }]);
+    await db.sessions.bulkPut([oldSession, { ...oldSession, id: 'legacy-session', templateId: 'Built-in-Still-In-Use', officialVersion: undefined }]);
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'));
 
     await migrateFromLocalStorage();
 
     expect((await db.builtins.get(oldBoard.id))?.officialVersion).toBe(3);
     expect(await db.builtins.get('Built-in-Removed')).toBeUndefined();
-    expect(await db.officialVersions.get(['Built-in-Removed', 0])).toBeDefined();
+    expect(await db.officialVersions.get(['Built-in-Removed', 0])).toBeUndefined();
+    expect(await db.officialVersions.get(['Built-in-Still-In-Use', 0])).toBeDefined();
     const { result } = renderSessionManager();
     await act(async () => { expect(await result.current.resumeSessionById(oldSession.id)).toBe(true); });
     expect(result.current.activeTemplate?.columns.map(column => column.id)).toEqual(['old']);
@@ -105,7 +106,7 @@ describe('bundled copies that record their cloud version', () => {
     }));
 
     const { result } = renderSessionManager();
-    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBe(true); });
+    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toMatchObject({ sessionId: oldSession.id }); });
     expect(result.current.activeTemplate?.columns.map(column => column.id)).toEqual(['old']);
     expect(confirm).not.toHaveBeenCalled();
     expect(await db.officialCatalog.count()).toBe(0);
@@ -126,7 +127,7 @@ describe('bundled copies that record their cloud version', () => {
     confirm.mockResolvedValue(accepted);
 
     const { result } = renderSessionManager();
-    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBe(accepted); });
+    await act(async () => { expect(Boolean(await result.current.resumeSession(oldBoard.id))).toBe(accepted); });
     expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ confirmText: 'resume_official_version_replace' }));
     const recorded = await db.sessions.get(saved.id);
     if (!accepted) {
@@ -154,7 +155,7 @@ describe('bundled copies that record their cloud version', () => {
     });
 
     const { result } = renderSessionManager();
-    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBe(true); });
+    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toMatchObject({ sessionId: oldSession.id }); });
     expect(calls).toEqual([
       '/api/official/template/Built-in-Synced?version=0',
       '/api/official/template/Built-in-Synced',
@@ -167,12 +168,29 @@ describe('bundled copies that record their cloud version', () => {
     const replacement = { ...oldBoard, officialVersion: 2 };
     await db.officialVersions.put({ id: oldBoard.id, version: 2, template: replacement });
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'));
-    confirm.mockResolvedValue(true);
+    confirm.mockImplementation(async () => {
+      // An update pruned the candidate while the user was deciding.
+      await db.officialVersions.delete([oldBoard.id, 2]);
+      return true;
+    });
 
     const { result } = renderSessionManager();
-    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBe(true); });
+    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toMatchObject({ sessionId: oldSession.id }); });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect((await db.sessions.get(oldSession.id))?.officialVersion).toBe(2);
+    expect(await db.officialVersions.get([oldBoard.id, 2])).toBeDefined();
+  });
+
+  it('pins the loaded version if a board changed before the new game was saved', async () => {
+    await db.builtins.put({ ...oldBoard, officialVersion: 3 });
+    const { result } = renderHook(() => useSessionManager({
+      getTemplate: async () => oldBoard,
+      activeSessions: [], isCloudEnabled: () => false, pinnedIds: [],
+    }));
+
+    await act(async () => { expect(await result.current.startSession(oldBoard, 1)).toBeTruthy(); });
+    expect((await db.sessions.get(result.current.currentSession!.id))?.officialVersion).toBe(0);
+    expect(await db.officialVersions.get([oldBoard.id, 0])).toBeDefined();
   });
 
   it('leaves a session alone if it changed while the replacement prompt was open', async () => {
@@ -185,7 +203,7 @@ describe('bundled copies that record their cloud version', () => {
     });
 
     const { result } = renderSessionManager();
-    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBe(false); });
+    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBeNull(); });
     expect(await db.sessions.get(oldSession.id)).toEqual({ ...oldSession, note: 'Saved elsewhere' });
   });
 
@@ -199,7 +217,7 @@ describe('bundled copies that record their cloud version', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'));
 
     const { result } = renderSessionManager();
-    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBe(false); });
+    await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toBeNull(); });
     expect(confirm).not.toHaveBeenCalled();
     expect(await db.sessions.get(oldSession.id)).toEqual(oldSession);
   });

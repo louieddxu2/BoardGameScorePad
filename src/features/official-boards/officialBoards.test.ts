@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
-import type { GameTemplate } from '../../types';
+import type { GameSession, GameTemplate } from '../../types';
 import { syncCatalog } from './catalogSync';
 import { installOfficialPack } from './officialPack';
 import {
@@ -32,6 +32,11 @@ const board = (id: string, columns: string[], officialVersion?: number): GameTem
   ...(officialVersion === undefined ? {} : { officialVersion }),
 });
 
+const activeGame = (templateId: string, officialVersion: number): GameSession => ({
+  id: `session-${templateId}-${officialVersion}`, templateId, officialVersion,
+  name: 'Game', startTime: 1, status: 'active', players: [],
+});
+
 type Route = (url: string) => unknown | Promise<unknown>;
 const mockWorker = (route: Route) =>
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -57,6 +62,7 @@ describe('official boards (local)', () => {
 
   it('downloads the catalog version on start and falls back to the local copy offline', async () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
+    await db.sessions.put(activeGame('Built-in-Agricola', 0));
     await db.officialCatalog.put(entry('Built-in-Agricola', 2));
     const fetchMock = mockWorker(() => ({ ...entry('Built-in-Agricola', 2), payload: board('Built-in-Agricola', ['田地', '牧場']) }));
 
@@ -89,6 +95,7 @@ describe('official boards (local)', () => {
 
   it('resumes the started version and keeps downloads across a bundled rebuild', async () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
+    await db.sessions.bulkPut([activeGame('Built-in-Agricola', 0), activeGame('Built-in-Agricola', 1)]);
     await db.officialCatalog.put(entry('Built-in-Agricola', 1));
     mockWorker((url) => {
       const version = Number(new URL(url).searchParams.get('version'));
@@ -106,6 +113,35 @@ describe('official boards (local)', () => {
     expect(await reapplyDownloadedOfficialVersions()).toBe(1);
     expect((await db.builtins.get('Built-in-Agricola'))?.officialVersion).toBe(2);
     expect((await getOfficialTemplateAtVersion('Built-in-Agricola', 0))?.columns.map(c => c.name)).toEqual(['田地']);
+  });
+
+  it('prunes unused versions on the next successful board update, including those of other boards', async () => {
+    const id = 'Built-in-Old';
+    const current = board(id, ['current'], 2);
+    const active = activeGame(id, 0);
+    await db.builtins.put(current);
+    await db.sessions.put(active);
+    await db.officialVersions.bulkPut([
+      { id, version: 0, template: board(id, ['in use'], 0) },
+      { id, version: 1, template: board(id, ['unused'], 1), downloadedAt: 1 },
+      { id, version: 2, template: current, downloadedAt: 2 },
+    ]);
+    const other = 'Built-in-New';
+    await db.officialCatalog.put(entry(other, 1));
+    const fetchMock = mockWorker(() => ({ ...entry(other, 1), payload: board(other, ['new']) }));
+    expect((await ensureOfficialBoard(other)).status).toBe('ready');
+    expect(await db.officialVersions.where('id').equals(id).primaryKeys()).toEqual([[id, 0], [id, 2]]);
+
+    await db.sessions.delete(active.id);
+    await db.officialCatalog.put(entry(other, 2));
+    fetchMock.mockRejectedValueOnce(new Error('offline'));
+    expect((await ensureOfficialBoard(other)).status).toBe('fallback');
+    expect(await db.officialVersions.get([id, 0])).toBeDefined();
+
+    fetchMock.mockResolvedValueOnce(Response.json({ ...entry(other, 2), payload: board(other, ['updated']) }));
+    expect((await ensureOfficialBoard(other)).status).toBe('ready');
+    expect(await db.officialVersions.where('id').equals(id).primaryKeys()).toEqual([[id, 2]]);
+    expect(await db.officialVersions.where('id').equals(other).primaryKeys()).toEqual([[other, 2]]);
   });
 
   it('syncs the catalog from a snapshot, then only changes after its version', async () => {
@@ -178,6 +214,7 @@ describe('official pack (first open)', () => {
 
   it('installs newer and missing boards once and keeps the bundled ones', async () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
+    await db.sessions.put(activeGame('Built-in-Agricola', 0));
     await db.builtins.put(board('Built-in-Same', ['A']));
     const fetchMock = mockWorker(() => ({
       lang: 'zh-TW',

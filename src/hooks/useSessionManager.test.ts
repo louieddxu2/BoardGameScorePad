@@ -15,7 +15,7 @@ const hoisted = vi.hoisted(() => {
   const dbMock = {
     transaction: vi.fn(async (_mode: string, ...tablesAndCallback: unknown[]) => {
       const callback = tablesAndCallback[tablesAndCallback.length - 1] as () => Promise<void>;
-      await callback();
+      return callback();
     }),
     templatePrefs: {
       get: vi.fn(async (id: string) => templatePrefStore.get(id)),
@@ -53,7 +53,11 @@ const hoisted = vi.hoisted(() => {
       }),
     },
     builtins: {
-      get: vi.fn(async () => null),
+      get: vi.fn(async (_id: string): Promise<GameTemplate | null> => null),
+    },
+    officialVersions: {
+      get: vi.fn(async () => undefined),
+      put: vi.fn(async () => undefined),
     },
     templates: {
       update: vi.fn(async () => undefined),
@@ -152,6 +156,7 @@ describe('useSessionManager', () => {
         inputType: 'keypad', isScoring: true,
       }],
     };
+    hoisted.dbMock.builtins.get.mockResolvedValueOnce(template);
     const { result } = renderHook(() => useSessionManager({
       getTemplate: async id => id === template.id ? template : null,
       activeSessions: [],

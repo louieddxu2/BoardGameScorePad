@@ -10,7 +10,7 @@
  */
 import { db } from '../../db';
 import { fetchOfficialPack } from './officialApi';
-import { archiveOfficialVersion, isOfficialTemplateId, localOfficialVersion, toOfficialTemplate } from './officialBoards';
+import { archiveOfficialVersion, isOfficialTemplateId, localOfficialVersion, pruneOfficialVersions, toOfficialTemplate } from './officialBoards';
 
 export type OfficialPackLang = 'zh-TW' | 'en';
 
@@ -43,7 +43,7 @@ export const installOfficialPack = async (lang: OfficialPackLang): Promise<numbe
   const pack = await fetchOfficialPack(lang);
   const now = Date.now();
   let installed = 0;
-  await db.transaction('rw', db.builtins, db.officialVersions, async () => {
+  await db.transaction('rw', db.builtins, db.officialVersions, db.sessions, async () => {
     for (const item of pack.templates) {
       if (!isOfficialTemplateId(item.id) || typeof item.version !== 'number') continue;
       const current = await db.builtins.get(item.id);
@@ -56,6 +56,7 @@ export const installOfficialPack = async (lang: OfficialPackLang): Promise<numbe
       await db.builtins.put(template);
       installed++;
     }
+    if (installed) await pruneOfficialVersions();
   });
   markInstalled(lang, pack.throughVersion);
   return installed;

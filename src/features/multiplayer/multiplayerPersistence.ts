@@ -145,13 +145,14 @@ export const persistMultiplayerBootstrap = async (
   role: MultiplayerRole = 'player',
   shouldPersist?: () => boolean,
   requireExistingSession = false,
+  resolvedLocalTemplate?: GameTemplate,
 ): Promise<PersistedBootstrapImport | null> => {
   if (!isBootstrapPackageMessage(message)) {
     throw new Error('invalid_bootstrap_message');
   }
 
   if (shouldPersist?.() === false) return null;
-  const localTemplate = await store.getTemplate(message.package.template.id);
+  const localTemplate = resolvedLocalTemplate ?? await store.getTemplate(message.package.template.id);
   if (shouldPersist?.() === false) return null;
   const resolved = resolveBootstrapImport(message.package, localTemplate);
 

@@ -161,6 +161,35 @@ describe('multiplayer room runtime', () => {
     expect(await store.getSession(session.id)).toBeUndefined();
   });
 
+  it.each(['host', 'player'] as const)('restores the %s on the already resumed official version', async role => {
+    const store = createRuntimeStore();
+    const original = { ...template, id: 'Built-in-Versioned', officialVersion: 1 };
+    const installed = { ...original, officialVersion: 2, updatedAt: 2, columns: [{ ...column, id: 'other' }] };
+    await store.putTemplate(installed);
+    await store.putSession({
+      ...session, templateId: original.id, officialVersion: 1,
+      players: [{ ...session.players[0], scores: { points: { parts: [5] } } }],
+    });
+    await store.putRoom({
+      roomId: 'room-1', sessionId: session.id, templateId: original.id,
+      hostDeviceId: 'host', role, revision: 1, createdAt: 1, updatedAt: 1,
+    });
+    const getTemplate = vi.spyOn(store, 'getTemplate');
+    const transport = { sendToHost: () => false, sendToConnection: () => false, broadcastLocalChanges: async () => undefined };
+    const options = { roomId: 'room-1', resumedOfficialTemplate: original, store, transport, deliveryStore: createDeliveryStore() };
+    const restored = role === 'host'
+      ? await restoreMultiplayerHostRoomRuntime(options)
+      : await restoreMultiplayerPlayerRoomRuntime({ ...options, deviceId: 'guest', bindingStore: createBindingStore() });
+    try {
+      expect(restored?.session.template).toMatchObject({ id: original.id, officialVersion: 1 });
+      expect(restored?.session.session.players[0].totalScore).toBe(5);
+      expect(getTemplate).not.toHaveBeenCalled();
+      expect((await store.getTemplate(original.id))?.officialVersion).toBe(2);
+    } finally {
+      restored?.stop();
+    }
+  });
+
   it('does not read or import data when participant creation is already cancelled', async () => {
     const store = createRuntimeStore();
     const getTemplate = vi.spyOn(store, 'getTemplate');

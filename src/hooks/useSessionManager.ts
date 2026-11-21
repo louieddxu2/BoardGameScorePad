@@ -5,7 +5,7 @@ import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '.
 import { generateId } from '../utils/idGenerator';
 import { migrateTemplate } from '../utils/dataMigration';
 import { loadSessionForResume } from './officialSessionResume';
-import { isOfficialTemplateId, localOfficialVersion } from '../features/official-boards/officialBoards';
+import { isOfficialTemplateId, localOfficialVersion, persistStartedOfficialSession } from '../features/official-boards/officialBoards';
 import { applyTemplateToSession } from '../utils/sessionTemplateUpdate';
 import { calculateScoreSession } from '../utils/sessionScoring';
 import { imageService } from '../services/imageService';
@@ -220,6 +220,18 @@ export const useSessionManager = ({
             }
         }
 
+        if (newSession.officialVersion !== undefined) {
+            const saved = await persistStartedOfficialSession(newSession, fullTemplate, isCurrent).catch(error => {
+                console.warn('Failed to save official session:', error);
+                if (isCurrent()) showToast({ message: t('msg_session_save_failed'), type: 'error' });
+                return false;
+            });
+            if (!saved || !isCurrent()) {
+                if (loadedImageUrl) URL.revokeObjectURL(loadedImageUrl);
+                return null;
+            }
+            persistedSessionRef.current = newSession;
+        }
         setSessionImage(loadedImageUrl);
         setActiveTemplate(migratedTemplate);
         setCurrentSession(newSession);
@@ -227,7 +239,7 @@ export const useSessionManager = ({
         return sessionId;
     };
 
-    const activateSession = async (session: GameSession, isCurrent: () => boolean, offerReplacement = false): Promise<boolean> => {
+    const activateSession = async (session: GameSession, isCurrent: () => boolean, offerReplacement = false) => {
         try {
             const loaded = await loadSessionForResume(session, getTemplate, isCurrent, {
                 notifyUnavailable: () => showToast({ message: t('resume_official_version_missing'), type: 'error' }),
@@ -237,10 +249,10 @@ export const useSessionManager = ({
                     confirmText: t('resume_official_version_replace'),
                 }) : undefined,
             });
-            if (!loaded) return false;
+            if (!loaded) return null;
             if (!isCurrent()) {
                 if (loaded.imageUrl) URL.revokeObjectURL(loaded.imageUrl);
-                return false;
+                return null;
             }
 
             // Ordinary resumes keep migrations in memory. Confirmed replacements are already saved.
@@ -249,18 +261,18 @@ export const useSessionManager = ({
             setSessionImage(loaded.imageUrl);
             setActiveTemplate(loaded.template);
             setCurrentSession(loaded.session);
-            return true;
+            return { sessionId: loaded.session.id, template: loaded.template };
 
         } catch (e) { console.error("Failed to resume session", e); }
-        return false;
+        return null;
     };
 
-    const resumeSession = async (templateId: string, shouldActivate?: () => boolean): Promise<boolean> => {
-        if (shouldActivate?.() === false) return false;
+    const resumeSession = async (templateId: string, shouldActivate?: () => boolean) => {
+        if (shouldActivate?.() === false) return null;
         const isCurrent = beginActivation(shouldActivate);
-        if (!isCurrent()) return false;
+        if (!isCurrent()) return null;
         const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
-        return session && isCurrent() ? activateSession(session, isCurrent, true) : false;
+        return session && isCurrent() ? activateSession(session, isCurrent, true) : null;
     };
 
     const resumeSessionById = async (sessionId: string, shouldActivate?: () => boolean): Promise<boolean> => {
@@ -269,7 +281,7 @@ export const useSessionManager = ({
         if (!isCurrent()) return false;
         const session = await db.sessions.get(sessionId);
         if (!session || session.status !== 'active' || !isCurrent()) return false;
-        return activateSession(session, isCurrent);
+        return !!await activateSession(session, isCurrent);
     };
 
     const discardSessionById = async (sessionId: string) => {

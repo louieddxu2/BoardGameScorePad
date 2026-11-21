@@ -44,7 +44,7 @@ const hoisted = vi.hoisted(() => {
     getBuiltinTemplateByShortId,
     getSessionPreview: vi.fn(() => null),
     startSession: vi.fn(),
-    resumeSession: vi.fn(async () => false),
+    resumeSession: vi.fn(async (): Promise<{ sessionId: string; template: GameTemplate } | null> => null),
     discardSession: vi.fn(),
     clearAllActiveSessions: vi.fn(),
     updateSession: vi.fn(),
@@ -192,12 +192,13 @@ describe('App multiplayer modal history', () => {
     window.history.replaceState({ page: 'dashboard' }, '', '/');
     localStorage.setItem('app_language', 'en');
     const session = { id: 'session-1', templateId: 'template-1', status: 'active', players: [] };
+    const template: GameTemplate = { id: 'template-1', name: 'Game', columns: [], createdAt: 1 };
     Object.assign(hoisted.appData, {
       currentSession: session,
-      activeTemplate: { id: 'template-1', name: 'Game', columns: [] },
+      activeTemplate: template,
       activeSessions: [session],
     });
-    hoisted.appData.resumeSession.mockResolvedValue(true);
+    hoisted.appData.resumeSession.mockResolvedValue({ sessionId: session.id, template });
     vi.spyOn(multiplayerLocalStore, 'getRoomBySessionId').mockResolvedValue(undefined);
   });
 
@@ -206,7 +207,7 @@ describe('App multiplayer modal history', () => {
     await waitFor(() => expect((window as any).__silentBack || 0).toBe(0));
     _resetActiveCountForTesting();
     Object.assign(hoisted.appData, { currentSession: null, activeTemplate: null, activeSessions: [] });
-    hoisted.appData.resumeSession.mockResolvedValue(false);
+    hoisted.appData.resumeSession.mockResolvedValue(null);
     vi.restoreAllMocks();
   });
 

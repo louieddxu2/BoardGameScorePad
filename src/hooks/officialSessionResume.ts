@@ -1,6 +1,6 @@
 import { db } from '../db';
 import {
-    downloadOfficialVersion, getOfficialTemplateAtVersion, isOfficialTemplateId, localOfficialVersion,
+    downloadOfficialVersion, getOfficialTemplateAtVersion, isOfficialTemplateId, keepOfficialVersionForSession, localOfficialVersion,
     START_DOWNLOAD_TIMEOUT_MS,
 } from '../features/official-boards/officialBoards';
 import type { GameSession, GameTemplate } from '../types';
@@ -74,10 +74,12 @@ export const loadSessionForResume = async (
     let persisted = false;
     try {
         const adopted = recalculateScoreSession(loaded.session, loaded.template);
-        persisted = await db.transaction('rw', db.sessions, db.multiplayerRooms, async () => {
+        persisted = await db.transaction('rw', db.sessions, db.multiplayerRooms, db.builtins, db.officialVersions, async () => {
             const current = await db.sessions.get(session.id);
             if (await findActiveRoom(session.id)) return false;
             if (!isCurrent() || JSON.stringify(current) !== JSON.stringify(session)) return false;
+            await keepOfficialVersionForSession(loaded.template);
+            if (!isCurrent()) return false;
             await db.sessions.put(adopted);
             return true;
         });

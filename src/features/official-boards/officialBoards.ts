@@ -7,7 +7,7 @@
  * `officialVersions` for resuming sessions. Rebuilds reapply newer downloads.
  */
 import { db } from '../../db';
-import type { GameTemplate } from '../../types';
+import type { GameSession, GameTemplate } from '../../types';
 import { migrateTemplate } from '../../utils/dataMigration';
 import { fetchOfficialTemplate } from './officialApi';
 import type { OfficialCatalogEntry } from './types';
@@ -26,6 +26,36 @@ export const archiveOfficialVersion = async (template: GameTemplate): Promise<vo
   if (!(await db.officialVersions.get([id, version]))) {
     await db.officialVersions.put({ id, version, template });
   }
+};
+
+/** Keep a version available when a new session pins a board already replaced in the library. */
+export const keepOfficialVersionForSession = async (template: GameTemplate): Promise<void> => {
+  const installed = await db.builtins.get(template.id);
+  if (localOfficialVersion(installed) !== localOfficialVersion(template)) await archiveOfficialVersion(template);
+};
+
+export const persistStartedOfficialSession = (session: GameSession, template: GameTemplate, isCurrent: () => boolean): Promise<boolean> =>
+  db.transaction('rw', db.sessions, db.builtins, db.officialVersions, async () => {
+    if (!isCurrent()) return false;
+    await keepOfficialVersionForSession(template);
+    if (!isCurrent()) return false;
+    await db.sessions.put(session);
+    return true;
+  });
+
+/** Run inside the install transaction, after the current copies have been updated. */
+export const pruneOfficialVersions = async (): Promise<void> => {
+  const versions = await db.officialVersions.toCollection().primaryKeys() as [string, number][];
+  if (!versions.length) return;
+
+  const active = await db.sessions.where('status').equals('active').toArray();
+  const versionsInUse = new Set(active.map(session => JSON.stringify([session.templateId, session.officialVersion ?? 0])));
+  const candidates = versions.filter(key => !versionsInUse.has(JSON.stringify(key)));
+  if (!candidates.length) return;
+
+  const installed = await db.builtins.bulkGet([...new Set(candidates.map(([id]) => id))]);
+  const installedVersions = new Map(installed.flatMap(template => template ? [[template.id, localOfficialVersion(template)]] : []));
+  await db.officialVersions.bulkDelete(candidates.filter(([id, version]) => installedVersions.get(id) !== version));
 };
 
 /**
@@ -64,7 +94,8 @@ export const downloadOfficialVersion = async (
   const now = Date.now();
   const existing = await db.builtins.get(id);
   const template = toOfficialTemplate(response, id, version, existing, now);
-  await db.transaction('rw', db.officialVersions, db.builtins, async () => {
+  const tables = options.install ? [db.officialVersions, db.builtins, db.sessions] : [db.officialVersions, db.builtins];
+  await db.transaction('rw', tables, async () => {
     if (!options.install) return archiveOfficialVersion(template);
     await db.officialVersions.put({ id, version, template, downloadedAt: now });
     // Never replace a newer local copy with an older download.
@@ -72,6 +103,7 @@ export const downloadOfficialVersion = async (
     if (localOfficialVersion(current) < version) {
       if (current) await archiveOfficialVersion(current);
       await db.builtins.put(template);
+      await pruneOfficialVersions();
     }
   });
   return template;

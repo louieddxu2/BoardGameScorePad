@@ -1,4 +1,5 @@
 import { GameSession, GameTemplate, MultiplayerRoomRecord } from '../../types';
+import { isOfficialTemplateId, localOfficialVersion } from '../official-boards/officialBoards';
 import { MultiplayerDeliveryStore } from './multiplayerDeliveryStore';
 import { MultiplayerParticipantBindingStore, participantBindingKey, saveParticipantBinding } from './multiplayerParticipantBinding';
 import { MultiplayerBootstrapStore, MultiplayerCompletionReleaseStore, MultiplayerSnapshotStore, createMultiplayerRoomRecord, persistMultiplayerBootstrap, persistMultiplayerBootstrapRecords, releaseMultiplayerRoomOwnership } from './multiplayerPersistence';
@@ -27,6 +28,24 @@ export type MultiplayerPlayerRoomStore = MultiplayerRoomRuntimeStore & Pick<Mult
 export type MultiplayerRoomRecoveryStore = MultiplayerRoomRuntimeStore & {
   getRoom(roomId: string): Promise<MultiplayerRoomRecord | undefined>;
   getSession(sessionId: string): Promise<GameSession | undefined>;
+};
+
+const loadRoomSession = async (
+  store: MultiplayerRoomRecoveryStore, room: MultiplayerRoomRecord, resumedOfficialTemplate?: GameTemplate,
+) => {
+  const [session, roomTemplate] = await Promise.all([
+    store.getSession(room.sessionId),
+    resumedOfficialTemplate ?? store.getTemplate(room.templateId),
+  ]);
+  if (!session || session.status !== 'active') return null;
+  // A concurrent board edit must not pair the resumed board with a different session.
+  const template = resumedOfficialTemplate ?? (session.templateId === room.templateId
+    ? roomTemplate
+    : await store.getTemplate(session.templateId));
+  if (!template || (resumedOfficialTemplate && template.id !== session.templateId)) return null;
+  if (isOfficialTemplateId(session.templateId) && session.officialVersion !== undefined
+    && localOfficialVersion(template) !== session.officialVersion) return null;
+  return { session, template };
 };
 
 export interface MultiplayerHostRoomRuntime {
@@ -74,8 +93,10 @@ export const createMultiplayerHostRoomRuntime = async (options: {
 }): Promise<MultiplayerHostRoomRuntime> => {
   const now = options.now ?? Date.now;
   const hostSession = createMultiplayerHostSession(options);
+  const hasStoredOfficialBoard = isOfficialTemplateId(hostSession.template.id)
+    && (options.requireExistingSession || options.session.officialVersion !== undefined);
   const persisted = await persistMultiplayerBootstrapRecords(options.store, {
-    template: hostSession.template,
+    template: hasStoredOfficialBoard ? undefined : hostSession.template,
     session: hostSession.session,
     room: createMultiplayerRoomRecord({
       room: hostSession.room,
@@ -110,6 +131,7 @@ export const createMultiplayerHostRoomRuntime = async (options: {
 /** Rehydrates an existing host room without changing its room identity or revision. */
 export const restoreMultiplayerHostRoomRuntime = async (options: {
   roomId: string;
+  resumedOfficialTemplate?: GameTemplate;
   store: MultiplayerRoomRecoveryStore;
   deliveryStore: MultiplayerDeliveryStore;
   transport: MultiplayerRoomRuntimeTransport;
@@ -120,15 +142,9 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
 }): Promise<MultiplayerHostRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
   if (!room || room.role !== 'host' || room.status === 'completed') return null;
-  const [session, roomTemplate] = await Promise.all([
-    options.store.getSession(room.sessionId),
-    options.store.getTemplate(room.templateId),
-  ]);
-  if (!session || session.status !== 'active') return null;
-  // Legacy room metadata may still point to a builtin after an edit forked it.
-  // Normal restores retain their parallel reads; only inconsistent rows need this lookup.
-  const template = session.templateId === room.templateId ? roomTemplate : await options.store.getTemplate(session.templateId);
-  if (!template) return null;
+  const restored = await loadRoomSession(options.store, room, options.resumedOfficialTemplate);
+  if (!restored) return null;
+  const { session, template } = restored;
   return createMultiplayerHostRoomRuntime({
     roomId: room.roomId,
     hostDeviceId: room.hostDeviceId,
@@ -150,6 +166,7 @@ export const restoreMultiplayerHostRoomRuntime = async (options: {
 export const createMultiplayerPlayerRoomRuntime = async (options: {
   bootstrapMessage: BootstrapPackageMessage;
   requireExistingSession?: boolean;
+  resolvedLocalTemplate?: GameTemplate;
   shouldPersist?: () => boolean;
   deviceId: string;
   store: MultiplayerPlayerRoomStore;
@@ -164,7 +181,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
 }): Promise<MultiplayerPlayerRoomRuntime> => {
   const now = options.now ?? Date.now;
   const resolvedBootstrap = await persistMultiplayerBootstrap(options.bootstrapMessage, options.store, 'player',
-    options.shouldPersist, options.requireExistingSession);
+    options.shouldPersist, options.requireExistingSession, options.resolvedLocalTemplate);
   if (!resolvedBootstrap) throw new Error('room_stopped');
   const playerSession = createMultiplayerPlayerSessionFromBootstrap({
     bootstrapMessage: options.bootstrapMessage,
@@ -336,6 +353,7 @@ export const createMultiplayerPlayerRoomRuntime = async (options: {
 /** Rehydrates an existing player room runtime from stored room, session, and template. */
 export const restoreMultiplayerPlayerRoomRuntime = async (options: {
   roomId: string;
+  resumedOfficialTemplate?: GameTemplate;
   deviceId: string;
   store: MultiplayerRoomRecoveryStore & MultiplayerPlayerRoomStore;
   bindingStore: MultiplayerParticipantBindingStore;
@@ -349,13 +367,9 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
 }): Promise<MultiplayerPlayerRoomRuntime | null> => {
   const room = await options.store.getRoom(options.roomId);
   if (!room || room.role !== 'player') return null;
-  const [session, roomTemplate] = await Promise.all([
-    options.store.getSession(room.sessionId),
-    options.store.getTemplate(room.templateId),
-  ]);
-  if (!session || session.status !== 'active') return null;
-  const template = session.templateId === room.templateId ? roomTemplate : await options.store.getTemplate(session.templateId);
-  if (!template) return null;
+  const restored = await loadRoomSession(options.store, room, options.resumedOfficialTemplate);
+  if (!restored) return null;
+  const { session, template } = restored;
 
   const bootstrapMessage: BootstrapPackageMessage = {
     type: 'room:bootstrap',
@@ -377,6 +391,7 @@ export const restoreMultiplayerPlayerRoomRuntime = async (options: {
   return createMultiplayerPlayerRoomRuntime({
     bootstrapMessage,
     requireExistingSession: true,
+    resolvedLocalTemplate: isOfficialTemplateId(template.id) ? template : undefined,
     deviceId: options.deviceId,
     store: options.store,
     bindingStore: options.bindingStore,

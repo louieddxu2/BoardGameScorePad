@@ -5,10 +5,15 @@ import { useAppSessionActions } from './useAppSessionActions';
 vi.mock('./useToast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock('../i18n/app', () => ({ useAppTranslation: () => ({ t: (key: string) => key }) }));
 
+const resumedSession = {
+  sessionId: 'session-1',
+  template: { id: 'Built-in-Example', name: 'Example', officialVersion: 1, columns: [], createdAt: 1 },
+};
+
 const createOptions = (overrides: Record<string, unknown> = {}) => ({
   appData: {
     activeSessions: [{ id: 'session-1', templateId: 'template-1', status: 'active' }],
-    resumeSession: vi.fn(async () => true),
+    resumeSession: vi.fn(async () => resumedSession),
   } as any,
   activeMultiplayerRoom: null,
   isMultiplayerTransitioning: false,
@@ -43,12 +48,13 @@ describe('useAppSessionActions multiplayer resume', () => {
     });
 
     expect(options.appData.resumeSession).toHaveBeenCalledTimes(1);
+    expect(options.tryRestoreMultiplayerRoom).toHaveBeenCalledWith(resumedSession.sessionId, resumedSession.template);
     expect(enterActiveSession).not.toHaveBeenCalled();
   });
 
   it('serializes repeated clicks on the same active-session card', async () => {
-    let finishResume!: (value: boolean) => void;
-    const resumeSession = vi.fn(() => new Promise<boolean>((resolve) => { finishResume = resolve; }));
+    let finishResume!: (value: typeof resumedSession) => void;
+    const resumeSession = vi.fn(() => new Promise<typeof resumedSession>((resolve) => { finishResume = resolve; }));
     const options = createOptions({
       appData: {
         activeSessions: [{ id: 'session-1', templateId: 'template-1', status: 'active' }],
@@ -66,7 +72,7 @@ describe('useAppSessionActions multiplayer resume', () => {
     expect(resumeSession).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      finishResume(true);
+      finishResume(resumedSession);
       await Promise.all([first, second]);
     });
 

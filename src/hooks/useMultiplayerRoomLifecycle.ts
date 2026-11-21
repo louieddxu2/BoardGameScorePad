@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ToastMessage } from './useToast';
+import type { GameTemplate } from '../types';
 import type { useAppData } from './useAppData';
 import type { AppTranslationKey } from '../i18n/app';
 import { dismissActiveModalsForViewChange } from './useModalBackHandler';
@@ -297,9 +298,10 @@ export const useMultiplayerRoomLifecycle = ({
     ensurePlayerRuntime,
   });
 
-  const tryRestoreMultiplayerRoom = useCallback(async (sessionId: string): Promise<boolean> => {
+  const tryRestoreMultiplayerRoom = useCallback(async (sessionId: string, resumedOfficialTemplate?: GameTemplate): Promise<boolean> => {
     return restoreMultiplayerRoomForSession({
       sessionId,
+      resumedOfficialTemplate,
       claimParticipantTab,
       ownsParticipantClaim: (claim) => activeTabClaimRef.current?.generation === claim.generation,
       isCurrentParticipantClaim: (claim) => activeTabClaimRef.current?.generation === claim.generation

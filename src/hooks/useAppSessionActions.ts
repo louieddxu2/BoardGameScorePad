@@ -10,6 +10,7 @@ import { shouldTriggerIOSPwaGuide } from '../components/modals/IOSPwaGuide';
 import type { EnterActiveSession } from '../utils/activeSessionNavigation';
 import { useToast } from './useToast';
 import { useAppTranslation } from '../i18n/app';
+import { isOfficialTemplateId } from '../features/official-boards/officialBoards';
 
 type AppData = ReturnType<typeof useAppData>;
 type MultiplayerRoomLifecycle = ReturnType<typeof useMultiplayerRoomLifecycle>;
@@ -74,16 +75,10 @@ export const useAppSessionActions = ({
     if (sessionTransitionInFlightRef.current) return false;
     sessionTransitionInFlightRef.current = true;
     try {
-      const activeSession = appData.activeSessions?.find(s => s.templateId === templateId);
-      const success = await appData.resumeSession(templateId);
-      if (!success) return false;
-
-      let sessionId = activeSession?.id;
-      if (!sessionId) {
-        const session = await db.sessions.where('templateId').equals(templateId).and(item => item.status === 'active').first();
-        sessionId = session?.id;
-      }
-      if (sessionId && !await tryRestoreMultiplayerRoom(sessionId)) return false;
+      const resumed = await appData.resumeSession(templateId);
+      if (!resumed) return false;
+      const officialTemplate = isOfficialTemplateId(resumed.template.id) ? resumed.template : undefined;
+      if (!await tryRestoreMultiplayerRoom(resumed.sessionId, officialTemplate)) return false;
       if (pendingTemplateId === undefined || pendingTemplateId === templateId) {
         setPendingTemplate(null);
       }
