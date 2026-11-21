@@ -86,7 +86,7 @@ export const ensureOfficialBoard = async (id: string, timeoutMs = START_DOWNLOAD
   }
 };
 
-/** The bundled (version 0) content of a built-in, straight from the app's data files. */
+/** The bundled content of a built-in (the version it records, 0 when none), straight from the app's data files. */
 const loadBundledTemplate = async (id: string): Promise<GameTemplate | null> => {
   const source = id.startsWith('Built-in-EN-')
     ? (await import('../../data/templates-en')).DEFAULT_TEMPLATES_EN
@@ -104,7 +104,10 @@ export const getOfficialTemplateAtVersion = async (id: string, version: number):
   // Stored first: a version 0 installed from the cloud may not be in this app's bundle.
   const stored = await db.officialVersions.get([id, version]);
   if (stored) return stored.template;
-  if (version === 0) return loadBundledTemplate(id);
+  // The bundle carries the cloud version it was copied from (none means version 0),
+  // so it only answers for that version; any other comes from the cloud.
+  const bundled = await loadBundledTemplate(id);
+  if (bundled && localOfficialVersion(bundled) === version) return bundled;
   try {
     return await downloadOfficialVersion(id, version, { install: false, timeoutMs: START_DOWNLOAD_TIMEOUT_MS });
   } catch {

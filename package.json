@@ -19,7 +19,8 @@
     "check:theme": "node scripts/check-theme.mjs && npm run test:ui",
     "test:touch": "vitest run src/components/session/touchDiagnostics.test.ts",
     "audit:ci": "node scripts/audit-dependencies.mjs",
-    "publish:v3test": "powershell -ExecutionPolicy Bypass -File scripts/publish-v3test.ps1"
+    "publish:v3test": "powershell -ExecutionPolicy Bypass -File scripts/publish-v3test.ps1",
+    "sync:builtins": "node scripts/sync-builtins.mjs"
   },
   "dependencies": {
     "dexie": "^3.2.4",
