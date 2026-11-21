@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { isOwnerEmail } from '../../../utils/ownerAccount';
+import { useCloudSession } from '../../../hooks/useCloudSession';
 import { GameTemplate, GameSession } from '../../../types';
 import { Activity, Pin, LayoutGrid, ArrowRightLeft, Plus, Library, Sparkles, Cloud, Zap } from 'lucide-react';
 import DashboardSection from '../parts/DashboardSection';
@@ -91,6 +92,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     onSystemCopy,
     onSystemRestore
 }) => {
+    const ownerSession = useCloudSession();
     const { t } = useDashboardTranslation();
     const { t: tCloudLib } = useCloudLibraryTranslation();
 
@@ -190,7 +192,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 onToggle={() => setIsUserLibOpen(!isUserLibOpen)}
                 actionButton={
                     <div className="flex items-center gap-2">
-                        {isConnected && isOwnerEmail(userEmail) && (
+                        {((isConnected && isOwnerEmail(userEmail)) || ownerSession.isAdmin) && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onOpenCloudLibrary?.(); }} 
                                 className="btn-ghost-action animate-pulse"

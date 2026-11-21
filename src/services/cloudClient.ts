@@ -233,26 +233,6 @@ class SafeCloudClient {
     return response.json() as Promise<UploadResponse>;
   }
 
-  async deleteTemplateFromCloud(id: string, token: string): Promise<{ success: boolean }> {
-    if (!this.checkAndIncrementDailyLimit()) {
-      throw new Error('daily_limit_exceeded');
-    }
-
-    const response = await fetch(`${CLOUD_SHARE_BASE_URL}/api/template/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`delete_failed_${response.status}_${text}`);
-    }
-
-    this.commitDailyCallCount();
-    return response.json() as Promise<{ success: boolean }>;
-  }
 }
 
 // 導出 Singleton 客戶端單例

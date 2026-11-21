@@ -3,7 +3,12 @@
  * Public reads need no account; admin calls carry the Google access token.
  */
 import { CLOUD_SHARE_BASE_URL } from '../../services/cloudClient';
-import { googleAuth } from '../../services/cloud/googleAuth';
+import {
+  clearCloudSession,
+  CloudSessionError,
+  isStaleSessionError,
+  sessionHeaders,
+} from '../../services/cloud/cloudSession';
 import type { GameTemplate } from '../../types';
 import type {
   CatalogChangesPayload,
@@ -65,20 +70,36 @@ export const fetchOfficialPack = (lang: string) =>
 // Admin
 // ---------------------------------------------------------------------------
 
-/** Use the current Google token, signing in only when the caller allows it. */
-const getAdminToken = async (interactive: boolean): Promise<string> => {
-  if (googleAuth.isAuthorized && googleAuth.token) return googleAuth.token;
-  if (!interactive) throw new OfficialApiError('not_signed_in', 401);
-  return googleAuth.signIn();
+/**
+ * Admin calls carry this device's signed session (src/services/cloud/cloudSession.ts):
+ * signing in once with Google keeps the owner signed in on this device. A stale
+ * session or device key is dropped and replaced once, which may show Google's
+ * sign-in when the caller allows it.
+ */
+const adminRequest = async <T>(path: string, init: RequestInit = {}, interactive = true): Promise<T> => {
+  const method = (init.method ?? 'GET').toUpperCase();
+  const body = typeof init.body === 'string' ? init.body : undefined;
+  const send = async () => {
+    const headers = new Headers(init.headers);
+    for (const [name, value] of Object.entries(await sessionHeaders(method, path, body, { interactive }))) headers.set(name, value);
+    if (body) headers.set('content-type', 'application/json');
+    return request<T>(path, { ...init, method, headers });
+  };
+  try {
+    return await send();
+  } catch (error) {
+    if (error instanceof OfficialApiError && isStaleSessionError(error.code)) {
+      clearCloudSession();
+      return send();
+    }
+    if (error instanceof CloudSessionError) throw new OfficialApiError(error.code, error.status);
+    throw error;
+  }
 };
 
-const adminRequest = async <T>(path: string, init: RequestInit = {}, interactive = true): Promise<T> => {
-  const token = await getAdminToken(interactive);
-  const headers = new Headers(init.headers);
-  headers.set('authorization', `Bearer ${token}`);
-  if (init.body) headers.set('content-type', 'application/json');
-  return request<T>(path, { ...init, headers });
-};
+/** Delete a user-shared scoreboard (owner only). */
+export const deleteSharedTemplate = (id: string) =>
+  adminRequest<{ success: boolean }>(`/api/template/${encodeURIComponent(id)}`, { method: 'DELETE' });
 
 export const fetchPublishTarget = (bggId: string, lang: string) =>
   adminRequest<OfficialPublishTarget>(

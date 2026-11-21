@@ -6,17 +6,18 @@ import { db } from '../../../../db';
 import ShareCatalogTab from './ShareCatalogTab';
 
 const fetchTemplateFromCloud = vi.fn();
-const deleteTemplateFromCloud = vi.fn();
+const deleteSharedTemplate = vi.fn();
 const syncCatalog = vi.fn();
 
 vi.mock('../../../../services/templateShareService', () => ({
   fetchTemplateFromCloud: (...args: unknown[]) => fetchTemplateFromCloud(...args),
-  deleteTemplateFromCloud: (...args: unknown[]) => deleteTemplateFromCloud(...args),
+}));
+vi.mock('../../../../features/official-boards/officialApi', () => ({
+  deleteSharedTemplate: (...args: unknown[]) => deleteSharedTemplate(...args),
 }));
 vi.mock('../../../../features/official-boards/catalogSync', () => ({
   syncCatalog: (...args: unknown[]) => syncCatalog(...args),
 }));
-vi.mock('../../../../services/cloud/googleAuth', () => ({ googleAuth: { token: 'token', signIn: vi.fn() } }));
 vi.mock('../../../../hooks/useToast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock('../../../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: async () => true }) }));
 vi.mock('../../../../i18n/cloud_library', () => ({ useCloudLibraryTranslation: () => ({ t: (key: string) => key }) }));
@@ -60,14 +61,14 @@ describe('ShareCatalogTab', () => {
   });
 
   it('removes a deleted share from the local catalog', async () => {
-    deleteTemplateFromCloud.mockResolvedValue({ success: true });
+    deleteSharedTemplate.mockResolvedValue({ success: true });
     render(<ShareCatalogTab userTemplates={[]} onImport={vi.fn()} onBusyChange={vi.fn()} />);
     await screen.findByText('Cascadia');
 
     await act(async () => {
       fireEvent.click(screen.getAllByTitle('lib_btn_delete_tooltip')[0]);
     });
-    expect(deleteTemplateFromCloud).toHaveBeenCalledWith('share-1', 'token');
+    expect(deleteSharedTemplate).toHaveBeenCalledWith('share-1');
     await waitFor(async () => expect(await db.shareCatalog.get('share-1')).toBeUndefined());
   });
 });

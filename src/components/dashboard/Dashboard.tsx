@@ -24,6 +24,7 @@ import DashboardFAB from './parts/DashboardFAB';
 import HistoryStatsPanel from './HistoryStatsPanel';
 import ShareTemplateModal from './modals/ShareTemplateModal';
 import { isOwnerEmail } from '../../utils/ownerAccount';
+import { useCloudSession } from '../../hooks/useCloudSession';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import { useDashboardTranslation } from '../../i18n/dashboard';
 import { db } from '../../db';
@@ -158,6 +159,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   gameOptions,
   onQuickStart
 }) => {
+  const ownerSession = useCloudSession();
   const { t: tDashboard } = useDashboardTranslation();
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isSetupMode, setIsSetupMode] = useState(false);
@@ -554,7 +556,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
           onClose={() => dashboardActions.setSharingTemplate(null)}
           template={dashboardActions.sharingTemplate}
           onGetFullTemplate={onGetFullTemplate}
-          isOwner={isConnected && isOwnerEmail(userEmail)}
+          isOwner={(isConnected && isOwnerEmail(userEmail)) || ownerSession.isAdmin}
         />
       )}
     </div>

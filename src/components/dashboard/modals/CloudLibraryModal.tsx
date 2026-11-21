@@ -6,6 +6,7 @@ import OfficialBoardsPanel from '../../../features/official-boards/components/Of
 import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 import ShareCatalogTab from './cloud-library/ShareCatalogTab';
 import { isOwnerEmail } from '../../../utils/ownerAccount';
+import { useCloudSession } from '../../../hooks/useCloudSession';
 
 interface CloudLibraryModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface CloudLibraryModalProps {
  * separate collections, each read from its own local catalog.
  */
 const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, userTemplates, onImport, userEmail }) => {
+  const ownerSession = useCloudSession();
   const { t } = useCloudLibraryTranslation();
   const { t: tOfficial } = useOfficialBoardsTranslation();
   const [tab, setTab] = useState<'share' | 'official'>('share');
@@ -70,7 +72,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, 
         {/* Body */}
         <div className="modal-body flex-1 p-4 overflow-y-auto no-scrollbar min-h-0">
           {tab === 'official' ? (
-            <OfficialBoardsPanel isAdmin={isOwnerEmail(userEmail)} />
+            <OfficialBoardsPanel isAdmin={isOwnerEmail(userEmail) || ownerSession.isAdmin} />
           ) : (
             <ShareCatalogTab userTemplates={userTemplates} onImport={onImport} onBusyChange={setIsBusy} />
           )}

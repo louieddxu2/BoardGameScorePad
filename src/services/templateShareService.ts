@@ -27,8 +27,5 @@ export const fetchShareTemplatesByIds = (ids: string[]): Promise<FetchResponse[]
   return cloudClient.fetchShareTemplatesByIds(ids);
 };
 
-export const deleteTemplateFromCloud = (id: string, token: string): Promise<{ success: boolean }> => {
-  return cloudClient.deleteTemplateFromCloud(id, token);
-};
 
 

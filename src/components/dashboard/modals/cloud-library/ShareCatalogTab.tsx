@@ -3,8 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Cloud, Download, HelpCircle, Loader2, Trash2, Trophy } from 'lucide-react';
 import { db } from '../../../../db';
 import { GameTemplate } from '../../../../types';
-import { deleteTemplateFromCloud, fetchTemplateFromCloud } from '../../../../services/templateShareService';
-import { googleAuth } from '../../../../services/cloud/googleAuth';
+import { fetchTemplateFromCloud } from '../../../../services/templateShareService';
+import { deleteSharedTemplate } from '../../../../features/official-boards/officialApi';
 import { useCloudLibraryTranslation } from '../../../../i18n/cloud_library';
 import { useOfficialBoardsTranslation } from '../../../../i18n/officialBoards';
 import { useToast } from '../../../../hooks/useToast';
@@ -109,9 +109,8 @@ const ShareCatalogTab: React.FC<ShareCatalogTabProps> = ({ userTemplates, onImpo
     if (!ok) return;
     setDeletingId(item.id);
     try {
-      const token = googleAuth.token || (await googleAuth.signIn());
-      if (!token) throw new Error('token_missing');
-      await deleteTemplateFromCloud(item.id, token);
+      // Owner-only: sent with this device's signed session.
+      await deleteSharedTemplate(item.id);
       // The Worker records the deletion in the catalog; drop it locally now as well.
       await db.shareCatalog.delete(item.id);
       showToast({ message: t('lib_delete_success', { name: item.name }), type: 'success' });

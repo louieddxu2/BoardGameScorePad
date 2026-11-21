@@ -1,5 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
+import { clearCloudSession, ensureCloudSession } from '../services/cloud/cloudSession';
+import { isOwnerEmail } from '../utils/ownerAccount';
 import { googleDriveService, CloudFile, CloudResourceType, getAutoConnectPreference, setAutoConnectPreference } from '../services/googleDrive';
 import { runGoogleDriveRestore } from '../services/cloud/googleDriveRestore';
 import { extractCloudLocalId, getCloudUpdatedAt } from '../services/cloud/cloudMetadata';
@@ -30,6 +32,9 @@ export const useGoogleDrive = () => {
         if (isConnected) {
             googleAuth.fetchUserEmail().then(email => {
                 setUserEmail(email);
+                // The owner gets a device-bound session in the background, so owner tools keep
+                // working after this Google token expires (no extra sign-in is shown).
+                if (isOwnerEmail(email)) ensureCloudSession({ interactive: false }).catch(() => undefined);
             });
         } else {
             setUserEmail(null);
@@ -69,6 +74,8 @@ export const useGoogleDrive = () => {
         setIsAutoConnectEnabled(false);
         setAutoConnectPreference(false);
         await googleDriveService.signOut();
+        // Disconnecting Google also signs this device out of the scoreboard Worker.
+        clearCloudSession();
         setIsConnected(false);
         showToast({ message: tCloud('cloud_toast_disconnect_success'), type: 'info' });
     }, [showToast, tCloud]);
