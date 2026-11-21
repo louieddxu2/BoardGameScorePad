@@ -23,10 +23,14 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '內建計分板可從雲端取得新版：首次開啟時會下載最新內容，之後開局面板會標示有新版的計分板，按下開始才下載；雲端無法連線或回應太慢時沿用本機版本，下載後可離線使用。雲端新增的計分板也能搜尋，首次開局需連網。進行中的對局沿用開局時的版本。',
-        en: 'Built-in scoreboards can get new versions from the cloud: the latest content is downloaded the first time the app opens, and after that the start panel marks boards with an update, which download when you press start. When the cloud is unreachable or too slow, the local version is used, and downloaded boards work offline. Boards added in the cloud can also be found, and need a connection the first time. Games in progress keep the version they started with.' },
-      { kind: 'improved', zh: '所有內建計分板都已對應 BGG 編號，並可用英文名稱或其他別名搜尋。',
-        en: 'All built-in scoreboards are now linked to their BGG IDs and can be found by their English name or other aliases.' },
+      { kind: 'new', zh: '內建計分板可從雲端下載與更新。首次開啟 App 時會在背景下載隨附計分板的最新內容。開局面板可搜尋雲端新增的計分板，也會標示需要下載或有新版的計分板，按下開始才下載。雲端暫時無法下載時，有本機版本就能照常開局。',
+        en: 'Built-in scoreboards can be downloaded and updated from the cloud. On first open, the app downloads the latest bundled boards in the background. You can search for new cloud boards in the start panel, which marks boards that need a download or have an update. Those downloads start when you press Start. If the download fails, you can still start with a local copy if one is available.' },
+      { kind: 'new', zh: '續局優先使用開局時的內建計分板版本，必要時會從雲端取回。找不到原版時，沒有進行中多人房間的對局可選擇改用可取得的新版，保留能對應的欄位分數並重算總分。',
+        en: 'When you resume a game, the app uses the original built-in scoreboard version if available and retrieves it from the cloud if needed. If the original is unavailable and the game has no active multiplayer room, you can choose to resume with a newer version if one is available. Scores in matching columns carry over and totals are recalculated.' },
+      { kind: 'improved', zh: '隨附的內建計分板都有 BGG 編號，搜尋也支援英文名稱與其他別名。搜尋玩家分享的計分板時，只載入符合的結果。',
+        en: 'Bundled scoreboards now have BGG IDs, and search supports English names and other aliases. When you look for scoreboards shared by players, only matching results are loaded.' },
+      { kind: 'new', zh: '管理員可從分享選單發佈或更新內建計分板。Google 登入狀態會保留在這部裝置上，並顯示於雲端圖示。',
+        en: 'Admins can publish or update built-in scoreboards from the share menu. Google sign-in persists on the device, and the cloud icon shows when an admin is signed in.' },
     ],
   },
   {
