@@ -22,8 +22,9 @@ export const fetchTemplateFromCloud = (cloudId: string): Promise<FetchResponse |
   return cloudClient.fetchTemplateFromCloud(cloudId);
 };
 
-export const fetchPublicTemplates = (options?: { bggId?: string; query?: string }): Promise<FetchResponse[]> => {
-  return cloudClient.fetchPublicTemplates(options);
+/** Content of shared scoreboards chosen from the local share catalog; one D1 row per board. */
+export const fetchShareTemplatesByIds = (ids: string[]): Promise<FetchResponse[]> => {
+  return cloudClient.fetchShareTemplatesByIds(ids);
 };
 
 export const deleteTemplateFromCloud = (id: string, token: string): Promise<{ success: boolean }> => {

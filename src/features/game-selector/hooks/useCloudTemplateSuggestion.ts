@@ -1,12 +1,41 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../../db';
 import { FetchResponse } from '../../../services/cloudClient';
-import { fetchPublicTemplates } from '../../../services/templateShareService';
+import { fetchShareTemplatesByIds } from '../../../services/templateShareService';
+import { syncCatalog } from '../../official-boards/catalogSync';
+import type { ShareCatalogEntry } from '../../official-boards/types';
 
 export interface CloudSuggestionItem extends FetchResponse {
   isDownloaded: boolean;
 }
 
+/** The Worker returns at most this many boards per request (one D1 row each). */
+const MAX_SUGGESTIONS = 40;
+
+const normalize = (text: string | null | undefined) => (text ?? '').trim().toLowerCase();
+
+/**
+ * Shared boards for a game in the local share catalog: same BGG ID, or a name
+ * or BGG name containing the game name. Most played first.
+ */
+export const matchShareCatalog = (entries: ShareCatalogEntry[], gameName: string, bggId?: string): ShareCatalogEntry[] => {
+  const query = normalize(gameName);
+  return entries
+    .filter(
+      (e) =>
+        (!!bggId && e.bggId === bggId) ||
+        (!!query && (normalize(e.name).includes(query) || normalize(e.bggName).includes(query)))
+    )
+    .sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0) || b.createdAt - a.createdAt)
+    .slice(0, MAX_SUGGESTIONS);
+};
+
+/**
+ * Cloud scoreboards for the explore dialog. Which boards exist is decided from
+ * the share catalog every device already syncs; only those boards' content is
+ * then fetched by ID, so D1 reads one row per board shown and nothing when the
+ * game has none.
+ */
 export const useCloudTemplateSuggestion = (
   gameName: string,
   bggId?: string,
@@ -32,29 +61,31 @@ export const useCloudTemplateSuggestion = (
         setError(null);
         setSuggestions([]);
 
-        // 單次聯合查詢：同時傳入 bggId 與 query，確保 D1 僅被呼叫一次，由雲端進行 SQL 聯集查詢
-        console.log(`[useCloudTemplateSuggestion] 執行聯合在線檢索 (BGG ID: ${bggId || '無'}, 查詢詞: ${gameName})...`);
-        const results = await fetchPublicTemplates({ bggId, query: gameName });
+        // Keeps the local catalog current on its usual schedule; a failure leaves the local copy in use.
+        await syncCatalog('share').catch(() => undefined);
+        const matches = matchShareCatalog(await db.shareCatalog.toArray(), gameName, bggId);
+        if (!isMounted) return;
+        if (matches.length === 0) {
+          setSuggestions([]);
+          return;
+        }
 
+        const results = await fetchShareTemplatesByIds(matches.map((m) => m.id));
         if (!isMounted) return;
 
-        // 3. 讀取本地端已下載快取 (templateShareCache)，標記已經下載過的雲端範本，不再進行排除
         const downloadedCaches = await db.templateShareCache.toArray();
         const downloadedCloudIds = new Set(downloadedCaches.map(c => c.cloudId));
-
-        const mapped: CloudSuggestionItem[] = results.map(r => ({
-          ...r,
-          isDownloaded: downloadedCloudIds.has(r.id)
-        }));
-
-        // 4. 下載次數高到低排序 (為 Phase 3 鋪路)
-        mapped.sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0));
+        // Keep the catalog's order (most downloaded first).
+        const order = new Map(matches.map((m, i) => [m.id, i]));
+        const mapped: CloudSuggestionItem[] = results
+          .map(r => ({ ...r, isDownloaded: downloadedCloudIds.has(r.id) }))
+          .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 
         if (isMounted) {
           setSuggestions(mapped);
         }
       } catch (err: any) {
-        console.error('[useCloudTemplateSuggestion] Background fetch public templates failed', err);
+        console.error('[useCloudTemplateSuggestion] fetching shared boards failed', err);
         if (isMounted) {
           setError(err);
         }
