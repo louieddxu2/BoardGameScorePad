@@ -25,7 +25,6 @@ import HistoryStatsPanel from './HistoryStatsPanel';
 import ShareTemplateModal from './modals/ShareTemplateModal';
 import { isOwnerEmail } from '../../utils/ownerAccount';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
-import SearchTemplateOnlineModal from './modals/SearchTemplateOnlineModal';
 import { useDashboardTranslation } from '../../i18n/dashboard';
 import { db } from '../../db';
 import { uploadTemplateToCloud } from '../../services/templateShareService';
