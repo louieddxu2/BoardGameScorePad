@@ -12,7 +12,8 @@ describe('bundled scoreboard sync', () => {
     for (const path of ['src/data/templates.ts', 'src/data/templates-en.ts']) {
       const text = readFileSync(path, 'utf8');
       const parts = splitDataFile(text);
-      expect(renderDataFile({ ...parts, entries: planSync(parts.entries, []).entries })).toBe(text);
+      const roundTrips = renderDataFile({ ...parts, entries: planSync(parts.entries, []).entries }) === text;
+      expect(roundTrips, `Round-trip changed ${path}`).toBe(true);
     }
   });
 
@@ -46,13 +47,24 @@ describe('bundled scoreboard sync', () => {
     expect(bumpBuiltinVersion('x\nconst CURRENT_BUILTIN_VERSION = 23;\ny')).toEqual({ text: 'x\nconst CURRENT_BUILTIN_VERSION = 24;\ny', from: 23, to: 24 });
   });
 
-  it('treats changes to bundled boards after the pack as a stale pack', () => {
+  it('detects later bundled changes and boards that became cloud-only after packing', () => {
+    const packs = {
+      'zh-TW': { throughVersion: 5, templates: [{ id: 'Built-in-B' }] },
+      en: { throughVersion: 8, templates: [{ id: 'Built-in-EN-D' }] },
+    };
     expect(
       staleBundledChanges([
-        { templateId: 'Built-in-A', deleted: false, template: { bundled: true } },
-        { templateId: 'Built-in-B', deleted: false, template: { bundled: false } },
-        { templateId: 'Built-in-C', deleted: true },
-      ])
-    ).toEqual(['Built-in-A', 'Built-in-C']);
+        { templateId: 'Built-in-A', catalogVersion: 6, template: { lang: 'zh-TW', bundled: true } },
+        { templateId: 'Built-in-B', catalogVersion: 6, template: { lang: 'zh-TW', bundled: false } },
+        { templateId: 'Built-in-C', catalogVersion: 6, deleted: true },
+        { templateId: 'Built-in-EN-D', catalogVersion: 7, template: { lang: 'en', bundled: true } },
+        { templateId: 'Built-in-E', catalogVersion: 6, template: { lang: 'zh-TW', bundled: false } },
+      ], packs)
+    ).toEqual(['Built-in-A', 'Built-in-B', 'Built-in-C']);
+  });
+
+  it('reports invalid entries without including any scoreboard content', () => {
+    expect(() => splitDataFile('export const DEFAULT_TEMPLATES: GameTemplate[] = [{ "Fixture data" }]'))
+      .toThrow(/^invalid_builtin_entry_json_at_offset_\d+$/);
   });
 });

@@ -1,9 +1,8 @@
 
 import { db } from '../db';
-import { migrateTemplate, migrateScores } from './dataMigration';
-import { GameTemplate, GameSession } from '../types';
+import { migrateTemplate } from './dataMigration';
 import { generateId } from './idGenerator';
-import { reapplyDownloadedOfficialVersions } from '../features/official-boards/officialBoards';
+import { archiveOfficialVersion, localOfficialVersion, reapplyDownloadedOfficialVersions } from '../features/official-boards/officialBoards';
 
 // Bump when built-in template content changes so existing installs refresh it.
 const CURRENT_BUILTIN_VERSION = 23;
@@ -26,26 +25,24 @@ export const migrateFromLocalStorage = async () => {
             const { DEFAULT_TEMPLATES } = await import('../data/templates');
             const { DEFAULT_TEMPLATES_EN } = await import('../data/templates-en');
 
-            if (!isFreshInstall) {
+            const defaults = [...DEFAULT_TEMPLATES, ...DEFAULT_TEMPLATES_EN].map(migrateTemplate);
+            const versions = new Map(defaults.map(template => [template.id, localOfficialVersion(template)]));
+            const newArrivals = await db.transaction('rw', db.builtins, db.officialVersions, async () => {
                 const existingBuiltins = await db.builtins.toArray();
-                const existingIds = new Set(existingBuiltins.map(t => t.id));
-                const newArrivals = DEFAULT_TEMPLATES.filter(t => !existingIds.has(t.id)).map(t => t.id);
-                // Also check new English templates arrivals for badges
-                const newArrivalsEN = DEFAULT_TEMPLATES_EN.filter(t => !existingIds.has(t.id)).map(t => t.id);
-                const allNewArrivals = [...newArrivals, ...newArrivalsEN];
-                
-                if (allNewArrivals.length > 0) {
-                    const currentBadges = JSON.parse(localStorage.getItem(NEW_BADGES_KEY) || '[]');
-                    localStorage.setItem(NEW_BADGES_KEY, JSON.stringify(Array.from(new Set([...currentBadges, ...allNewArrivals]))));
+                for (const template of existingBuiltins) {
+                    if (versions.get(template.id) !== localOfficialVersion(template)) await archiveOfficialVersion(template);
                 }
+                await db.builtins.clear();
+                await db.builtins.bulkPut(defaults);
+                await reapplyDownloadedOfficialVersions();
+                if (!existingBuiltins.length) return [];
+                const existingIds = new Set(existingBuiltins.map(template => template.id));
+                return defaults.filter(template => !existingIds.has(template.id)).map(template => template.id);
+            });
+            if (newArrivals.length > 0) {
+                const currentBadges = JSON.parse(localStorage.getItem(NEW_BADGES_KEY) || '[]');
+                localStorage.setItem(NEW_BADGES_KEY, JSON.stringify(Array.from(new Set([...currentBadges, ...newArrivals]))));
             }
-
-            await db.builtins.clear();
-            const normalizedDefaults = DEFAULT_TEMPLATES.map(t => migrateTemplate(t));
-            const normalizedDefaultsEN = DEFAULT_TEMPLATES_EN.map(t => migrateTemplate(t));
-            await db.builtins.bulkPut([...normalizedDefaults, ...normalizedDefaultsEN]);
-            // Downloaded official versions newer than the bundled copy survive the rebuild.
-            await reapplyDownloadedOfficialVersions();
             localStorage.setItem(VERSION_KEY, String(CURRENT_BUILTIN_VERSION));
         }
 

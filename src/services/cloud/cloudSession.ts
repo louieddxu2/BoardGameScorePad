@@ -14,6 +14,7 @@ import { googleAuth } from './googleAuth';
 
 export const SESSION_STORAGE_KEY = 'sm_cloud_session';
 export const SESSION_EVENT = 'sm-cloud-session';
+const SIGN_OUT_GENERATION_KEY = 'sm_cloud_session_generation';
 const PROOF_HEADER = 'x-session-proof';
 const RENEW_WITHIN_MS = 7 * 24 * 60 * 60 * 1000;
 const KEY_DB = 'sm-device-keys';
@@ -60,15 +61,41 @@ const writeCloudSession = (session: CloudSession) => {
 
 let memorySession: CloudSession | null = null;
 const currentSession = () => readCloudSession() ?? (memorySession && memorySession.expiresAt > Date.now() ? memorySession : null);
+let localGeneration = 0;
+const deviceGeneration = () => {
+  try {
+    return Number(localStorage.getItem(SIGN_OUT_GENERATION_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+};
+const sessionGeneration = () => `${localGeneration}:${deviceGeneration()}`;
+
+const requireCurrentGeneration = (generation: string) => {
+  if (generation !== sessionGeneration()) throw new CloudSessionError('not_signed_in', 401);
+};
 
 export const clearCloudSession = () => {
+  localGeneration++;
   memorySession = null;
+  try {
+    localStorage.setItem(SIGN_OUT_GENERATION_KEY, String(deviceGeneration() + 1));
+  } catch {
+    // Invalidate pending work in this tab even with storage disabled.
+  }
   try {
     localStorage.removeItem(SESSION_STORAGE_KEY);
   } catch {
     // Nothing stored.
   }
   announce();
+};
+
+/** A late error from an earlier request must not clear a replacement session or sign in again. */
+export const clearCloudSessionIfTokenMatches = (token: string): boolean => {
+  if (currentSession()?.token !== token) return false;
+  clearCloudSession();
+  return true;
 };
 
 // --- Device key ---------------------------------------------------------------
@@ -150,20 +177,16 @@ const start = async (googleToken: string): Promise<CloudSession> => {
   const keys = await getDeviceKey();
   const publicKey = await crypto.subtle.exportKey('jwk', keys.publicKey);
   const data = await postJson('/api/auth/session', { authorization: `Bearer ${googleToken}` }, JSON.stringify({ publicKey }));
-  const session: CloudSession = { token: data.token, expiresAt: data.expiresAt, isAdmin: !!data.isAdmin };
-  writeCloudSession(session);
-  return session;
+  return { token: data.token, expiresAt: data.expiresAt, isAdmin: !!data.isAdmin };
 };
 
 const renew = async (session: CloudSession): Promise<CloudSession> => {
   const proof = await signRequest('POST', '/api/auth/refresh');
   const data = await postJson('/api/auth/refresh', { authorization: `Bearer ${session.token}`, [PROOF_HEADER]: proof });
-  const next: CloudSession = { token: data.token, expiresAt: data.expiresAt, isAdmin: !!data.isAdmin };
-  writeCloudSession(next);
-  return next;
+  return { token: data.token, expiresAt: data.expiresAt, isAdmin: !!data.isAdmin };
 };
 
-let pending: Promise<CloudSession> | null = null;
+let pending: { generation: string; task: Promise<CloudSession> } | null = null;
 
 /**
  * A usable session: the stored one (renewed in its last week), or a new one
@@ -171,12 +194,16 @@ let pending: Promise<CloudSession> | null = null;
  * show Google's sign-in.
  */
 export const ensureCloudSession = (options: { interactive: boolean }): Promise<CloudSession> => {
-  if (pending) return pending;
-  pending = (async () => {
+  const generation = sessionGeneration();
+  if (pending?.generation === generation) return pending.task;
+  const task = (async () => {
     const session = currentSession();
     if (session) {
       if (session.expiresAt - Date.now() < RENEW_WITHIN_MS) {
-        return renew(session).catch(() => session);
+        const refreshed = await renew(session).catch(() => null);
+        requireCurrentGeneration(generation);
+        if (refreshed) writeCloudSession(refreshed);
+        return refreshed ?? session;
       }
       return session;
     }
@@ -187,11 +214,16 @@ export const ensureCloudSession = (options: { interactive: boolean }): Promise<C
           ? await googleAuth.signIn()
           : null;
     if (!googleToken) throw new CloudSessionError('not_signed_in', 401);
-    return start(googleToken);
+    requireCurrentGeneration(generation);
+    const signedIn = await start(googleToken);
+    requireCurrentGeneration(generation);
+    writeCloudSession(signedIn);
+    return signedIn;
   })().finally(() => {
-    pending = null;
+    if (pending?.task === task) pending = null;
   });
-  return pending;
+  pending = { generation, task };
+  return task;
 };
 
 /**
@@ -204,8 +236,11 @@ export const sessionHeaders = async (
   body: string | undefined,
   options: { interactive: boolean }
 ): Promise<Record<string, string>> => {
+  const generation = sessionGeneration();
   const session = await ensureCloudSession(options);
-  return { authorization: `Bearer ${session.token}`, [PROOF_HEADER]: await signRequest(method, pathAndQuery, body ?? '') };
+  const proof = await signRequest(method, pathAndQuery, body ?? '');
+  requireCurrentGeneration(generation);
+  return { authorization: `Bearer ${session.token}`, [PROOF_HEADER]: proof };
 };
 
 /** Errors meaning the stored session or device key no longer works; signing in again fixes them. */

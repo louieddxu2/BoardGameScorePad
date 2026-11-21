@@ -3,9 +3,8 @@
  *
  * A downloaded official version is written into `builtins` under its stable
  * Built-in-* ID, so library, start panel, shadows and share links keep working
- * unchanged. Every downloaded version is also kept in `officialVersions`:
- * sessions resume on the version they started with, and a rebuild of the
- * bundled built-ins reapplies newer downloads.
+ * unchanged. Downloads and superseded bundled copies are kept in
+ * `officialVersions` for resuming sessions. Rebuilds reapply newer downloads.
  */
 import { db } from '../../db';
 import type { GameTemplate } from '../../types';
@@ -18,6 +17,16 @@ export const isOfficialTemplateId = (id: string | undefined): id is string => !!
 /** Local version of an official board: its downloaded version, 0 for the bundled copy, -1 when absent. */
 export const localOfficialVersion = (template: Pick<GameTemplate, 'officialVersion'> | undefined | null): number =>
   template ? template.officialVersion ?? 0 : -1;
+
+/** Save an outgoing local copy for resume, without replacing a recorded download. */
+export const archiveOfficialVersion = async (template: GameTemplate): Promise<void> => {
+  if (!isOfficialTemplateId(template.id)) return;
+  const id = template.id;
+  const version = localOfficialVersion(template);
+  if (!(await db.officialVersions.get([id, version]))) {
+    await db.officialVersions.put({ id, version, template });
+  }
+};
 
 /**
  * How long starting or resuming a game waits for a download before using the
@@ -58,7 +67,10 @@ export const downloadOfficialVersion = async (
     if (!options.install) return;
     // Never replace a newer local copy with an older download.
     const current = await db.builtins.get(id);
-    if (localOfficialVersion(current) < version) await db.builtins.put(template);
+    if (localOfficialVersion(current) < version) {
+      if (current) await archiveOfficialVersion(current);
+      await db.builtins.put(template);
+    }
   });
   return template;
 };
@@ -116,15 +128,16 @@ export const getOfficialTemplateAtVersion = async (id: string, version: number):
 };
 
 /** After `builtins` is rebuilt from bundled data, put back newer downloaded versions. */
-export const reapplyDownloadedOfficialVersions = async (): Promise<number> => {
-  const records = await db.officialVersions.toArray();
-  const latest = new Map<string, (typeof records)[number]>();
-  for (const record of records) {
-    const previous = latest.get(record.id);
-    if (!previous || record.version > previous.version) latest.set(record.id, record);
-  }
-  let restored = 0;
-  await db.transaction('rw', db.builtins, async () => {
+export const reapplyDownloadedOfficialVersions = (): Promise<number> =>
+  db.transaction('rw', db.builtins, db.officialVersions, async () => {
+    const records = await db.officialVersions.toArray();
+    const latest = new Map<string, (typeof records)[number]>();
+    for (const record of records) {
+      if (record.downloadedAt === undefined) continue;
+      const previous = latest.get(record.id);
+      if (!previous || record.version > previous.version) latest.set(record.id, record);
+    }
+    let restored = 0;
     for (const record of latest.values()) {
       const current = await db.builtins.get(record.id);
       if (localOfficialVersion(current) < record.version) {
@@ -132,9 +145,8 @@ export const reapplyDownloadedOfficialVersions = async (): Promise<number> => {
         restored++;
       }
     }
+    return restored;
   });
-  return restored;
-};
 
 export type OfficialLaunchState = 'needs_download' | 'update_available';
 

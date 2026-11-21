@@ -52,12 +52,12 @@ export interface CatalogSyncState {
   checkedAt: number;
 }
 
-/** A downloaded official version, kept so sessions and rebuilds can use it offline. */
+/** An official version kept for offline use. Only downloads are reapplied after a rebuild. */
 export interface OfficialVersionRecord {
   id: string;
   version: number;
   template: import('../../types').GameTemplate;
-  downloadedAt: number;
+  downloadedAt?: number;
 }
 
 export interface CatalogSnapshotPayload<T> {

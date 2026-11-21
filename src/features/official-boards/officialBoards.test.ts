@@ -66,6 +66,7 @@ describe('official boards (local)', () => {
     const installed = await db.builtins.get('Built-in-Agricola');
     expect(installed?.officialVersion).toBe(2);
     expect(installed?.columns).toHaveLength(2);
+    expect((await getOfficialTemplateAtVersion('Built-in-Agricola', 0))?.columns.map(c => c.name)).toEqual(['田地']);
 
     // Already current: no second download.
     await ensureOfficialBoard('Built-in-Agricola');
@@ -104,6 +105,7 @@ describe('official boards (local)', () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
     expect(await reapplyDownloadedOfficialVersions()).toBe(1);
     expect((await db.builtins.get('Built-in-Agricola'))?.officialVersion).toBe(2);
+    expect((await getOfficialTemplateAtVersion('Built-in-Agricola', 0))?.columns.map(c => c.name)).toEqual(['田地']);
   });
 
   it('syncs the catalog from a snapshot, then only changes after its version', async () => {
@@ -195,6 +197,7 @@ describe('official pack (first open)', () => {
     expect((await db.builtins.get('Built-in-Agricola'))?.officialVersion).toBe(2);
     expect((await db.builtins.get('Built-in-Same'))?.columns.map((c) => c.name)).toEqual(['A']);
     expect((await db.builtins.get('Built-in-CloudOnly'))?.officialVersion).toBe(0);
+    expect((await getOfficialTemplateAtVersion('Built-in-Agricola', 0))?.columns.map(c => c.name)).toEqual(['田地']);
 
     // A board only the cloud has survives a rebuild of the bundled built-ins and can be resumed at v0.
     await db.builtins.delete('Built-in-CloudOnly');

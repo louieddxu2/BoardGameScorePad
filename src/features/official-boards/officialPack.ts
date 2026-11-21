@@ -10,7 +10,7 @@
  */
 import { db } from '../../db';
 import { fetchOfficialPack } from './officialApi';
-import { isOfficialTemplateId, localOfficialVersion, toOfficialTemplate } from './officialBoards';
+import { archiveOfficialVersion, isOfficialTemplateId, localOfficialVersion, toOfficialTemplate } from './officialBoards';
 
 export type OfficialPackLang = 'zh-TW' | 'en';
 
@@ -50,6 +50,7 @@ export const installOfficialPack = async (lang: OfficialPackLang): Promise<numbe
       // The bundled copy is version 0; only newer or missing boards are written.
       if (localOfficialVersion(current) >= item.version) continue;
       const template = toOfficialTemplate(item, item.id, item.version, current, now);
+      if (current) await archiveOfficialVersion(current);
       // Kept in officialVersions too, so a rebuild of the bundled built-ins puts it back.
       await db.officialVersions.put({ id: item.id, version: item.version, template, downloadedAt: now });
       await db.builtins.put(template);

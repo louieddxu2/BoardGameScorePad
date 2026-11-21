@@ -66,6 +66,41 @@ describe('device-bound cloud session', () => {
     expect((await ensureCloudSession({ interactive: false })).token).toBe('s1.new.sig');
   });
 
+  it.each(['sign-in', 'refresh'])('ignores a late %s response after sign-out', async (operation) => {
+    if (operation === 'refresh') {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ token: 's1.old.sig', expiresAt: Date.now() + 2 * DAY, isAdmin: true }));
+    }
+    let release!: (response: Response) => void;
+    const late = new Promise<Response>((resolve) => { release = resolve; });
+    const fetchMock = mockWorker(() => late);
+    const pending = ensureCloudSession({ interactive: false });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'not_signed_in' });
+
+    clearCloudSession();
+    release(Response.json({ token: 's1.late.sig', expiresAt: Date.now() + 30 * DAY, isAdmin: true }));
+
+    await rejected;
+    expect(readCloudSession()).toBeNull();
+  });
+
+  it('does not retry a stale admin response that arrives after sign-out', async () => {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ token: 's1.old.sig', expiresAt: Date.now() + 20 * DAY, isAdmin: true }));
+    let release!: (response: Response) => void;
+    const late = new Promise<Response>((resolve) => { release = resolve; });
+    const fetchMock = mockWorker(() => late);
+    const pending = fetchPublishTarget('1', 'en');
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'invalid_session_proof' });
+
+    clearCloudSession();
+    release(Response.json({ error: 'invalid_session_proof' }, { status: 401 }));
+
+    await rejected;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(readCloudSession()).toBeNull();
+  });
+
   it('does not show Google sign-in unless the caller allows it', async () => {
     googleState.isAuthorized = false;
     googleState.token = null;

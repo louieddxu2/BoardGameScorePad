@@ -18,6 +18,7 @@ export const splitDataFile = (text) => {
   if (!head) throw new Error('data_array_not_found');
   const arrayStart = head.index + head[0].length; // just after '['
   const arrayEnd = text.lastIndexOf(']');
+  if (arrayEnd < arrayStart) throw new Error('data_array_end_not_found');
   const entries = [];
   const positions = [];
   let depth = 0;
@@ -40,11 +41,16 @@ export const splitDataFile = (text) => {
       depth--;
       if (depth === 0) {
         const source = text.slice(start, i + 1);
-        entries.push({ source, value: JSON.parse(source) });
+        try {
+          entries.push({ source, value: JSON.parse(source) });
+        } catch {
+          throw new Error(`invalid_builtin_entry_json_at_offset_${start}`);
+        }
         positions.push([start, i + 1]);
       }
     }
   }
+  if (depth !== 0 || inString) throw new Error('invalid_builtin_data_array');
   // Each entry keeps the exact text before it (after the previous entry); new entries use the most common one.
   entries.forEach((e, i) => {
     if (i > 0) e.gap = text.slice(positions[i - 1][1], positions[i][0]);
@@ -125,9 +131,19 @@ export const bumpBuiltinVersion = (migrationText) => {
 };
 
 /**
- * Catalog changes after the pack was built that the pack may be missing: a
- * board marked bundled whose version moved, or a removal. Empty means the pack
- * is current for bundled boards.
+ * Detect catalog changes that affect a pack, including boards still in a pack
+ * after the cloud stopped bundling them.
  */
-export const staleBundledChanges = (changes) =>
-  changes.filter((c) => c.deleted || c.template?.bundled).map((c) => c.templateId);
+export const staleBundledChanges = (changes, packs) => {
+  const packedThrough = new Map();
+  for (const pack of Object.values(packs)) {
+    for (const item of pack.templates) packedThrough.set(item.id, pack.throughVersion);
+  }
+  return changes.filter(change => {
+    const includedThrough = packedThrough.get(change.templateId);
+    if (includedThrough !== undefined) return change.catalogVersion > includedThrough;
+    if (change.deleted) return true;
+    const pack = packs[change.template?.lang];
+    return !!change.template?.bundled && !!pack && change.catalogVersion > pack.throughVersion;
+  }).map(change => change.templateId);
+};

@@ -114,7 +114,7 @@ export const useSessionManager = ({
         const template = await getTemplate(id);
         if (session.officialVersion === undefined || !isOfficialTemplateId(id)) return template;
         if (template && localOfficialVersion(template) === session.officialVersion) return template;
-        return (await getOfficialTemplateAtVersion(id, session.officialVersion)) ?? template;
+        return getOfficialTemplateAtVersion(id, session.officialVersion);
     };
 
     const startSession = async (
@@ -235,8 +235,12 @@ export const useSessionManager = ({
 
     const activateSession = async (session: GameSession, isCurrent: () => boolean): Promise<boolean> => {
         try {
-            const loaded = await loadSessionActivation(session, (id) => getSessionTemplate(session, id), isCurrent);
-            if (!loaded) return false;
+            const requireTemplate = session.officialVersion !== undefined && isOfficialTemplateId(session.templateId);
+            const loaded = await loadSessionActivation(session, (id) => getSessionTemplate(session, id), isCurrent, requireTemplate);
+            if (!loaded) {
+                if (requireTemplate && isCurrent()) showToast({ message: t('msg_template_read_failed'), type: 'error' });
+                return false;
+            }
             if (!isCurrent()) {
                 if (loaded.imageUrl) URL.revokeObjectURL(loaded.imageUrl);
                 return false;

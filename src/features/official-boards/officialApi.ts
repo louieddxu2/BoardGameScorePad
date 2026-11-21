@@ -4,7 +4,7 @@
  */
 import { CLOUD_SHARE_BASE_URL } from '../../services/cloudClient';
 import {
-  clearCloudSession,
+  clearCloudSessionIfTokenMatches,
   CloudSessionError,
   isStaleSessionError,
   sessionHeaders,
@@ -79,20 +79,24 @@ export const fetchOfficialPack = (lang: string) =>
 const adminRequest = async <T>(path: string, init: RequestInit = {}, interactive = true): Promise<T> => {
   const method = (init.method ?? 'GET').toUpperCase();
   const body = typeof init.body === 'string' ? init.body : undefined;
+  let sentToken: string | undefined;
   const send = async () => {
     const headers = new Headers(init.headers);
-    for (const [name, value] of Object.entries(await sessionHeaders(method, path, body, { interactive }))) headers.set(name, value);
+    const auth = await sessionHeaders(method, path, body, { interactive }).catch(error => {
+      if (error instanceof CloudSessionError) throw new OfficialApiError(error.code, error.status);
+      throw error;
+    });
+    sentToken = auth.authorization.slice('Bearer '.length);
+    for (const [name, value] of Object.entries(auth)) headers.set(name, value);
     if (body) headers.set('content-type', 'application/json');
     return request<T>(path, { ...init, method, headers });
   };
   try {
     return await send();
   } catch (error) {
-    if (error instanceof OfficialApiError && isStaleSessionError(error.code)) {
-      clearCloudSession();
+    if (error instanceof OfficialApiError && isStaleSessionError(error.code) && sentToken && clearCloudSessionIfTokenMatches(sentToken)) {
       return send();
     }
-    if (error instanceof CloudSessionError) throw new OfficialApiError(error.code, error.status);
     throw error;
   }
 };
