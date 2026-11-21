@@ -72,7 +72,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, 
           {tab === 'official' ? (
             <OfficialBoardsPanel isAdmin={isOwnerEmail(userEmail)} />
           ) : (
-            <ShareCatalogTab userTemplates={userTemplates} onImport={onImport} onClose={onClose} onBusyChange={setIsBusy} />
+            <ShareCatalogTab userTemplates={userTemplates} onImport={onImport} onBusyChange={setIsBusy} />
           )}
         </div>
       </div>

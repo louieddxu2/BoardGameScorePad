@@ -17,7 +17,6 @@ import type { ShareCatalogEntry } from '../../../../features/official-boards/typ
 interface ShareCatalogTabProps {
   userTemplates: GameTemplate[];
   onImport: (templates: GameTemplate[]) => void;
-  onClose: () => void;
   /** Lets the modal block closing while an import or delete is running. */
   onBusyChange: (busy: boolean) => void;
 }
@@ -34,7 +33,7 @@ const createLocalTemplate = (payload: any): GameTemplate => {
  * User-shared scoreboards from the local share catalog. The list costs no D1
  * reads beyond catalog sync; a payload is downloaded only when importing it.
  */
-const ShareCatalogTab: React.FC<ShareCatalogTabProps> = ({ userTemplates, onImport, onClose, onBusyChange }) => {
+const ShareCatalogTab: React.FC<ShareCatalogTabProps> = ({ userTemplates, onImport, onBusyChange }) => {
   const { t } = useCloudLibraryTranslation();
   const { t: tShare } = useOfficialBoardsTranslation();
   const { showToast } = useToast();
@@ -45,7 +44,6 @@ const ShareCatalogTab: React.FC<ShareCatalogTabProps> = ({ userTemplates, onImpo
   const [syncFailed, setSyncFailed] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 
   const sync = async () => {
     setSyncing(true);
@@ -64,13 +62,12 @@ const ShareCatalogTab: React.FC<ShareCatalogTabProps> = ({ userTemplates, onImpo
     sync();
   }, []);
 
-  const busy = !!importingId || !!deletingId || !!bulkProgress;
+  const busy = !!importingId || !!deletingId;
   useEffect(() => onBusyChange(busy), [busy, onBusyChange]);
 
   const items = useMemo(() => [...(entries ?? [])].sort((a, b) => b.createdAt - a.createdAt), [entries]);
   const localNames = useMemo(() => new Set(userTemplates.map((ut) => ut.name.trim().toLowerCase())), [userTemplates]);
   const isImported = (name: string) => localNames.has(name.trim().toLowerCase());
-  const importable = items.filter((item) => !isImported(item.name));
 
   /** Download one shared payload; null when it was removed from the cloud. */
   const download = async (item: ShareCatalogEntry): Promise<GameTemplate | null> => {
@@ -97,32 +94,6 @@ const ShareCatalogTab: React.FC<ShareCatalogTabProps> = ({ userTemplates, onImpo
       showToast({ message: tShare('share_import_failed', { error: (error as Error)?.message || String(error) }), type: 'error' });
     } finally {
       setImportingId(null);
-    }
-  };
-
-  const handleImportAll = async () => {
-    if (importable.length === 0) {
-      showToast({ message: t('lib_import_already'), type: 'warning' });
-      return;
-    }
-    const imported: GameTemplate[] = [];
-    setBulkProgress({ done: 0, total: importable.length });
-    try {
-      // Sequential so the per-device daily request limit and Worker load stay predictable.
-      for (const item of importable) {
-        const template = await download(item);
-        if (template) imported.push(template);
-        setBulkProgress({ done: imported.length, total: importable.length });
-      }
-    } catch (error) {
-      showToast({ message: tShare('share_import_failed', { error: (error as Error)?.message || String(error) }), type: 'error' });
-    } finally {
-      setBulkProgress(null);
-    }
-    if (imported.length > 0) {
-      onImport(imported);
-      showToast({ message: t('lib_import_all_success', { count: imported.length }), type: 'success' });
-      if (imported.length === importable.length) onClose();
     }
   };
 
@@ -182,20 +153,10 @@ const ShareCatalogTab: React.FC<ShareCatalogTabProps> = ({ userTemplates, onImpo
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2 py-1">
+      <div className="py-1">
         <span className="text-[10px] text-txt-muted">
           {syncFailed ? tShare('share_list_stale') : tShare('share_count_weekly')}
         </span>
-        {importable.length > 0 && (
-          <button
-            onClick={handleImportAll}
-            disabled={busy}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-txt-on-color bg-gradient-to-r from-brand-primary to-brand-secondary rounded-xl shadow-lg hover:filter hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all"
-          >
-            {bulkProgress ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-            {bulkProgress ? tShare('share_import_progress', bulkProgress) : t('lib_btn_import_all')}
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

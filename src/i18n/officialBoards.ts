@@ -81,7 +81,6 @@ export const officialBoardsTranslations = {
         share_import_failed: "匯入失敗：{error}",
         share_import_missing: "「{name}」已不在雲端",
         share_count_weekly: "下載次數每週更新",
-        share_import_progress: "匯入中 {done}/{total}",
     },
     'en': {
         official_downloading: "Downloading the official scoreboard…",
@@ -156,7 +155,6 @@ export const officialBoardsTranslations = {
         share_import_failed: "Import failed: {error}",
         share_import_missing: "\"{name}\" is no longer in the cloud",
         share_count_weekly: "Download counts update weekly",
-        share_import_progress: "Importing {done}/{total}",
     }
 };
 

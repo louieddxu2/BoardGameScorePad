@@ -40,7 +40,6 @@ describe('ShareCatalogTab', () => {
       <ShareCatalogTab
         userTemplates={[{ id: 'local', name: 'already here', columns: [], createdAt: 0 }]}
         onImport={onImport}
-        onClose={vi.fn()}
         onBusyChange={vi.fn()}
       />
     );
@@ -62,7 +61,7 @@ describe('ShareCatalogTab', () => {
 
   it('removes a deleted share from the local catalog', async () => {
     deleteTemplateFromCloud.mockResolvedValue({ success: true });
-    render(<ShareCatalogTab userTemplates={[]} onImport={vi.fn()} onClose={vi.fn()} onBusyChange={vi.fn()} />);
+    render(<ShareCatalogTab userTemplates={[]} onImport={vi.fn()} onBusyChange={vi.fn()} />);
     await screen.findByText('Cascadia');
 
     await act(async () => {
