@@ -82,6 +82,7 @@ vi.mock('../db', () => ({ db: hoisted.dbMock }));
 vi.mock('../hooks/useToast', () => ({
   useToast: () => ({ showToast: hoisted.showToastMock }),
 }));
+vi.mock('./useConfirm', () => ({ useConfirm: () => ({ confirm: vi.fn() }) }));
 vi.mock('../hooks/useLibrary', () => ({
   useLibrary: () => ({ updatePlayer: vi.fn() }),
 }));

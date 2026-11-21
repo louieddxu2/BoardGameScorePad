@@ -8,14 +8,12 @@ export const loadSessionActivation = async (
     input: GameSession,
     getTemplate: (id: string) => Promise<GameTemplate | null>,
     isCurrent: () => boolean,
-    requireTemplate = false,
 ): Promise<{ session: GameSession; template: GameTemplate; imageUrl: string | null } | null> => {
     const session = { ...input };
     let template = await getTemplate(session.templateId);
     if (!isCurrent()) return null;
 
     if (!template) {
-        if (requireTemplate) return null;
         console.warn(`Template ${session.templateId} missing for session ${session.id}. Creating virtual fallback.`);
         template = createVirtualTemplate(
             session.templateId,

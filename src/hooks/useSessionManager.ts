@@ -4,8 +4,8 @@ import { db } from '../db';
 import { GameTemplate, GameSession, Player, ScoringRule, HistoryRecord } from '../types';
 import { generateId } from '../utils/idGenerator';
 import { migrateTemplate } from '../utils/dataMigration';
-import { loadSessionActivation } from './sessionActivation';
-import { getOfficialTemplateAtVersion, isOfficialTemplateId, localOfficialVersion } from '../features/official-boards/officialBoards';
+import { loadSessionForResume } from './officialSessionResume';
+import { isOfficialTemplateId, localOfficialVersion } from '../features/official-boards/officialBoards';
 import { applyTemplateToSession } from '../utils/sessionTemplateUpdate';
 import { calculateScoreSession } from '../utils/sessionScoring';
 import { imageService } from '../services/imageService';
@@ -14,6 +14,7 @@ import { cleanupService } from '../services/cleanupService';
 import { relationshipService } from '../services/relationshipService';
 import { applyRecommendationsToPlayers } from '../features/recommendation/SessionPlayerInitializer'; // [Refactor] New Import
 import { useToast } from './useToast';
+import { useConfirm } from './useConfirm';
 import { COLORS } from '../colors';
 import { useLibrary } from './useLibrary';
 import { useSessionTranslation } from '../i18n/session';
@@ -42,6 +43,7 @@ export const useSessionManager = ({
 }: UseSessionManagerProps) => {
 
     const { showToast } = useToast();
+    const { confirm } = useConfirm();
     const { t } = useSessionTranslation();
     const { updatePlayer } = useLibrary();
 
@@ -107,14 +109,6 @@ export const useSessionManager = ({
     const waitForPendingAutosave = async () => {
         const pending = autosaveInFlightRef.current;
         if (pending) await pending;
-    };
-
-    /** Resume an official board on the version its session started with, even after an update. */
-    const getSessionTemplate = async (session: GameSession, id: string): Promise<GameTemplate | null> => {
-        const template = await getTemplate(id);
-        if (session.officialVersion === undefined || !isOfficialTemplateId(id)) return template;
-        if (template && localOfficialVersion(template) === session.officialVersion) return template;
-        return getOfficialTemplateAtVersion(id, session.officialVersion);
     };
 
     const startSession = async (
@@ -233,22 +227,23 @@ export const useSessionManager = ({
         return sessionId;
     };
 
-    const activateSession = async (session: GameSession, isCurrent: () => boolean): Promise<boolean> => {
+    const activateSession = async (session: GameSession, isCurrent: () => boolean, offerReplacement = false): Promise<boolean> => {
         try {
-            const requireTemplate = session.officialVersion !== undefined && isOfficialTemplateId(session.templateId);
-            const loaded = await loadSessionActivation(session, (id) => getSessionTemplate(session, id), isCurrent, requireTemplate);
-            if (!loaded) {
-                if (requireTemplate && isCurrent()) showToast({ message: t('msg_template_read_failed'), type: 'error' });
-                return false;
-            }
+            const loaded = await loadSessionForResume(session, getTemplate, isCurrent, {
+                notifyUnavailable: () => showToast({ message: t('resume_official_version_missing'), type: 'error' }),
+                confirmReplacement: offerReplacement ? () => confirm({
+                    title: t('resume_official_version_missing'),
+                    message: t('resume_official_version_replace_message'),
+                    confirmText: t('resume_official_version_replace'),
+                }) : undefined,
+            });
+            if (!loaded) return false;
             if (!isCurrent()) {
                 if (loaded.imageUrl) URL.revokeObjectURL(loaded.imageUrl);
                 return false;
             }
 
-            // Resume is a read, not an edit. Another owner (multiplayer) may
-            // already be persisting newer snapshots of this same session.
-            // Keep compatibility migrations in memory until an edit or save.
+            // Ordinary resumes keep migrations in memory. Confirmed replacements are already saved.
             cancelPendingAutosave();
             persistedSessionRef.current = loaded.session;
             setSessionImage(loaded.imageUrl);
@@ -265,7 +260,7 @@ export const useSessionManager = ({
         const isCurrent = beginActivation(shouldActivate);
         if (!isCurrent()) return false;
         const session = await db.sessions.where('templateId').equals(templateId).and(s => s.status === 'active').first();
-        return session && isCurrent() ? activateSession(session, isCurrent) : false;
+        return session && isCurrent() ? activateSession(session, isCurrent, true) : false;
     };
 
     const resumeSessionById = async (sessionId: string, shouldActivate?: () => boolean): Promise<boolean> => {

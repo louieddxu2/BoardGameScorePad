@@ -249,6 +249,9 @@ export const sessionTranslations = {
     toast_bg_removed: "背景計分紙已移除",
     toast_remove_failed: "移除失敗",
     msg_template_read_failed: "無法讀取模板資料",
+    resume_official_version_missing: "找不到原本的計分板版本",
+    resume_official_version_replace_message: "要改用新版繼續這一局嗎？可對應到新版欄位的分數會保留，其他分數不會帶入，總分會重新計算。",
+    resume_official_version_replace: "用新版續局",
     msg_session_saved: "遊戲紀錄已儲存！",
     msg_session_save_failed: "儲存失敗，請重試",
 
@@ -557,6 +560,9 @@ export const sessionTranslations = {
     toast_bg_removed: "Background removed",
     toast_remove_failed: "Removal failed",
     msg_template_read_failed: "Failed to read template data",
+    resume_official_version_missing: "The original scoreboard version is unavailable",
+    resume_official_version_replace_message: "Resume with a newer scoreboard? Scores that match its columns will carry over. Other scores will be left out, and totals will be recalculated.",
+    resume_official_version_replace: "Resume with newer version",
     msg_session_saved: "Game record saved!",
     msg_session_save_failed: "Failed to save, please try again",
 

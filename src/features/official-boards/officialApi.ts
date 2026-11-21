@@ -55,9 +55,9 @@ export const fetchCatalogSnapshot = <T extends OfficialCatalogEntry | ShareCatal
 export const fetchCatalogChanges = <T extends OfficialCatalogEntry | ShareCatalogEntry>(kind: CatalogKind, after: number) =>
   request<CatalogChangesPayload<T>>(`${catalogPath(kind)}/changes?after=${after}`);
 
-export const fetchOfficialTemplate = (id: string, version: number, timeoutMs?: number) =>
+export const fetchOfficialTemplate = (id: string, version: number | undefined, timeoutMs?: number) =>
   request<OfficialCatalogEntry & { payload: GameTemplate }>(
-    `/api/official/template/${encodeURIComponent(id)}?version=${version}`,
+    `/api/official/template/${encodeURIComponent(id)}${version === undefined ? '' : `?version=${version}`}`,
     {},
     timeoutMs
   );

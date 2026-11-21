@@ -48,6 +48,7 @@ vi.mock('../../db', async () => {
 });
 
 vi.mock('../../hooks/useToast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
+vi.mock('../../hooks/useConfirm', () => ({ useConfirm: () => ({ confirm: vi.fn() }) }));
 vi.mock('../../i18n/session', () => ({ useSessionTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../services/googleDrive', () => ({ googleDriveService: {}, getAutoConnectPreference: () => false }));
 vi.mock('../recommendation/SessionPlayerInitializer', () => ({

@@ -55,16 +55,18 @@ export const toOfficialTemplate = (
 /** Download one published version and store it. Optionally make it the local copy in `builtins`. */
 export const downloadOfficialVersion = async (
   id: string,
-  version: number,
+  requestedVersion: number | undefined,
   options: { install: boolean; timeoutMs?: number }
 ): Promise<GameTemplate> => {
-  const response = await fetchOfficialTemplate(id, version, options.timeoutMs);
+  const response = await fetchOfficialTemplate(id, requestedVersion, options.timeoutMs);
+  const version = requestedVersion ?? response.version;
+  if (!Number.isInteger(version) || version < 0) throw new Error('invalid_official_version');
   const now = Date.now();
   const existing = await db.builtins.get(id);
   const template = toOfficialTemplate(response, id, version, existing, now);
   await db.transaction('rw', db.officialVersions, db.builtins, async () => {
+    if (!options.install) return archiveOfficialVersion(template);
     await db.officialVersions.put({ id, version, template, downloadedAt: now });
-    if (!options.install) return;
     // Never replace a newer local copy with an older download.
     const current = await db.builtins.get(id);
     if (localOfficialVersion(current) < version) {
