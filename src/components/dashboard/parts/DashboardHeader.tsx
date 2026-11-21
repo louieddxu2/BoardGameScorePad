@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Leaf, Settings } from 'lucide-react';
+import { Dice5, Search, X, Download, HelpCircle, Calculator, History, Cloud, CloudOff, Loader2, Sun, Leaf, Settings, ShieldCheck } from 'lucide-react';
+import { useCloudSession } from '../../../hooks/useCloudSession';
 import type { DashboardMode } from '../dashboardMode';
 import { useSettingsTranslation } from '../../../i18n/settings';
 import { APP_THEMES, nextAppTheme, type AppTheme } from '../../../theme';
@@ -67,6 +68,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const { t: tCommon } = useCommonTranslation();
   const { t: tDash } = useDashboardTranslation();
   const { t: tCloud } = useCloudTranslation();
+  // The owner's device-bound sign-in (independent of the Google Drive connection shown by the icon).
+  const ownerSession = useCloudSession();
   const tSettings = useSettingsTranslation();
   const { icon: ThemeIcon, className: themeIconClass } = themeIndicators[themeMode];
   const themeControlLabel = tDash('dash_switch_theme', {
@@ -284,14 +287,23 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               <button
                 onClick={onCloudClick}
                 disabled={isSyncing}
-                className={`btn-cloud-status ${isSyncing ? 'bg-surface-alt border-surface-border cursor-wait' :
+                className={`btn-cloud-status relative ${isSyncing ? 'bg-surface-alt border-surface-border cursor-wait' :
                   isConnected ? 'connected' : 'disconnected'
                   }`}
                 // [Update] Display storage size in tooltip
-                title={`${tDash('dash_cloud_sync')}${localUsage ? ` (${localUsage})` : ''}`}
+                title={`${tDash('dash_cloud_sync')}${localUsage ? ` (${localUsage})` : ''}${ownerSession.isAdmin ? ` · ${tDash('dash_cloud_owner_signed_in')}` : ''}`}
               >
                 {isSyncing ? <Loader2 className="animate-spin" size={18} /> :
                   isConnected ? <Cloud size={18} /> : <CloudOff size={18} />}
+                {ownerSession.isAdmin && (
+                  <span
+                    data-testid="cloud-owner-badge"
+                    // Inside the button: the header row clips anything outside it.
+                    className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-brand-primary text-txt-on-color flex items-center justify-center pointer-events-none"
+                  >
+                    <ShieldCheck size={9} strokeWidth={3} />
+                  </span>
+                )}
               </button>
               )}
             </div>
