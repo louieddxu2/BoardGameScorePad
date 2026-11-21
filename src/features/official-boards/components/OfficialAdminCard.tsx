@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Hammer, ListPlus, Loader2 } from 'lucide-react';
+import { Hammer, ListPlus, Loader2, LogIn, ShieldCheck } from 'lucide-react';
+import { useCloudSession } from '../../../hooks/useCloudSession';
+import { ensureCloudSession } from '../../../services/cloud/cloudSession';
 import { db } from '../../../db';
 import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 import {
@@ -44,7 +46,8 @@ const loadUnregisteredBuiltins = async (): Promise<BuiltinRegistration[]> => {
  */
 const OfficialAdminCard: React.FC = () => {
   const { t } = useOfficialBoardsTranslation();
-  const [busy, setBusy] = useState<'register' | 'rebuild' | null>(null);
+  const session = useCloudSession();
+  const [busy, setBusy] = useState<'register' | 'rebuild' | 'signin' | null>(null);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
 
   const run = async (kind: NonNullable<typeof busy>, task: () => Promise<string>) => {
@@ -84,6 +87,13 @@ const OfficialAdminCard: React.FC = () => {
       return t('official_admin_register_done', { registered, skipped });
     });
 
+  /** Sign this device in now (normally automatic after connecting Google Drive). */
+  const signIn = () =>
+    run('signin', async () => {
+      const result = await ensureCloudSession({ interactive: true });
+      return t('official_session_on', { date: new Date(result.expiresAt).toLocaleDateString() });
+    });
+
   const rebuild = () =>
     run('rebuild', async () => {
       const result = await rebuildOfficial();
@@ -97,6 +107,19 @@ const OfficialAdminCard: React.FC = () => {
   return (
     <div className="modal-bg-elevated rounded-xl p-3 border border-status-warning/30 space-y-2">
       <div className="text-xs font-bold text-txt-muted uppercase tracking-wider">{t('official_admin_title')}</div>
+      {session.expiresAt ? (
+        <p className="flex items-center gap-1.5 text-xs text-brand-primary">
+          <ShieldCheck size={14} className="shrink-0" />
+          {t('official_session_on', { date: new Date(session.expiresAt).toLocaleDateString() })}
+        </p>
+      ) : (
+        <div className="flex items-center gap-2">
+          <p className="flex-1 text-xs text-txt-muted">{t('official_session_off')}</p>
+          <button onClick={signIn} disabled={!!busy} className="flex items-center gap-1 px-2.5 py-1.5 btn-modal-secondary rounded-lg text-xs font-bold disabled:opacity-60 flex-none">
+            {icon('signin', LogIn)} {t('official_session_sign_in')}
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <button onClick={register} disabled={!!busy} className={buttonClass}>
           {icon('register', ListPlus)} {t('official_admin_register')}

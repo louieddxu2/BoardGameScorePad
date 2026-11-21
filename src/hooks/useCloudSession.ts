@@ -6,10 +6,14 @@ import { readCloudSession, SESSION_EVENT, SESSION_STORAGE_KEY } from '../service
  * Worker. Owner tools use it so they stay available after the Google Drive
  * token expires; the Worker still checks every admin request.
  */
-export const useCloudSession = (): { isAdmin: boolean } => {
-  const [isAdmin, setIsAdmin] = useState(() => !!readCloudSession()?.isAdmin);
+export const useCloudSession = (): { isAdmin: boolean; expiresAt: number | null } => {
+  const read = () => {
+    const session = readCloudSession();
+    return { isAdmin: !!session?.isAdmin, expiresAt: session?.expiresAt ?? null };
+  };
+  const [state, setState] = useState(read);
   useEffect(() => {
-    const update = () => setIsAdmin(!!readCloudSession()?.isAdmin);
+    const update = () => setState(read());
     const onStorage = (event: StorageEvent) => {
       if (event.key === SESSION_STORAGE_KEY) update();
     };
@@ -20,5 +24,5 @@ export const useCloudSession = (): { isAdmin: boolean } => {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
-  return { isAdmin };
+  return state;
 };
