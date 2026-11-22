@@ -33,6 +33,7 @@ import { useToolboxBoundaryGesture } from '../../hooks/useToolboxBoundaryGesture
 import { createPlayerSessionCapabilities, hostSessionCapabilities } from '../../features/multiplayer/sessionCapabilities';
 import { multiplayerSessionManager } from '../../features/multiplayer/multiplayerSessionManager';
 import { routeMultiplayerSessionUpdate } from '../../features/multiplayer/multiplayerSessionUpdateRouter';
+import { useSessionRules } from '../../features/game-rules/hooks/useSessionRules';
 
 const SessionView: React.FC<SessionViewProps> = (props) => {
   const { template, zoomLevel, baseImage } = props;
@@ -109,6 +110,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
   }, [aiSimpleGenerator.simpleStatus, aiGenerator.status]);
 
   const sessionState = useSessionState({ ...props, session, onUpdateTemplate: handleTemplateUpdate });
+  const gameRules = useSessionRules(template.bggId);
   const [isToolboxInputFocused, setIsToolboxInputFocused] = useState(false);
   const capabilities = useMemo(() => {
     if (props.multiplayerCapabilities) return props.multiplayerCapabilities;
@@ -481,8 +483,10 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
           canEditScore={capabilities.canEditScore}
           participantClaimCounts={managedRoomState?.role === 'host' ? managedRoomState.participantClaims : undefined}
           editablePlayerIds={capabilities.role === 'player' ? capabilities.playerIds : undefined}
+          rulesEntry={gameRules.entry}
         />
       </div>
+      {gameRules.drawer}
 
       {isScoresEmpty && (
         <div 

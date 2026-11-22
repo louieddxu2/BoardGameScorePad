@@ -13,6 +13,8 @@ interface GridFooterProps {
     isToolboxOpen: boolean;
     onToggleToolbox: () => void;
     isGenerating?: boolean;
+    /** Shown at the right of the middle area, beside the toolbox button (the game-rules entry). */
+    middleEnd?: React.ReactNode;
 }
 
 const GridFooter: React.FC<GridFooterProps> = ({
@@ -24,11 +26,12 @@ const GridFooter: React.FC<GridFooterProps> = ({
     isToolboxOpen,
     onToggleToolbox,
     isGenerating,
+    middleEnd,
 }) => {
     const { t } = useSessionTranslation();
-    // 顯示條件：編輯模式開啟 OR 需要顯示工具箱按鈕
-    // 如果兩者皆否，則整列隱藏，節省空間
-    if (!isEditMode && !showToolboxButton) return null;
+    // 顯示條件：編輯模式開啟、需要顯示工具箱按鈕，或有規則入口
+    // 三者皆否時整列隱藏，節省空間
+    if (!isEditMode && !showToolboxButton && !middleEnd) return null;
 
     return (
         <div className="flex relative z-10 animate-in fade-in slide-in-from-left-4 duration-300">
@@ -65,11 +68,15 @@ const GridFooter: React.FC<GridFooterProps> = ({
                 )}
             </div>
 
-            {/* Middle Spacer */}
-            <div 
-                className="flex-1 border-b border-[rgb(var(--c-grid-cell-border)/0.5)] min-h-[3rem]" 
+            {/* Middle Spacer; its end item stays beside the toolbox while the players scroll */}
+            <div
+                className="flex-1 flex items-center justify-end border-b border-[rgb(var(--c-grid-cell-border)/0.5)] min-h-[3rem]"
                 style={{ backgroundColor: 'rgb(var(--c-grid-cell-bg))' }}
-            />
+            >
+                {middleEnd && (
+                    <div className={`sticky px-2 ${showToolboxButton ? 'right-[54px]' : 'right-0'}`}>{middleEnd}</div>
+                )}
+            </div>
 
             {/* Right Side: Toolbox Toggle */}
             {showToolboxButton && (

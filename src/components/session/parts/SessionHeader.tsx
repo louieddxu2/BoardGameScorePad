@@ -135,9 +135,9 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({
         ) : (
           <div
             onClick={handleTitleClick}
-            className={`font-bold text-lg truncate flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode && canEditTemplate ? 'cursor-pointer hover:bg-surface-hover' : 'text-txt-primary'}`}
+            className={`font-bold text-lg min-w-0 flex items-center gap-2 px-2 py-1 rounded transition-colors group ${isEditMode && canEditTemplate ? 'cursor-pointer hover:bg-surface-hover' : 'text-txt-primary'}`}
           >
-            {templateName}
+            <span className="truncate">{templateName}</span>
             {isEditMode && canEditTemplate && <Edit2 size={14} className="text-txt-muted opacity-0 group-hover:opacity-100 transition-opacity" />}
           </div>
         )}

@@ -43,11 +43,12 @@ export const fetchRuleSummary = async (bggId: string): Promise<RuleSummary | nul
 export const fetchGameRules = async (gameId: string): Promise<GameRules | null> =>
   (await request<{ rules: GameRules | null }>(`/api/rules/game?gameId=${encodeURIComponent(gameId)}`)).rules;
 
-/** The rules site's base URL (VITE_RULES_SITE_URL); without it, no rule links are offered. */
-export const RULES_SITE_BASE_URL: string = (import.meta.env.VITE_RULES_SITE_URL || '').replace(/\/+$/, '');
+/** The rules site ("玩錯的桌遊規則"); VITE_RULES_SITE_URL overrides it, e.g. for a local copy. */
+export const RULES_SITE_BASE_URL: string = (import.meta.env.VITE_RULES_SITE_URL || 'https://board-game-helper.louieddxu2.workers.dev').replace(/\/+$/, '');
 
-/** Link to one rule on the rules site: /games/{slug}#rule-{id}. */
-export const ruleSiteLink = (slug: string, ruleId?: string): string | undefined =>
-  RULES_SITE_BASE_URL
-    ? `${RULES_SITE_BASE_URL}/games/${encodeURIComponent(slug)}${ruleId ? `#rule-${encodeURIComponent(ruleId)}` : ''}`
-    : undefined;
+/** A game's page on the rules site, optionally scrolled to one rule: /games/{slug}#rule-{id}. */
+export const ruleSiteLink = (slug: string, ruleId?: string): string =>
+  `${RULES_SITE_BASE_URL}/games/${encodeURIComponent(slug)}${ruleId ? `#rule-${encodeURIComponent(ruleId)}` : ''}`;
+
+/** The rules site's page for recording a new rule, with the game already chosen. */
+export const ruleRecordLink = (slug: string): string => `${RULES_SITE_BASE_URL}/add?game=${encodeURIComponent(slug)}`;

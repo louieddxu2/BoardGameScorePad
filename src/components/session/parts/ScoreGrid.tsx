@@ -44,6 +44,8 @@ interface ScoreGridProps {
   participantClaimCounts?: Record<string, number>;
   editablePlayerIds?: string[];
   canManageParticipantClaims?: boolean;
+  /** The game-rules entry, shown in the footer row beside the toolbox button. */
+  rulesEntry?: React.ReactNode;
 }
 
 const ScoreGrid: React.FC<ScoreGridProps> = ({
@@ -77,6 +79,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
   participantClaimCounts = {},
   editablePlayerIds = [],
   canManageParticipantClaims = false,
+  rulesEntry,
 }) => {
   const { t } = useSessionTranslation();
   const dnd = useColumnDragAndDrop({ template, onUpdateTemplate, scrollRef: scrollContainerRef });
@@ -279,6 +282,7 @@ const ScoreGrid: React.FC<ScoreGridProps> = ({
           isToolboxOpen={!!isToolboxOpen}      // [New]
           onToggleToolbox={onToggleToolbox || (() => { })} // [New]
           isGenerating={aiStatus === 'compressing' || aiStatus === 'generating'}
+          middleEnd={rulesEntry}
         />
 
         {(aiStatus === 'compressing' || aiStatus === 'generating' || aiStatus === 'success') && template.columns.length > 0 ? (
