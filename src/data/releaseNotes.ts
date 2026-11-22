@@ -31,6 +31,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Bundled scoreboards now have BGG IDs, and search supports English names and other aliases. When you look for scoreboards shared by players, only matching results are loaded.' },
       { kind: 'new', zh: '管理員可從分享選單發佈或更新內建計分板。Google 登入狀態會保留在這部裝置上，並顯示於雲端圖示。',
         en: 'Admins can publish or update built-in scoreboards from the share menu. Google sign-in persists on the device, and the cloud icon shows when an admin is signed in.' },
+      { kind: 'improved', zh: '開啟 App 時，畫面直接以上次選擇的主題底色顯示。首頁的進行中、快速開始與遊戲庫會在資料到齊後一起出現，不再陸續把已顯示的內容往下推。歷史紀錄與完整的開局遊戲清單改在打開歷史頁或開局面板時才讀取。',
+        en: 'When the app opens, the screen starts in the background color of your last chosen theme. On the home screen, active games, Quick Start and the library appear together once their data is ready, instead of pushing visible content down as they arrive. History and the full game list for starting a game now load when you open the history view or the start panel.' },
     ],
   },
   {
