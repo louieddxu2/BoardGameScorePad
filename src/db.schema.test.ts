@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { db } from './db';
 
-describe('database schema guard (v34)', () => {
+describe('database schema guard (v35)', () => {
   it('keeps expected schema version', () => {
-    expect(db.verno).toBe(34);
+    expect(db.verno).toBe(35);
   });
 
   it('includes key tables required by migration path', () => {
@@ -20,6 +20,8 @@ describe('database schema guard (v34)', () => {
     expect(schema.officialVersions).toBeTruthy();
     expect(schema.shareCatalog).toBeTruthy();
     expect(schema.catalogSync).toBeTruthy();
+    expect(schema.ruleSummaries).toBeTruthy();
+    expect(schema.ruleContents).toBeTruthy();
   });
 
   it('keeps expected primary keys for critical entities', () => {
@@ -34,6 +36,8 @@ describe('database schema guard (v34)', () => {
     expect(schema.multiplayerPatchReceipts).toBeTruthy();
     expect(schema.multiplayerParticipantBindings).toBeTruthy();
     expect(schema.savedGameLifecycleContexts.primKey.keyPath).toBe('id');
+    expect(schema.ruleSummaries.primKey.keyPath).toBe('bggId');
+    expect(schema.ruleContents.primKey.keyPath).toBe('gameId');
   });
 });
 
