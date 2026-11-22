@@ -12,6 +12,11 @@ import { useAppQueries } from '../../hooks/useAppQueries';
 import { _resetActiveCountForTesting, getTopModalId, hasActiveModals, useModalBackHandler } from '../../hooks/useModalBackHandler';
 import { AppView, type HistoryRecord } from '../../types';
 
+// Vitest runs test files in parallel threads, and Node's BroadcastChannel reaches all of them.
+// Dexie announces writes through it, so another file's writes to the same database name would
+// re-run this file's live queries and break the read counts below. Keep this file to itself.
+vi.hoisted(() => { Reflect.deleteProperty(globalThis, 'BroadcastChannel'); });
+
 // Cloud access and unrelated management dialogs are outside the navigation flow.
 vi.mock('../../hooks/useGoogleDrive', () => ({ useGoogleDrive: () => ({ isConnected: false, isSyncing: false }) }));
 vi.mock('./parts/DashboardModals', () => ({ DashboardModals: () => null }));
@@ -96,9 +101,6 @@ const openStats = () => fireEvent.click(screen.getByTitle('Stats'));
 it('shows an ordered library from shared local queries, then loads history and the full catalog on demand', async () => {
   const pinnedIds = ['Built-in-EN-Startup'];
   await db.savedGames.put({ id: 'startup-recent', name: 'Recent game', bggId: '2', lastUsed: 2, usageCount: 1 });
-  // Dexie announces the write to live queries on a later task; let that pass before counting reads,
-  // or a busy test run can re-run the first saved-games query and count it twice.
-  await new Promise(resolve => setTimeout(resolve, 0));
   const builtinReads = vi.spyOn(db.builtins, 'toArray');
   const savedGameReads = vi.spyOn(db.savedGames, 'orderBy');
   const historyReads = vi.spyOn(db.history, 'orderBy');
