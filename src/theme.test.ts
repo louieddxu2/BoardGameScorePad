@@ -25,8 +25,25 @@ describe('Three-theme visual contract', () => {
         collectThemeVariables(inlineCss).styles.walkRules('body', rule => {
             rule.walkDecls(declaration => { bodyPaint[declaration.prop] = declaration.value; });
         });
-        expect(bodyPaint['background-color']).toBe('rgb(var(--c-app-bg))');
+        expect(bodyPaint['background-color']).toBe('rgb(var(--c-app-bg, var(--app-startup-bg, 15 23 42)))');
         expect(bodyPaint.color).toBe('rgb(var(--c-txt-primary))');
+    });
+
+    it('paints every stored theme before the app bundle loads', () => {
+        for (const saved of [...APP_THEME_ORDER, 'invalid', null]) {
+            const earlyDocument = new DOMParser().parseFromString(appHtml, 'text/html');
+            const script = earlyDocument.head.querySelector('script');
+            expect(script?.textContent).toBeTruthy();
+            new Function('document', 'localStorage', script!.textContent!)(earlyDocument, { getItem: () => saved });
+
+            const theme = saved === 'light' || saved === 'sage' ? saved : 'dark';
+            const html = earlyDocument.documentElement;
+            expect(html.dataset.theme).toBe(theme);
+            expect(html.dataset.themeAppearance).toBe(getThemeAppearance(theme));
+            expect(html.style.getPropertyValue('--app-startup-bg')).toBe(themes.get(theme)?.get('--c-app-bg'));
+            const meta = earlyDocument.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+            expect(parseColor(meta!.content)).toEqual(color(theme, '--c-app-bg'));
+        }
     });
 
     it('drives dark-only treatments from app selection and classifies sage as a light surface', () => {

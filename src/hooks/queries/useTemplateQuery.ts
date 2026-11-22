@@ -56,7 +56,8 @@ export const useTemplateQuery = (
     searchQuery: string,
     pinnedIds: string[],
     includeShareableTemplateIds = false,
-    additionalTemplateIds: string[] = EMPTY_TEMPLATE_IDS
+    additionalTemplateIds: string[] = EMPTY_TEMPLATE_IDS,
+    enabled = true,
 ) => {
     // --- PREFERENCES & HELPERS ---
     const allPrefs = useLiveQuery(() => db.templatePrefs.toArray(), [], []);
@@ -115,7 +116,8 @@ export const useTemplateQuery = (
     };
 
     // --- TEMPLATES (User) ---
-    const allUserTemplatesData = useLiveQuery<TemplateSummaryData>(async () => {
+    const allUserTemplatesData = useLiveQuery<TemplateSummaryData | undefined>(async () => {
+        if (!enabled) return undefined;
         let collection = db.templates.orderBy('updatedAt').reverse();
         const fetchLimit = DATA_LIMITS.QUERY.FETCH_CAP;
 
@@ -146,7 +148,7 @@ export const useTemplateQuery = (
                 ? shareabilityCandidates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
                 : []
         };
-    }, [pinnedIds, includeShareableTemplateIds, additionalTemplateIds]); // Re-run when pins or shareability metadata changes
+    }, [enabled, pinnedIds, includeShareableTemplateIds, additionalTemplateIds]); // Re-run when pins or shareability metadata changes
 
     const filteredUserTemplates = useMemo<TemplateSummary[]>(() => {
         if (!allUserTemplatesData) return [];
@@ -184,7 +186,8 @@ export const useTemplateQuery = (
     const { t: tApp } = useAppTranslation();
 
     // --- TEMPLATES (Built-in) ---
-    const allBuiltinsRaw = useLiveQuery<TemplateSummaryData>(async () => {
+    const allBuiltinsRaw = useLiveQuery<TemplateSummaryData | undefined>(async () => {
+        if (!enabled) return undefined;
         const raw = await db.builtins.toArray();
         // Standardize Built-ins to TemplateSummary for consistent search architecture
         return {
@@ -193,7 +196,7 @@ export const useTemplateQuery = (
                 ? raw.filter(template => !isDisposableTemplate(template)).map(template => template.id)
                 : []
         };
-    }, [includeShareableTemplateIds]); // Load once from DB
+    }, [enabled, includeShareableTemplateIds]);
 
     const allBuiltinsData = useMemo<TemplateSummary[]>(() => {
         if (!allBuiltinsRaw) return [];

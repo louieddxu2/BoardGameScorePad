@@ -44,6 +44,7 @@ import { useDashboardActions } from './hooks/useDashboardActions';
 interface DashboardProps {
   isVisible: boolean;
   currentView?: AppView;
+  isLibraryLoading?: boolean;
   userTemplates: GameTemplate[];
   shareableTemplateIds: ReadonlySet<string>;
   userTemplatesCount: number;
@@ -104,6 +105,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = React.memo(({
   isVisible,
   currentView,
+  isLibraryLoading = false,
   userTemplates,
   shareableTemplateIds,
   userTemplatesCount,
@@ -417,6 +419,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         />
 
         <main
+          aria-busy={viewMode === 'library' && !isBackupBusy && isLibraryLoading ? true : undefined}
           className="p-4 space-y-4 min-h-full transition-transform duration-75 ease-out pb-32"
           style={{ transform: `translateX(${dampedOffset}px)` }}
         >
@@ -437,7 +440,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               onDelete={dashboardActions.handleDeleteHistoryConfirmed}
               onSelect={onHistorySelect}
             />
-          ) : (
+          ) : isLibraryLoading ? null : (
             <LibraryView
               activeSessions={sortedActiveSessions}
               pinnedTemplates={pinnedTemplates}

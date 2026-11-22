@@ -81,7 +81,7 @@ export const useAppData = () => {
 
     // --- 2. Queries, Library & Session Management ---
     // Pass pinnedIds so queries can correctly filter simple templates
-    const queries = useAppQueries(debouncedSearchQuery, pinnedIds);
+    const queries = useAppQueries(debouncedSearchQuery, pinnedIds, isDbReady);
 
     // Library Hook for Global Access
     const { updatePlayer, updateLocation, commitPlayerStats, commitLocationStats } = useLibrary(markSystemDirty);
@@ -431,6 +431,7 @@ export const useAppData = () => {
         setSearchQuery,
 
         // Data from Queries
+        isLibraryLoading: queries.isLibraryLoading,
         templates: queries.templates,
         userTemplatesCount: queries.userTemplatesCount,
         systemTemplates: queries.systemTemplates,

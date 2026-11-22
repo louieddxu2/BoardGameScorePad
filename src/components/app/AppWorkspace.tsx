@@ -121,6 +121,7 @@ const AppWorkspace: React.FC<AppWorkspaceProps> = ({
         <Dashboard
           isVisible={view === AppView.DASHBOARD}
           currentView={view}
+          isLibraryLoading={appData.isLibraryLoading}
           userTemplates={appData.templates}
           shareableTemplateIds={appData.shareableTemplateIds}
           userTemplatesCount={appData.userTemplatesCount}

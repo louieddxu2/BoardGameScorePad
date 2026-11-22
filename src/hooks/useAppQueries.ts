@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { DATA_LIMITS } from '../dataLimits';
 import { getRecentOptions } from '../features/game-selector/utils/sortStrategies';
 import { useTemplateQuery } from './queries/useTemplateQuery';
@@ -16,17 +16,7 @@ import { useGameOptionsQuery } from './queries/useGameOptionsQuery';
  * 注意：此 Hook 不應包含具體的資料處理邏輯 (如搜尋、排序、合併)，
  * 這些邏輯應封裝在各自的 ./queries/*.ts Hook 中。
  */
-export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
-  const [shouldLoadGameOptions, setShouldLoadGameOptions] = useState(false);
-
-  useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      setShouldLoadGameOptions(true);
-    }, 0);
-
-    return () => window.clearTimeout(timerId);
-  }, []);
-
+export const useAppQueries = (searchQuery: string, pinnedIds: string[], isDbReady: boolean) => {
   // 1. Dashboard View Queries (Library & History)
   // 這些 Hook 內部已經實作了針對各自資料類型的搜尋過濾邏輯
   const savedGameData = useSavedGameQuery(searchQuery);
@@ -38,7 +28,7 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
 
   // 3. Start Game Panel Query (Merge then Search)
   // 這是一個專門的 Hook，負責處理「開始新遊戲」時的候選名單邏輯
-  const gameOptionData = useGameOptionsQuery(searchQuery, pinnedIds, shouldLoadGameOptions);
+  const gameOptionData = useGameOptionsQuery(searchQuery, pinnedIds, isDbReady);
   // Home and the FAB share getRecentOptions; Home skips pinned/active rows because
   // those already have dedicated rows in its quick-start section. The FAB passes
   // the same active-session IDs to its recent slice.
@@ -50,7 +40,9 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
     () => [...new Set(recentlyPlayedGames.flatMap(game => game.templateId ? [game.templateId] : []))],
     [recentlyPlayedGames]
   );
-  const templateData = useTemplateQuery(searchQuery, pinnedIds, true, recentTemplateIds);
+  const templateData = useTemplateQuery(searchQuery, pinnedIds, true, recentTemplateIds, isDbReady);
+  const isLibraryLoading = !isDbReady || !sessionData.activeSessionsLoaded
+    || !templateData.templatesLoaded || !gameOptionData.gameOptionsLoaded;
 
   return {
     // Spread all data props from sub-hooks
@@ -63,6 +55,7 @@ export const useAppQueries = (searchQuery: string, pinnedIds: string[]) => {
     // The merged options list
     gameOptions: gameOptionData.gameOptions,
     recentlyPlayedGames,
+    isLibraryLoading,
 
     // Optimistic UI actions
     setPendingDeleteHistoryIds: historyData.setPendingDeleteHistoryIds

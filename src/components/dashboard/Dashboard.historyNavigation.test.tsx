@@ -8,6 +8,7 @@ import { LanguageProvider } from '../../i18n';
 import { ToastProvider } from '../../hooks/useToast';
 import { ConfirmationProvider } from '../../hooks/useConfirm';
 import { useHistoryQuery } from '../../hooks/queries/useHistoryQuery';
+import { useAppQueries } from '../../hooks/useAppQueries';
 import { _resetActiveCountForTesting, getTopModalId, hasActiveModals, useModalBackHandler } from '../../hooks/useModalBackHandler';
 import { AppView, type HistoryRecord } from '../../types';
 
@@ -91,6 +92,43 @@ const selectMonth = () => {
 const expectMonth = () => expect(screen.getByTestId('matching-records')).toHaveTextContent(/^november$/);
 const expectAll = () => expect(screen.getByTestId('matching-records')).toHaveTextContent(/^november,october$/);
 const openStats = () => fireEvent.click(screen.getByTitle('Stats'));
+
+it('shows one ordered library snapshot after the first local queries have finished', async () => {
+  const pinnedIds = ['Built-in-EN-Startup'];
+  const Harness = ({ isDbReady }: { isDbReady: boolean }) => {
+    const data = useAppQueries('', pinnedIds, isDbReady);
+    return <Dashboard {...props} pinnedIds={pinnedIds} isLibraryLoading={data.isLibraryLoading}
+      activeSessions={data.activeSessions} activeSessionIds={data.activeSessionIds}
+      systemTemplates={data.systemTemplates} systemTemplatesCount={data.systemTemplatesCount}
+      recentlyPlayedGames={data.recentlyPlayedGames} />;
+  };
+  const view = (isDbReady: boolean) => <LanguageProvider><ToastProvider><ConfirmationProvider>
+    <Harness isDbReady={isDbReady} />
+  </ConfirmationProvider></ToastProvider></LanguageProvider>;
+  const { rerender, unmount } = render(view(false));
+  const main = screen.getByRole('main');
+  expect(main).toHaveAttribute('aria-busy', 'true');
+  expect(screen.getByRole('button', { name: 'Settings' })).toBeVisible();
+  expect(screen.getByTitle('Start New')).toBeVisible();
+  expect(within(main).queryByRole('heading')).not.toBeInTheDocument();
+
+  try {
+    await act(async () => {
+      await db.builtins.put({ id: pinnedIds[0], name: 'Pinned board', createdAt: 1, columns: [] });
+      await db.sessions.put({ id: 'startup-session', templateId: 'another-board', name: 'Game in progress',
+        status: 'active', startTime: 1, players: [] });
+    });
+    rerender(view(true));
+    await within(main).findByRole('heading', { name: /Active Sessions/ });
+    expect(main).not.toHaveAttribute('aria-busy');
+    expect(within(main).getAllByRole('heading').slice(0, 3).map(heading => heading.textContent?.replace(/\s*\d+$/, '')))
+      .toEqual(['Active Sessions', 'Quick Start', 'My Library']);
+  } finally {
+    unmount();
+    await db.builtins.delete(pinnedIds[0]);
+    await db.sessions.delete('startup-session');
+  }
+});
 
 it('keeps the selected date when closing statistics, then clears the list filter with one Back', async () => {
   await setup(); openStats(); selectMonth(); expectMonth();

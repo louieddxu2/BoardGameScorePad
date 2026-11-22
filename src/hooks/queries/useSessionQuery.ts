@@ -4,9 +4,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { GameSession } from '../../types';
 
+const EMPTY_SESSIONS: GameSession[] = [];
+
 export const useSessionQuery = () => {
   // --- ACTIVE SESSIONS ---
-  const activeSessions = useLiveQuery(() => db.sessions.where('status').equals('active').toArray(), [], []);
+  const result = useLiveQuery(() => db.sessions.where('status').equals('active').toArray(), []);
+  const activeSessions = result ?? EMPTY_SESSIONS;
   
   const activeSessionIds = useMemo(() => activeSessions?.map(s => s.templateId) || [], [activeSessions]);
 
@@ -16,6 +19,7 @@ export const useSessionQuery = () => {
 
   return {
       activeSessions,
+      activeSessionsLoaded: result !== undefined,
       activeSessionIds,
       getSessionPreview
   };

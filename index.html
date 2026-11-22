@@ -3,6 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="theme-color" content="#0f172a" />
+  <style>
+    html { background-color: rgb(var(--c-app-bg, var(--app-startup-bg, 15 23 42))); color-scheme: dark; }
+    html[data-theme-appearance="light"] { color-scheme: light; }
+  </style>
+  <script>
+    (() => {
+      // Match the app surface in src/index.css before the stylesheet and React load.
+      const backgrounds = { dark: '15 23 42', light: '243 240 232', sage: '225 235 229' };
+      let theme = 'dark';
+      try {
+        const saved = localStorage.getItem('app_theme_mode');
+        if (saved === 'light' || saved === 'sage') theme = saved;
+      } catch { /* Storage may be unavailable on this visit. */ }
+      const root = document.documentElement;
+      root.dataset.theme = theme;
+      root.dataset.themeAppearance = theme === 'dark' ? 'dark' : 'light';
+      root.style.setProperty('--app-startup-bg', backgrounds[theme]);
+      document.querySelector('meta[name="theme-color"]').content = `rgb(${backgrounds[theme]})`;
+    })();
+  </script>
   <meta name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>萬用桌遊計分板 BoardGameScorePad</title>
@@ -95,7 +115,7 @@
 
     body {
       /* 使用 CSS 變數，這些變數會在 index.css 中定義 */
-      background-color: rgb(var(--c-app-bg));
+      background-color: rgb(var(--c-app-bg, var(--app-startup-bg, 15 23 42)));
       color: rgb(var(--c-txt-primary));
       -webkit-tap-highlight-color: transparent;
     }

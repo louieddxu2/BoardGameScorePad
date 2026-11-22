@@ -49,7 +49,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     systemTemplates: allSystemTemplates,
     hiddenTemplateIdentities,
     templatesLoaded
-  } = useTemplateQuery('', pinnedIds);
+  } = useTemplateQuery('', pinnedIds, false, undefined, enabled);
 
   const {
     savedGames: allSavedGames,
@@ -59,7 +59,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   // 2. Fetch BGG Dictionary (Lite Summary)
   // [Optimization] 使用 extractBggGameSummary 轉換為輕量物件
   const allBggGames = useLiveQuery(async () => {
-    if (!enabled) return [];
+    if (!enabled) return undefined;
     const rawGames = await db.bggGames.toArray();
     return rawGames.map(extractBggGameSummary);
   }, [enabled]);
@@ -70,10 +70,11 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
   // 3a. Official catalog (local copy) for the current language.
   // Read the language without requiring a provider (zh-TW is the app default).
   const isEnglish = (useContext(LanguageContext)?.language ?? 'zh-TW').startsWith('en');
-  const officialCatalog = useLiveQuery(
-    () => enabled ? db.officialCatalog.toArray() : EMPTY_CATALOG,
+  const localOfficialCatalog = useLiveQuery(
+    async () => enabled ? db.officialCatalog.toArray() : undefined,
     [enabled]
-  ) ?? EMPTY_CATALOG;
+  );
+  const officialCatalog = localOfficialCatalog ?? EMPTY_CATALOG;
   const languageCatalog = useMemo(
     () => officialCatalog.filter(entry =>
       typeof entry.version === 'number' && typeof entry.lang === 'string' && entry.lang.startsWith('en') === isEnglish),
@@ -101,12 +102,13 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     () => enabled ? [...allTemplates, ...allSystemTemplates, ...cloudOnlyTemplates] : EMPTY_TEMPLATES,
     [enabled, allTemplates, allSystemTemplates, cloudOnlyTemplates]
   );
+  const localGameDataLoaded = templatesLoaded && savedGamesLoaded && allBggGames !== undefined;
   const mergedOptions = useGameOptionAggregator(
     templatesForOptions,
     enabled ? allSavedGames : EMPTY_SAVED_GAMES,
     enabled ? bggGamesForOptions ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
     pinnedIds,
-    !!(templatesLoaded && savedGamesLoaded && allBggGames !== undefined),
+    localGameDataLoaded,
     hiddenTemplateIdentities
   );
 
@@ -176,6 +178,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
 
   return {
     gameOptions,
+    gameOptionsLoaded: enabled && localGameDataLoaded && localOfficialCatalog !== undefined,
     // Keep this unsearched list as the single source for both surfaces' recency ordering.
     allOptions: aggregatedOptions
   };

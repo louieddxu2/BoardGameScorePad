@@ -68,11 +68,11 @@ describe('template query efficiency', () => {
 
     it('keeps the default recent-template dependency stable across renders', () => {
         const recentDeps: unknown[] = [];
+        const pinnedIds: string[] = [];
         vi.mocked(useLiveQuery).mockImplementation(((_query, deps, defaultResult) => {
-            if (deps?.length === 3) recentDeps.push(deps[2]);
+            if (deps?.includes(pinnedIds)) recentDeps.push(deps.find(dep => Array.isArray(dep) && dep !== pinnedIds));
             return defaultResult;
         }) as typeof useLiveQuery);
-        const pinnedIds: string[] = [];
         const { rerender } = renderHook(() => useTemplateQuery('', pinnedIds), {
             wrapper: LanguageProvider
         });
@@ -80,6 +80,7 @@ describe('template query efficiency', () => {
         rerender();
 
         expect(recentDeps).toHaveLength(2);
+        expect(recentDeps[0]).toEqual([]);
         expect(recentDeps[1]).toBe(recentDeps[0]);
     });
 
