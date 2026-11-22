@@ -23,8 +23,8 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '內建計分板可從雲端下載與更新。首次開啟 App 時會在背景下載隨附計分板的最新內容。開局面板可搜尋雲端新增的計分板，也會標示需要下載或有新版的計分板，按下開始才下載。雲端暫時無法下載時，有本機版本就能照常開局。',
-        en: 'Built-in scoreboards can be downloaded and updated from the cloud. On first open, the app downloads the latest bundled boards in the background. You can search for new cloud boards in the start panel, which marks boards that need a download or have an update. Those downloads start when you press Start. If the download fails, you can still start with a local copy if one is available.' },
+      { kind: 'new', zh: '內建計分板可從雲端下載與更新。首次開啟 App 時會先檢查版本，有缺少或較舊的隨附計分板才在背景下載。開局面板可搜尋雲端新增的計分板，也會標示需要下載或有新版的計分板，按下開始才下載。雲端暫時無法下載時，有本機版本就能照常開局。',
+        en: 'Built-in scoreboards can be downloaded and updated from the cloud. On first open, the app checks for missing or outdated bundled boards before starting a background download. You can search for new cloud boards in the start panel, which marks boards that need a download or have an update. Those downloads start when you press Start. If the download fails, you can still start with a local copy if one is available.' },
       { kind: 'new', zh: '續局優先使用開局時的內建計分板版本，必要時會從雲端取回。找不到原版時，沒有進行中多人房間的對局可選擇改用可取得的新版，保留能對應的欄位分數並重算總分。',
         en: 'When you resume a game, the app uses the original built-in scoreboard version if available and retrieves it from the cloud if needed. If the original is unavailable and the game has no active multiplayer room, you can choose to resume with a newer version if one is available. Scores in matching columns carry over and totals are recalculated.' },
       { kind: 'improved', zh: '隨附的內建計分板都有 BGG 編號，搜尋也支援英文名稱與其他別名。搜尋玩家分享的計分板時，只載入符合的結果。',

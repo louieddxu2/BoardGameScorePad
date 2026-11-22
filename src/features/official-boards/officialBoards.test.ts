@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
 import type { GameSession, GameTemplate } from '../../types';
+import * as dbMigration from '../../utils/dbMigration';
 import { syncCatalog } from './catalogSync';
 import { installOfficialPack } from './officialPack';
 import {
@@ -216,6 +217,11 @@ describe('official pack (first open)', () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
     await db.sessions.put(activeGame('Built-in-Agricola', 0));
     await db.builtins.put(board('Built-in-Same', ['A']));
+    await db.officialCatalog.bulkPut([
+      entry('Built-in-Agricola', 2),
+      entry('Built-in-Same', 0),
+      entry('Built-in-CloudOnly', 0),
+    ]);
     const fetchMock = mockWorker(() => ({
       lang: 'zh-TW',
       throughVersion: 70,
@@ -227,7 +233,7 @@ describe('official pack (first open)', () => {
       ],
     }));
 
-    expect(await installOfficialPack('zh-TW')).toBe(2);
+    expect(await installOfficialPack('zh-TW', 70)).toBe(2);
     expect(fetchMock.mock.calls.map(([url]) => new URL(String(url)).pathname + new URL(String(url)).search)).toEqual([
       '/api/official/pack?lang=zh-TW',
     ]);
@@ -242,13 +248,38 @@ describe('official pack (first open)', () => {
     expect((await getOfficialTemplateAtVersion('Built-in-CloudOnly', 0))?.columns.map((c) => c.name)).toEqual(['X']);
 
     // Installed once per language: a later open does not download again.
-    expect(await installOfficialPack('zh-TW')).toBeNull();
+    expect(await installOfficialPack('zh-TW', 71)).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('skips the pack and per-board checks when the installed bundled catalog version matches', async () => {
+    vi.spyOn(dbMigration, 'getInstalledBundledOfficialCatalogVersion').mockReturnValue(70);
+    const scan = vi.spyOn(db.officialCatalog, 'toArray');
+    const fetchMock = mockWorker(() => null);
+
+    expect(await installOfficialPack('zh-TW', 70)).toBe(0);
+    expect(scan).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('skips the pack if a later catalog has no missing or newer bundled boards in this language', async () => {
+    vi.spyOn(dbMigration, 'getInstalledBundledOfficialCatalogVersion').mockReturnValue(70);
+    await db.builtins.put(board('Built-in-Same', ['A'], 2));
+    await db.officialCatalog.bulkPut([
+      entry('Built-in-Same', 2, { enName: 'Alias updated' }),
+      entry('Built-in-EN-New', 1, { lang: 'en' }),
+      entry('Built-in-CloudOnly', 1, { bundled: false }),
+    ]);
+    const fetchMock = mockWorker(() => null);
+
+    expect(await installOfficialPack('zh-TW', 71)).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('retries on a later open when the download fails', async () => {
+    await db.officialCatalog.put(entry('Built-in-EN-New', 1, { lang: 'en' }));
     mockWorker(() => new Response(JSON.stringify({ error: 'pack_not_found' }), { status: 404 }));
-    await expect(installOfficialPack('en')).rejects.toMatchObject({ code: 'pack_not_found' });
+    await expect(installOfficialPack('en', 70)).rejects.toMatchObject({ code: 'pack_not_found' });
     expect(localStorage.getItem('sm_official_pack_installed_en')).toBeNull();
   });
 });

@@ -57,23 +57,26 @@ export const useAppData = () => {
         const init = async () => {
             await migrateFromLocalStorage();
             setIsDbReady(true);
-            // Catalogs are read locally; this only refreshes them when their check interval has passed.
-            syncCatalogsInBackground();
         };
         init();
-        window.addEventListener('online', syncCatalogsInBackground);
-        return () => window.removeEventListener('online', syncCatalogsInBackground);
     }, []);
 
-    // First open in each language: install official built-ins from the cloud (one row).
-    // The bundled built-ins are already in place, so this never blocks the app.
     const appLangCode = tApp('app_lang_code') || 'zh-TW';
     useEffect(() => {
         if (!isDbReady) return;
-        installOfficialPackInBackground(appLangCode);
-        const retry = () => installOfficialPackInBackground(appLangCode);
-        window.addEventListener('online', retry);
-        return () => window.removeEventListener('online', retry);
+        let current = true;
+        const refreshCloud = () => {
+            // Both reads are background work. The pack check shares the official catalog result.
+            void syncCatalogsInBackground()?.then(result => {
+                if (current && result) installOfficialPackInBackground(appLangCode, result.state.throughVersion);
+            });
+        };
+        refreshCloud();
+        window.addEventListener('online', refreshCloud);
+        return () => {
+            current = false;
+            window.removeEventListener('online', refreshCloud);
+        };
     }, [isDbReady, appLangCode]);
 
     // --- 2. Queries, Library & Session Management ---

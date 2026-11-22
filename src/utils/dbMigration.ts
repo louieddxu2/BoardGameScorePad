@@ -6,10 +6,23 @@ import { archiveOfficialVersion, localOfficialVersion, pruneOfficialVersions, re
 
 // Bump when built-in template content changes so existing installs refresh it.
 const CURRENT_BUILTIN_VERSION = 23;
+// Recorded by sync:builtins after both bundled languages match the cloud catalog.
+const BUNDLED_OFFICIAL_CATALOG_VERSION: number | null = null;
+const VERSION_KEY = 'sm_builtin_data_version';
+
+export const getInstalledBundledOfficialCatalogVersion = (): number | null => {
+    if (BUNDLED_OFFICIAL_CATALOG_VERSION === null) return null;
+    try {
+        return localStorage.getItem(VERSION_KEY) === String(CURRENT_BUILTIN_VERSION)
+            ? BUNDLED_OFFICIAL_CATALOG_VERSION
+            : null;
+    } catch {
+        return null;
+    }
+};
 
 export const migrateFromLocalStorage = async () => {
     const MIGRATION_KEY = 'sm_migration_v1_done';
-    const VERSION_KEY = 'sm_builtin_data_version';
     const NEW_BADGES_KEY = 'sm_new_badge_ids';
     const LIST_MIGRATION_KEY = 'sm_list_migration_v4_done';
     const OVERRIDE_MIGRATION_KEY = 'sm_override_fork_migration_v5_done';

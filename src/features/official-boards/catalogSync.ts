@@ -102,12 +102,16 @@ export const syncCatalog = (kind: CatalogKind, mode: CatalogSyncMode = 'auto'): 
   return tracked;
 };
 
-/** Background sync used on app start and when the device comes back online. */
+/** Background sync used on app start and reconnect. Reuse the official result for the first-open pack check. */
 export const syncCatalogsInBackground = () => {
   // Unit tests drive sync explicitly and must not reach the network on app start.
   if (import.meta.env.MODE === 'test') return;
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-  (['official', 'share'] as CatalogKind[]).forEach((kind) => {
-    syncCatalog(kind).catch((error) => console.warn(`[catalog] ${kind} sync failed`, error));
+  const sync = (kind: CatalogKind) => syncCatalog(kind).catch((error) => {
+    console.warn(`[catalog] ${kind} sync failed`, error);
+    return null;
   });
+  const official = sync('official');
+  void sync('share');
+  return official;
 };

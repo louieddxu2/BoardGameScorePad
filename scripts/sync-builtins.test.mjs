@@ -9,7 +9,7 @@ const zhFile = 'src/data/templates.ts';
 const enFile = 'src/data/templates-en.ts';
 const migrationFile = 'src/utils/dbMigration.ts';
 const empty = 'export const DEFAULT_TEMPLATES: GameTemplate[] = [];\n';
-const migration = 'const CURRENT_BUILTIN_VERSION = 23;\n';
+const migration = 'const CURRENT_BUILTIN_VERSION = 23;\nconst BUNDLED_OFFICIAL_CATALOG_VERSION: number | null = null;\n';
 const directories = [];
 
 const fixture = (overrides = {}) => {
@@ -96,6 +96,19 @@ describe('sync:builtins command', () => {
     expect(result.status).toBe(0);
     expect(readFileSync(join(root, zhFile), 'utf8')).toContain('Built-in-Fixture');
     expect(readFileSync(join(root, enFile), 'utf8')).toContain('Built-in-EN-Fixture');
-    expect(readFileSync(join(root, migrationFile), 'utf8')).toBe('const CURRENT_BUILTIN_VERSION = 24;\n');
+    expect(readFileSync(join(root, migrationFile), 'utf8')).toBe(migration.replace('= 23;', '= 24;').replace('= null;', '= 8;'));
+  });
+
+  it('records the verified catalog version without raising the data version if boards already match', () => {
+    const seeded = (id) => empty.replace('[];', `[${JSON.stringify({ id, officialVersion: 1 })}];`);
+    const { root, initial } = fixture({
+      [zhFile]: seeded('Built-in-Fixture'),
+      [enFile]: seeded('Built-in-EN-Fixture'),
+    });
+    const result = runSync(root);
+    expect(result.status).toBe(0);
+    expect(readFileSync(join(root, zhFile), 'utf8')).toBe(initial[zhFile]);
+    expect(readFileSync(join(root, enFile), 'utf8')).toBe(initial[enFile]);
+    expect(readFileSync(join(root, migrationFile), 'utf8')).toBe(migration.replace('= null;', '= 8;'));
   });
 });

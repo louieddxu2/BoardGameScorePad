@@ -6,14 +6,14 @@
  * Reads the public content packs (one D1 row per language) and the catalog
  * changes since they were built. Stops without writing when a bundled board
  * changed after the last pack rebuild (press "Rebuild official catalog
- * snapshot" in the admin card first). When anything is written, the built-in
- * data version is raised so installed apps rebuild their built-ins.
+ * snapshot" in the admin card first). Records the verified catalog version
+ * and raises the built-in data version when scoreboard content changes.
  *
  * Options: --check (report only; exit 1 when the bundle is behind).
  */
 import { randomUUID } from 'node:crypto';
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { bumpBuiltinVersion, planSync, renderDataFile, splitDataFile, staleBundledChanges } from './builtin-sync-lib.mjs';
+import { bumpBuiltinVersion, planSync, renderDataFile, setBundledCatalogVersion, splitDataFile, staleBundledChanges } from './builtin-sync-lib.mjs';
 
 const FILES = { 'zh-TW': 'src/data/templates.ts', en: 'src/data/templates-en.ts' };
 const MIGRATION = 'src/utils/dbMigration.ts';
@@ -105,14 +105,18 @@ for (const [lang, file] of Object.entries(FILES)) {
   }
 }
 
-if (!updates.length) {
-  console.log('Bundled scoreboards already match the cloud.');
-} else if (checkOnly) {
+if (checkOnly && updates.length) {
   console.log('The bundle is behind the cloud (nothing written: --check).');
   process.exit(1);
-} else {
+}
+if (!updates.length) console.log('Bundled scoreboards already match the cloud.');
+if (!checkOnly) {
   const before = readFileSync(MIGRATION, 'utf8');
-  const bump = bumpBuiltinVersion(before);
-  replaceFiles([...updates, { file: MIGRATION, before, after: bump.text }]);
-  console.log(`Built-in data version ${bump.from} -> ${bump.to}. Review and commit the changes.`);
+  const bump = updates.length ? bumpBuiltinVersion(before) : null;
+  const migration = setBundledCatalogVersion(bump?.text ?? before, after);
+  if (migration !== before) {
+    replaceFiles([...updates, { file: MIGRATION, before, after: migration }]);
+    if (bump) console.log(`Built-in data version ${bump.from} -> ${bump.to}.`);
+    console.log(`Bundled catalog version: ${after}. Review and commit the changes.`);
+  }
 }

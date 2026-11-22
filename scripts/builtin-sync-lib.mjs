@@ -130,6 +130,14 @@ export const bumpBuiltinVersion = (migrationText) => {
   return { text: migrationText.replace(match[0], `const CURRENT_BUILTIN_VERSION = ${next};`), from: Number(match[1]), to: next };
 };
 
+/** Mark the catalog position verified for both languages without forcing a local data rebuild. */
+export const setBundledCatalogVersion = (migrationText, version) => {
+  if (!Number.isSafeInteger(version) || version < 0) throw new Error('invalid_bundled_catalog_version');
+  const declaration = /(const BUNDLED_OFFICIAL_CATALOG_VERSION: number \| null = )(?:null|\d+);/;
+  if (!declaration.test(migrationText)) throw new Error('bundled_catalog_version_not_found');
+  return migrationText.replace(declaration, (_, prefix) => `${prefix}${version};`);
+};
+
 /**
  * Detect catalog changes that affect a pack, including boards still in a pack
  * after the cloud stopped bundling them.
