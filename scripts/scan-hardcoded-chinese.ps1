@@ -19,7 +19,9 @@ $excludeFileSubstrings = @(
     "/features/bgstats/services/historyBatchUtils.ts", # 歷史批次預設玩家名稱（寫入用，不在此翻譯）
     "/features/recommendation/SessionPlayerInitializer.ts", # 判斷預設名稱的正則表達式
     "/utils/dataMigration.ts", # 歷史資料庫轉移用標籤
-    "/features/ai-generator/aiSystemPrompt.ts" # AI 提示詞常數（非 UI 字串）
+    "/features/ai-generator/aiSystemPrompt.ts", # AI 提示詞常數（非 UI 字串）
+    "/src/shared/ruleTypes.ts",  # 規則站共用檔案的逐字複本，不可修改（雜湊由 ruleFilter.test.ts 檢查）
+    "/src/shared/ruleFilter.ts"  # 同上
 )
 
 # Line-level exclusions: skip lines matching these patterns (comments, dev-only calls, etc.)
