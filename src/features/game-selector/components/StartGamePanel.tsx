@@ -14,9 +14,11 @@ import { GameLaunchActions } from './GameLaunchActions';
 import { StartGameOverlays } from './StartGameOverlays';
 
 const EMPTY_ACTIVE_SESSION_IDS: string[] = [];
+const EMPTY_OPTIONS: GameOption[] = [];
 
 interface StartGamePanelProps {
     options: GameOption[];
+    isLoading?: boolean;
     locations?: SavedListItem[];
     onStart: (option: GameOption, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => void;
     onSearchClick: () => void;
@@ -32,6 +34,7 @@ interface StartGamePanelProps {
 
 const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     options,
+    isLoading = false,
     locations = [],
     onStart,
     onSearchClick,
@@ -71,7 +74,8 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
         handleLocationSelect, handleLocationChange,
         switchToList, openMenu, handleTimeClick
     } = useStartGamePanelController({
-        options, locations, onStart, isSearching, searchQuery, activeSessionIds
+        options: isLoading ? EMPTY_OPTIONS : options,
+        locations, onStart, isSearching: !isLoading && isSearching, searchQuery, activeSessionIds
     });
 
     // Constants
@@ -88,12 +92,17 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
     return (
         <div
             ref={ref}
+            aria-busy={isLoading || undefined}
             className={`absolute z-40 flex flex-row items-end pointer-events-none transition-all duration-300 ease-in-out ${containerLayoutClass}`}
             style={{ bottom: 'var(--bottom-ui-safe-gap)' }}
         >
 
             {/* --- LEFT: Game List --- */}
-            <GameListView
+            {isLoading ? (
+                <div role="status" className="flex-1 self-stretch grid place-items-center bg-app-bg border-t border-surface-border text-sm text-txt-muted">
+                    {tCommon('loading')}
+                </div>
+            ) : <GameListView
                 processedOptions={processedOptions}
                 scrollableItems={scrollableItems}
                 dockedItem={dockedItem}
@@ -105,7 +114,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                 onPin={onPin}
                 onOpenBgStats={onOpenBgStats}
                 onOpenGameCatalogImport={onOpenGameCatalogImport}
-            />
+            />}
 
             {/* --- RIGHT: Controls (Chimney - Grows Upwards) --- */}
             <div className={`${RIGHT_PANEL_WIDTH} flex flex-col bg-app-bg-deep shrink-0 relative z-50 pointer-events-auto rounded-t-2xl shadow-ui-floating border-t border-l border-surface-border ml-[-1px] transition-all duration-300 ${isAdvancedMode ? 'self-stretch' : ''}`}>
@@ -146,7 +155,7 @@ const StartGamePanel = React.forwardRef<HTMLDivElement, StartGamePanelProps>(({
                 </div>
 
                 <GameLaunchActions
-                    dockedItem={dockedItem}
+                    dockedItem={isLoading ? null : dockedItem}
                     onSearchClick={onSearchClick}
                     handleStart={handleStart}
                 />

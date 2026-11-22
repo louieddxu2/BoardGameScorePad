@@ -2,8 +2,6 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
-import { useTemplateQuery } from './useTemplateQuery';
-import { useSavedGameQuery } from './useSavedGameQuery';
 import { useGameOptionAggregator } from '../../features/game-selector/hooks/useGameOptionAggregator';
 import { searchService } from '../../services/searchService';
 import { GameOption } from '../../features/game-selector/types';
@@ -34,6 +32,24 @@ const useIsOnline = () => {
 const EMPTY_TEMPLATES: GameTemplate[] = [];
 const EMPTY_SAVED_GAMES: SavedListItem[] = [];
 const EMPTY_BGG_GAMES: BggGameSummary[] = [];
+const EMPTY_GAME_OPTIONS: GameOption[] = [];
+
+interface GameOptionSources {
+  templates: GameTemplate[];
+  systemTemplates: GameTemplate[];
+  hiddenTemplateIdentities: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[];
+  templatesLoaded: boolean;
+  savedGames: SavedListItem[];
+  savedGamesLoaded: boolean;
+}
+
+const recentGamesNeedDictionary = (savedGames: SavedListItem[], templates: GameTemplate[]) => {
+  if (!savedGames.some(game => game.lastUsed > 0)) return false;
+  if (savedGames.some(game => !game.bggId?.trim()) || templates.some(template => !template.bggId?.trim())) return true;
+  // A same-name dictionary entry can affect the order in which tied options are encountered.
+  const recentTimes = savedGames.filter(game => game.lastUsed > 0).map(game => game.lastUsed);
+  return new Set(recentTimes).size !== recentTimes.length;
+};
 
 /**
  * Game Options Query Hook
@@ -41,28 +57,20 @@ const EMPTY_BGG_GAMES: BggGameSummary[] = [];
  * 職責：整合 Templates、SavedGames 與 BggGames (字典)，
  * 同時提供搜尋後的開始面板選項與未搜尋的共用候選清單。
  */
-export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], enabled = true) => {
-  // 1. Fetch Local Data
-  // Pass pinnedIds to ensure pinned simple templates are visible
-  const {
+export const useGameOptionsQuery = (
+  searchQuery: string,
+  pinnedIds: string[],
+  {
     templates: allTemplates,
     systemTemplates: allSystemTemplates,
     hiddenTemplateIdentities,
-    templatesLoaded
-  } = useTemplateQuery('', pinnedIds, false, undefined, enabled);
-
-  const {
     savedGames: allSavedGames,
-    savedGamesLoaded
-  } = useSavedGameQuery('');
-
-  // 2. Fetch BGG Dictionary (Lite Summary)
-  // [Optimization] 使用 extractBggGameSummary 轉換為輕量物件
-  const allBggGames = useLiveQuery(async () => {
-    if (!enabled) return undefined;
-    const rawGames = await db.bggGames.toArray();
-    return rawGames.map(extractBggGameSummary);
-  }, [enabled]);
+    templatesLoaded,
+    savedGamesLoaded,
+  }: GameOptionSources,
+  enabled: boolean,
+  loadFullDictionary: boolean,
+) => {
 
   // 3. Aggregate Data (Merge & Deduplicate)
   // 將 BGG Summary 傳入，讓 Aggregator 進行名稱匹配與搜尋索引補完
@@ -81,12 +89,6 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     [officialCatalog, isEnglish]
   );
 
-  // Aliases and other game info from the official catalog fill in the local BGG dictionary.
-  const bggGamesForOptions = useMemo(
-    () => (allBggGames ? mergeOfficialGameInfo(allBggGames, officialCatalog) : allBggGames),
-    [allBggGames, officialCatalog]
-  );
-
   // Official boards published only to the cloud have no local template yet. List
   // them by name so they can be found and started (the board downloads on start).
   const cloudOnlyTemplates = useMemo<GameTemplate[]>(() => {
@@ -102,13 +104,25 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
     () => enabled ? [...allTemplates, ...allSystemTemplates, ...cloudOnlyTemplates] : EMPTY_TEMPLATES,
     [enabled, allTemplates, allSystemTemplates, cloudOnlyTemplates]
   );
-  const localGameDataLoaded = templatesLoaded && savedGamesLoaded && allBggGames !== undefined;
+  const sourcesLoaded = templatesLoaded && savedGamesLoaded && localOfficialCatalog !== undefined;
+  const needsDictionary = useMemo(() => recentGamesNeedDictionary(allSavedGames, templatesForOptions),
+    [allSavedGames, templatesForOptions]);
+  const readDictionary = enabled && (loadFullDictionary || (sourcesLoaded && needsDictionary));
+  const allBggGames = useLiveQuery(async () => {
+    if (!readDictionary) return undefined;
+    return (await db.bggGames.toArray()).map(extractBggGameSummary);
+  }, [readDictionary]);
+  const bggGamesForOptions = useMemo(
+    () => mergeOfficialGameInfo(allBggGames ?? EMPTY_BGG_GAMES, officialCatalog),
+    [allBggGames, officialCatalog],
+  );
+  const recentlyPlayedGamesLoaded = enabled && sourcesLoaded && (!needsDictionary || allBggGames !== undefined);
   const mergedOptions = useGameOptionAggregator(
     templatesForOptions,
     enabled ? allSavedGames : EMPTY_SAVED_GAMES,
-    enabled ? bggGamesForOptions ?? EMPTY_BGG_GAMES : EMPTY_BGG_GAMES,
+    enabled ? bggGamesForOptions : EMPTY_BGG_GAMES,
     pinnedIds,
-    localGameDataLoaded,
+    sourcesLoaded && allBggGames !== undefined,
     hiddenTemplateIdentities
   );
 
@@ -134,7 +148,7 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
 
   // 4. Search
   const gameOptions = useMemo(() => {
-    if (!enabled) return [];
+    if (!enabled || !loadFullDictionary) return EMPTY_GAME_OPTIONS;
     const normalizedQuery = normalizeGameSearch(searchQuery);
     if (!normalizedQuery) return aggregatedOptions;
 
@@ -174,11 +188,12 @@ export const useGameOptionsQuery = (searchQuery: string, pinnedIds: string[], en
 
       return item;
     });
-  }, [aggregatedOptions, searchQuery, enabled, recentSearchUids]);
+  }, [aggregatedOptions, searchQuery, enabled, loadFullDictionary, recentSearchUids]);
 
   return {
     gameOptions,
-    gameOptionsLoaded: enabled && localGameDataLoaded && localOfficialCatalog !== undefined,
+    gameOptionsLoaded: enabled && sourcesLoaded && allBggGames !== undefined,
+    recentlyPlayedGamesLoaded,
     // Keep this unsearched list as the single source for both surfaces' recency ordering.
     allOptions: aggregatedOptions
   };

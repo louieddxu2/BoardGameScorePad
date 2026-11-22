@@ -66,22 +66,21 @@ describe('selectUserTemplateVisibility', () => {
 describe('template query efficiency', () => {
     afterEach(() => { vi.restoreAllMocks(); });
 
-    it('keeps the default recent-template dependency stable across renders', () => {
-        const recentDeps: unknown[] = [];
+    it('keeps the local template query independent of the search text', () => {
+        const sourceDeps: unknown[][] = [];
         const pinnedIds: string[] = [];
         vi.mocked(useLiveQuery).mockImplementation(((_query, deps, defaultResult) => {
-            if (deps?.includes(pinnedIds)) recentDeps.push(deps.find(dep => Array.isArray(dep) && dep !== pinnedIds));
+            if (deps?.includes(pinnedIds)) sourceDeps.push(deps);
             return defaultResult;
         }) as typeof useLiveQuery);
-        const { rerender } = renderHook(() => useTemplateQuery('', pinnedIds), {
-            wrapper: LanguageProvider
+        const { rerender } = renderHook(({ query }) => useTemplateQuery(query, pinnedIds), {
+            wrapper: LanguageProvider, initialProps: { query: '' },
         });
 
-        rerender();
+        rerender({ query: 'Orchard' });
 
-        expect(recentDeps).toHaveLength(2);
-        expect(recentDeps[0]).toEqual([]);
-        expect(recentDeps[1]).toBe(recentDeps[0]);
+        expect(sourceDeps).toHaveLength(2);
+        expect(sourceDeps[1]).toEqual(sourceDeps[0]);
     });
 
     it('skips image storage for templates without images', async () => {

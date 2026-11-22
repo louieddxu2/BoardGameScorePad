@@ -9,9 +9,12 @@ import { buildHistoryGameEntries } from '../../utils/historyGameEntries';
 import type { HistorySummary } from '../../utils/extractDataSummaries';
 import { ALL_HISTORY_DATES, matchesHistoryDate, resolveHistoryDateFilter, type HistoryDateFilter } from '../../utils/historyDateFilter';
 
+const EMPTY_HISTORY: HistorySummary[] = [];
+
 export const useHistoryQuery = (
   searchQuery: string,
-  savedPlayers: SavedListItem[] | undefined
+  savedPlayers: SavedListItem[] | undefined,
+  enabled = true,
 ) => {
   const isSearching = searchQuery && searchQuery.trim().length > 0;
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
@@ -22,6 +25,7 @@ export const useHistoryQuery = (
     setDateFilter(filter);
   }, []);
   useEffect(() => {
+    if (!enabled) return;
     const refresh = () => { if (!document.hidden) refreshCalendar(); };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
@@ -29,12 +33,13 @@ export const useHistoryQuery = (
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, []);
+  }, [enabled]);
 
-  const allSummaries = useLiveQuery(async (): Promise<HistorySummary[]> => {
+  const allSummaries = useLiveQuery(async () => {
+    if (!enabled) return undefined;
     const records = await db.history.orderBy('endTime').reverse().toArray();
     return records.map(extractHistorySummary);
-  }, [], []);
+  }, [enabled]);
 
   useEffect(() => {
     if (!allSummaries || pendingDeleteIds.length === 0) return;
@@ -45,7 +50,7 @@ export const useHistoryQuery = (
   }, [allSummaries, pendingDeleteIds.length]);
 
   const activeSummaries = useMemo(() => {
-    if (!allSummaries) return [];
+    if (!allSummaries) return EMPTY_HISTORY;
     return pendingDeleteIds.length > 0
       ? allSummaries.filter(record => !pendingDeleteIds.includes(record.id))
       : allSummaries;
@@ -77,6 +82,7 @@ export const useHistoryQuery = (
   const historyGameEntries = useMemo(() => buildHistoryGameEntries(filteredSummaries, { savedPlayers }), [filteredSummaries, savedPlayers]);
 
   return {
+    historyLoaded: allSummaries !== undefined,
     historyRecords: filteredSummaries.slice(0, DATA_LIMITS.QUERY.HISTORY_RECORDS),
     historyStatsRecords: filteredSummaries,
     historyGameEntries,

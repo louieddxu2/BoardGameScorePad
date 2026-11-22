@@ -27,6 +27,7 @@ import { isOwnerEmail } from '../../utils/ownerAccount';
 import { useCloudSession } from '../../hooks/useCloudSession';
 import AiPromptModal from '../../features/ai-generator/components/AiPromptModal';
 import { useDashboardTranslation } from '../../i18n/dashboard';
+import { useCommonTranslation } from '../../i18n/common';
 import { db } from '../../db';
 import { uploadTemplateToCloud } from '../../services/templateShareService';
 import { generateId } from '../../utils/idGenerator';
@@ -55,6 +56,8 @@ interface DashboardProps {
   newBadgeIds: string[];
   activeSessionIds: string[];
   activeSessions: GameSession[] | undefined;
+  requestHistory?: () => void;
+  isHistoryLoading?: boolean;
   historyRecords?: HistorySummary[] | HistoryRecord[];
   historyStatsRecords?: HistorySummary[];
   historyDateFilter?: HistoryDateFilter;
@@ -96,8 +99,9 @@ interface DashboardProps {
   onBgStatsImport: (data: BgStatsExport, links: ImportManualLinks) => Promise<boolean>;
   onGetLocalData: () => Promise<any>;
   savedLocations?: SavedListItem[];
-  savedGames: SavedListItem[];
   isSetupModalOpen?: boolean;
+  requestGameOptions?: () => void;
+  isGameOptionsLoading?: boolean;
   gameOptions: GameOption[];
   onQuickStart: (template: GameTemplate, playerCount: number, location: string, locationId?: string, extra?: { startTimeStr?: string, scoringRule?: ScoringRule }) => void;
 }
@@ -116,6 +120,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   newBadgeIds,
   activeSessionIds,
   activeSessions,
+  requestHistory,
+  isHistoryLoading = false,
   historyRecords,
   historyStatsRecords,
   historyDateFilter,
@@ -156,17 +162,23 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
   onBgStatsImport,
   onGetLocalData,
   savedLocations,
-  savedGames,
   isSetupModalOpen,
+  requestGameOptions,
+  isGameOptionsLoading = false,
   gameOptions,
   onQuickStart
 }) => {
   const ownerSession = useCloudSession();
   const { t: tDashboard } = useDashboardTranslation();
+  const { t: tCommon } = useCommonTranslation();
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [isSetupMode, setIsSetupMode] = useState(false);
   const [isStatsMode, setIsStatsMode] = useState(false);
-  const [viewMode, setViewMode] = useState<DashboardMode>('library');
+  const [viewMode, selectViewMode] = useState<DashboardMode>('library');
+  const setViewMode = useCallback((mode: DashboardMode) => {
+    if (mode === 'history') requestHistory?.();
+    selectViewMode(mode);
+  }, [requestHistory]);
   const [isBackupBusy, setIsBackupBusy] = useState(false);
   const [isAiPromptOpen, setIsAiPromptOpen] = useState(false);
   const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
@@ -419,7 +431,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         />
 
         <main
-          aria-busy={viewMode === 'library' && !isBackupBusy && isLibraryLoading ? true : undefined}
+          aria-busy={!isBackupBusy && ((viewMode === 'library' && isLibraryLoading) || (viewMode === 'history' && isHistoryLoading)) || undefined}
           className="p-4 space-y-4 min-h-full transition-transform duration-75 ease-out pb-32"
           style={{ transform: `translateX(${dampedOffset}px)` }}
         >
@@ -429,7 +441,9 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               isCloudConnected={isConnected} isCloudSyncing={isSyncing} onOpenCloud={handleHeaderCloudClick}
               onOpenBgStats={() => modals.actions.setShowBgStatsModal(true)}
               onOpenGameCatalogImport={() => modals.actions.setShowGameCatalogImportModal(true)} />
-          ) : viewMode === 'history' ? (
+          ) : viewMode === 'history' ? (isHistoryLoading ? (
+            <p role="status" className="text-sm text-txt-muted">{tCommon('loading')}</p>
+          ) : (
             <HistoryView
               records={historyRecords}
               totalCount={historyCount || 0}
@@ -440,7 +454,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
               onDelete={dashboardActions.handleDeleteHistoryConfirmed}
               onSelect={onHistorySelect}
             />
-          ) : isLibraryLoading ? null : (
+          )) : isLibraryLoading ? null : (
             <LibraryView
               activeSessions={sortedActiveSessions}
               pinnedTemplates={pinnedTemplates}
@@ -488,6 +502,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
             setIsStatsMode(true);
             return;
           }
+          requestGameOptions?.();
           setIsSearchActive(true);
           setIsSetupMode(true);
         }}
@@ -496,6 +511,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
       {isSetupMode && (
         <StartGamePanel
           ref={setupPanelRef}
+          isLoading={isGameOptionsLoading}
           options={gameOptions}
           activeSessionIds={activeSessionIds}
           locations={savedLocations}
@@ -509,7 +525,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({
         />
       )}
 
-      {isStatsMode && (
+      {isStatsMode && !isHistoryLoading && (
         <div ref={statsPanelRef}>
           <HistoryStatsPanel
             entries={historyGameEntries || []}

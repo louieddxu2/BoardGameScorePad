@@ -2,8 +2,9 @@ import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GameTemplate, SavedListItem } from '../../types';
 import type { BggGameSummary } from '../../utils/extractDataSummaries';
-import { useGameOptionsQuery } from './useGameOptionsQuery';
+import { useGameOptionsQuery as useOptions } from './useGameOptionsQuery';
 import { getSearchResults } from '../../features/game-selector/utils/sortStrategies';
+import { getRecentOptions } from '../../features/game-selector/utils/recentGameOptions';
 
 const fixtures = vi.hoisted(() => ({
   templates: [] as GameTemplate[],
@@ -16,21 +17,15 @@ const fixtures = vi.hoisted(() => ({
   officialCatalog: [] as unknown[],
 }));
 
-vi.mock('./useTemplateQuery', () => ({
-  useTemplateQuery: () => ({
-    templates: fixtures.templates,
-    systemTemplates: fixtures.systemTemplates,
-    hiddenTemplateIdentities: fixtures.hiddenTemplateIdentities,
-    templatesLoaded: fixtures.templatesLoaded
-  }),
-}));
-vi.mock('./useSavedGameQuery', () => ({
-  useSavedGameQuery: () => ({ savedGames: fixtures.savedGames, savedGamesLoaded: fixtures.savedGamesLoaded }),
-}));
 vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: (query: () => unknown) =>
-    String(query).includes('officialCatalog') ? fixtures.officialCatalog : fixtures.bggGames,
+  useLiveQuery: (query: () => unknown, [enabled]: [boolean]) => {
+    if (!enabled) return undefined;
+    return String(query).includes('officialCatalog') ? fixtures.officialCatalog : fixtures.bggGames;
+  },
 }));
+
+const useGameOptionsQuery = (query: string, pinnedIds: string[], loadFullDictionary = true) =>
+  useOptions(query, pinnedIds, fixtures, true, loadFullDictionary);
 
 describe('useGameOptionsQuery', () => {
   beforeEach(() => {
@@ -42,6 +37,65 @@ describe('useGameOptionsQuery', () => {
     fixtures.savedGamesLoaded = true;
     fixtures.bggGames = [];
     fixtures.officialCatalog = [];
+  });
+
+  it('keeps recent game order and exclusions when the full dictionary is opened later', () => {
+    fixtures.templates = [
+      { id: 'pinned', name: 'Pinned', bggId: '1', createdAt: 1, columns: [] },
+      { id: 'active', name: 'Active', bggId: '2', createdAt: 1, columns: [] },
+      { id: 'local', name: 'Shared name', bggId: '3', createdAt: 1, columns: [] },
+    ];
+    fixtures.savedGames = [
+      { id: 'played-pinned', name: 'Pinned alias', bggId: '1', lastUsed: 50, usageCount: 1 },
+      { id: 'played-active', name: 'Active alias', bggId: '2', lastUsed: 40, usageCount: 1 },
+      { id: 'played-local', name: 'Shared name', bggId: '3', lastUsed: 30, usageCount: 1 },
+      { id: 'played-alias', name: 'An alias', bggId: '3', lastUsed: 20, usageCount: 1 },
+      { id: 'played-other', name: 'Other', bggId: '4', lastUsed: 10, usageCount: 1 },
+    ];
+    fixtures.bggGames = [{ id: '99', name: 'Shared name', altNames: [], _searchName: 'Shared name', _altNames: '' }];
+    const { result, rerender } = renderHook(({ full }) => useGameOptionsQuery('', ['pinned'], full), {
+      initialProps: { full: false },
+    });
+    const recents = () => getRecentOptions(result.current.allOptions, 5, new Set(['active']))
+      .map(({ savedGameId, bggId }) => ({ savedGameId, bggId }));
+    const first = recents();
+    expect(first).toEqual([{ savedGameId: 'played-local', bggId: '3' }, { savedGameId: 'played-other', bggId: '4' }]);
+    expect(result.current.recentlyPlayedGamesLoaded).toBe(true);
+    expect(result.current.gameOptionsLoaded).toBe(false);
+    rerender({ full: true });
+    expect(result.current.gameOptionsLoaded).toBe(true);
+    expect(recents()).toEqual(first);
+  });
+
+  it('waits for the dictionary before resolving a recent without a BGG ID', () => {
+    fixtures.savedGames = [{ id: 'legacy', name: 'Same name', lastUsed: 10, usageCount: 1 }];
+    fixtures.templates = [{ id: 'same', name: 'Same name', bggId: '1', createdAt: 1, columns: [] }];
+    fixtures.bggGames = undefined;
+    const { result, rerender } = renderHook(() => useGameOptionsQuery('', [], false));
+    expect(result.current.recentlyPlayedGamesLoaded).toBe(false);
+
+    fixtures.bggGames = [{ id: '2', name: 'Different title', altNames: ['Same name'], _searchName: 'Different title', _altNames: 'Same name' }];
+    rerender();
+    expect(result.current.recentlyPlayedGamesLoaded).toBe(true);
+    const recent = getRecentOptions(result.current.allOptions, 5)[0];
+    expect(recent).toMatchObject({ savedGameId: 'legacy', ambiguousName: true });
+    expect(recent.templateId).toBeUndefined();
+  });
+
+  it('uses the full matching order when two recent games have the same timestamp', () => {
+    fixtures.savedGames = [
+      { id: 'first-play', name: 'First', bggId: '1', lastUsed: 10, usageCount: 2 },
+      { id: 'second-play', name: 'Second', bggId: '2', lastUsed: 10, usageCount: 1 },
+    ];
+    fixtures.bggGames = undefined;
+    const { result, rerender } = renderHook(() => useGameOptionsQuery('', [], false));
+    expect(result.current.recentlyPlayedGamesLoaded).toBe(false);
+
+    fixtures.bggGames = [{ id: '3', name: 'First', altNames: [], _searchName: 'First', _altNames: '' }];
+    rerender();
+    expect(result.current.recentlyPlayedGamesLoaded).toBe(true);
+    expect(getRecentOptions(result.current.allOptions, 5).map(option => option.savedGameId))
+      .toEqual(['second-play', 'first-play']);
   });
 
   it('lists official boards as cloud-only only after built-ins have loaded', () => {

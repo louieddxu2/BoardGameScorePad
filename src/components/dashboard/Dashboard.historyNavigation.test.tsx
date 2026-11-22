@@ -29,7 +29,7 @@ const props: React.ComponentProps<typeof Dashboard> = {
   onTogglePin: noop, onTogglePinOption: noop, onClearNewBadges: noop, onRestoreSystem: noop,
   onGetFullTemplate: async () => null, onDeleteHistory: noop, onHistorySelect: noop,
   isInstalled: false, canInstall: false, onInstallClick: noop, onImportSession: noop, onImportHistory: noop,
-  onBgStatsImport: async () => true, onGetLocalData: async () => ({}), savedGames: [], gameOptions: [], onQuickStart: noop,
+  onBgStatsImport: async () => true, onGetLocalData: async () => ({}), gameOptions: [], onQuickStart: noop,
 };
 const record = (id: string, month: number): HistoryRecord => ({
   id, templateId: 'orchard', gameName: 'Orchard', startTime: 1,
@@ -93,13 +93,27 @@ const expectMonth = () => expect(screen.getByTestId('matching-records')).toHaveT
 const expectAll = () => expect(screen.getByTestId('matching-records')).toHaveTextContent(/^november,october$/);
 const openStats = () => fireEvent.click(screen.getByTitle('Stats'));
 
-it('shows one ordered library snapshot after the first local queries have finished', async () => {
+it('shows an ordered library from shared local queries, then loads history and the full catalog on demand', async () => {
   const pinnedIds = ['Built-in-EN-Startup'];
+  await db.savedGames.put({ id: 'startup-recent', name: 'Recent game', bggId: '2', lastUsed: 2, usageCount: 1 });
+  // Dexie announces the write to live queries on a later task; let that pass before counting reads,
+  // or a busy test run can re-run the first saved-games query and count it twice.
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const builtinReads = vi.spyOn(db.builtins, 'toArray');
+  const savedGameReads = vi.spyOn(db.savedGames, 'orderBy');
+  const historyReads = vi.spyOn(db.history, 'orderBy');
+  const dictionaryReads = vi.spyOn(db.bggGames, 'toArray');
   const Harness = ({ isDbReady }: { isDbReady: boolean }) => {
-    const data = useAppQueries('', pinnedIds, isDbReady);
+    const [historyRequested, setHistoryRequested] = useState(false);
+    const [gameOptionsRequested, setGameOptionsRequested] = useState(false);
+    const data = useAppQueries('', pinnedIds, isDbReady, { historyRequested, gameOptionsRequested });
     return <Dashboard {...props} pinnedIds={pinnedIds} isLibraryLoading={data.isLibraryLoading}
       activeSessions={data.activeSessions} activeSessionIds={data.activeSessionIds}
       systemTemplates={data.systemTemplates} systemTemplatesCount={data.systemTemplatesCount}
+      requestHistory={() => setHistoryRequested(true)} historyRecords={data.historyRecords}
+      isHistoryLoading={!data.historyLoaded} historyCount={data.historyCount}
+      requestGameOptions={() => setGameOptionsRequested(true)} gameOptions={data.gameOptions}
+      isGameOptionsLoading={!data.gameOptionsLoaded}
       recentlyPlayedGames={data.recentlyPlayedGames} />;
   };
   const view = (isDbReady: boolean) => <LanguageProvider><ToastProvider><ConfirmationProvider>
@@ -114,7 +128,7 @@ it('shows one ordered library snapshot after the first local queries have finish
 
   try {
     await act(async () => {
-      await db.builtins.put({ id: pinnedIds[0], name: 'Pinned board', createdAt: 1, columns: [] });
+      await db.builtins.put({ id: pinnedIds[0], name: 'Pinned board', bggId: '1', createdAt: 1, columns: [] });
       await db.sessions.put({ id: 'startup-session', templateId: 'another-board', name: 'Game in progress',
         status: 'active', startTime: 1, players: [] });
     });
@@ -123,10 +137,27 @@ it('shows one ordered library snapshot after the first local queries have finish
     expect(main).not.toHaveAttribute('aria-busy');
     expect(within(main).getAllByRole('heading').slice(0, 3).map(heading => heading.textContent?.replace(/\s*\d+$/, '')))
       .toEqual(['Active Sessions', 'Quick Start', 'My Library']);
+    expect(within(main).getByText('Recent game')).toBeVisible();
+    expect(builtinReads).toHaveBeenCalledTimes(1);
+    expect(savedGameReads).toHaveBeenCalledTimes(1);
+    expect(historyReads).not.toHaveBeenCalled();
+    expect(dictionaryReads).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTitle('History'));
+    expect(await within(main).findAllByText('Orchard')).toHaveLength(2);
+    expect(historyReads).toHaveBeenCalledTimes(1);
+    expect(dictionaryReads).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTitle('Library'));
+    fireEvent.click(screen.getByTitle('Start New'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start Scoring' })).toBeEnabled());
+    expect(dictionaryReads).toHaveBeenCalledTimes(1);
+    expect(builtinReads).toHaveBeenCalledTimes(1);
+    expect(savedGameReads).toHaveBeenCalledTimes(1);
   } finally {
     unmount();
     await db.builtins.delete(pinnedIds[0]);
     await db.sessions.delete('startup-session');
+    await db.savedGames.delete('startup-recent');
   }
 });
 

@@ -36,6 +36,10 @@ export const useAppData = () => {
     const { showToast } = useToast();
     const { t: tApp } = useAppTranslation();
     const [isDbReady, setIsDbReady] = useState(false);
+    const [historyRequested, setHistoryRequested] = useState(false);
+    const [gameOptionsRequested, setGameOptionsRequested] = useState(false);
+    const requestHistory = useCallback(() => setHistoryRequested(true), []);
+    const requestGameOptions = useCallback(() => setGameOptionsRequested(true), []);
 
     // [State Moved Up] Pinned IDs must be initialized before queries
     const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
@@ -81,7 +85,7 @@ export const useAppData = () => {
 
     // --- 2. Queries, Library & Session Management ---
     // Pass pinnedIds so queries can correctly filter simple templates
-    const queries = useAppQueries(debouncedSearchQuery, pinnedIds, isDbReady);
+    const queries = useAppQueries(debouncedSearchQuery, pinnedIds, isDbReady, { historyRequested, gameOptionsRequested });
 
     // Library Hook for Global Access
     const { updatePlayer, updateLocation, commitPlayerStats, commitLocationStats } = useLibrary(markSystemDirty);
@@ -441,10 +445,14 @@ export const useAppData = () => {
 
         // [NEW] Merged Options (renamed from Candidates)
         gameOptions: queries.gameOptions,
+        isGameOptionsLoading: queries.gameOptionsLoaded === false,
+        requestGameOptions,
 
         activeSessionIds: queries.activeSessionIds,
         activeSessions: queries.activeSessions, // [Update] Expose this!
         historyRecords: queries.historyRecords,
+        isHistoryLoading: queries.historyLoaded === false,
+        requestHistory,
         historyStatsRecords: queries.historyStatsRecords,
         historyDateFilter: queries.historyDateFilter,
         setHistoryDateFilter: queries.setHistoryDateFilter,
@@ -456,7 +464,6 @@ export const useAppData = () => {
         savedPlayersAll: queries.savedPlayersAll || [],
         savedLocations: queries.savedLocations,
 
-        savedGames: queries.savedGames,
         getTemplate: queries.getTemplate,
         getBuiltinTemplateByShortId: queries.getBuiltinTemplateByShortId,
         getSessionPreview: queries.getSessionPreview,

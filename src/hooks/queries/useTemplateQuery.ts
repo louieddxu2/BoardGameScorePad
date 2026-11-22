@@ -18,7 +18,7 @@ interface TemplateSummaryData {
     hiddenTemplateIdentities?: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[];
 }
 
-const EMPTY_TEMPLATE_IDS: string[] = [];
+const EMPTY_TEMPLATE_SUMMARIES: TemplateSummary[] = [];
 const EMPTY_TEMPLATE_IDENTITIES: Pick<GameTemplate, 'id' | 'name' | 'bggId'>[] = [];
 
 export const selectUserTemplateVisibility = (
@@ -52,11 +52,30 @@ export const getAvailableImageIds = async (templates: GameTemplate[]): Promise<S
     return new Set(existingIds as string[]);
 };
 
+const buildTemplateView = (
+    users: TemplateSummary[],
+    builtins: TemplateSummary[],
+    searchQuery: string,
+    mergePrefs: (template: TemplateSummary) => GameTemplate,
+) => {
+    const templates: GameTemplate[] = [];
+    const systemOverrides: Record<string, GameTemplate> = {};
+    const searchNames = [{ name: '_searchName', weight: 1 }];
+    const matches = <T extends TemplateSummary>(items: T[]): T[] => searchQuery.trim()
+        ? searchService.search(items, searchQuery, searchNames)
+        : items;
+    for (const template of matches(users)) {
+        const merged = mergePrefs(template);
+        if (merged.sourceTemplateId) systemOverrides[merged.sourceTemplateId] = merged;
+        else templates.push(merged);
+    }
+    const systemTemplates = matches(builtins).map(template => systemOverrides[template.id] ?? mergePrefs(template));
+    return { templates, systemTemplates, systemOverrides };
+};
+
 export const useTemplateQuery = (
     searchQuery: string,
     pinnedIds: string[],
-    includeShareableTemplateIds = false,
-    additionalTemplateIds: string[] = EMPTY_TEMPLATE_IDS,
     enabled = true,
 ) => {
     // --- PREFERENCES & HELPERS ---
@@ -68,7 +87,7 @@ export const useTemplateQuery = (
         return map;
     }, [allPrefs]);
 
-    const mergePrefs = useCallback((template: GameTemplate | TemplateSummary, prefsMap: Record<string, TemplatePreference>) => {
+    const mergePrefs = useCallback((template: GameTemplate | TemplateSummary) => {
         const pref = prefsMap[template.id];
         const sourcePref = template.sourceTemplateId ? prefsMap[template.sourceTemplateId] : undefined;
 
@@ -79,13 +98,13 @@ export const useTemplateQuery = (
             lastPlayerCount: pref?.lastPlayerCount ?? sourcePref?.lastPlayerCount ?? template.lastPlayerCount,
             defaultScoringRule: pref?.defaultScoringRule ?? sourcePref?.defaultScoringRule ?? template.defaultScoringRule
         } as GameTemplate;
-    }, []);
+    }, [prefsMap]);
 
     const getTemplate = async (id: string, identity?: RecentGameTemplateIdentity): Promise<GameTemplate | null> => {
         let t = await db.templates.get(id);
-        if (t) return mergePrefs(t, prefsMap);
+        if (t) return mergePrefs(t);
         t = await db.builtins.get(id);
-        if (t) return mergePrefs(t, prefsMap);
+        if (t) return mergePrefs(t);
 
         if (!identity || (identity.ambiguousName && !identity.nameMatchPending) || !identity.gameName.trim()) return null;
         const gameName = identity.gameName.trim();
@@ -112,7 +131,7 @@ export const useTemplateQuery = (
             const boardId = resolved.bggId?.trim().toLowerCase();
             if (catalogIds.size > 1 || (catalogIds.size === 1 && boardId && !catalogIds.has(boardId))) return null;
         }
-        return mergePrefs(resolved, prefsMap);
+        return mergePrefs(resolved);
     };
 
     // --- TEMPLATES (User) ---
@@ -123,14 +142,9 @@ export const useTemplateQuery = (
 
         const rawItems = await collection.limit(fetchLimit).toArray();
 
-        // Recent-game shortcuts and pinned templates can reference older records
-        // outside the bounded library query. Resolve only those IDs. Pinned simple
-        // templates must remain visible even when they fall beyond the fetch cap.
+        // Pinned boards must also be visible beyond the library's query limit.
         const loadedIds = new Set(rawItems.map(template => template.id));
-        const lookupIds = [...new Set([
-            ...pinnedIds,
-            ...(includeShareableTemplateIds ? additionalTemplateIds : [])
-        ])].filter(id => !loadedIds.has(id));
+        const lookupIds = [...new Set(pinnedIds)].filter(id => !loadedIds.has(id));
         const additionalTemplates = lookupIds.length > 0
             ? (await db.templates.bulkGet(lookupIds)).filter((template): template is GameTemplate => template !== undefined)
             : [];
@@ -144,43 +158,9 @@ export const useTemplateQuery = (
         return {
             templates: mappedItems,
             hiddenTemplateIdentities,
-            shareableTemplateIds: includeShareableTemplateIds
-                ? shareabilityCandidates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
-                : []
+            shareableTemplateIds: shareabilityCandidates.filter(template => !isDisposableTemplate(template)).map(template => template.id)
         };
-    }, [enabled, pinnedIds, includeShareableTemplateIds, additionalTemplateIds]); // Re-run when pins or shareability metadata changes
-
-    const filteredUserTemplates = useMemo<TemplateSummary[]>(() => {
-        if (!allUserTemplatesData) return [];
-        // [Update] Use _searchName architecture
-        return searchService.search<TemplateSummary>(allUserTemplatesData.templates, searchQuery, [
-            { name: '_searchName', weight: 1.0 }
-        ]);
-    }, [allUserTemplatesData, searchQuery]);
-
-    const { userTemplates, userTemplatesTotal, shadowTemplatesMap } = useMemo(() => {
-        const user: GameTemplate[] = [];
-        const shadowMap: Record<string, GameTemplate> = {};
-
-        filteredUserTemplates.forEach(t => {
-            const merged = mergePrefs(t, prefsMap);
-            user.push(merged);
-            if (t.sourceTemplateId) {
-                shadowMap[t.sourceTemplateId] = merged;
-            }
-        });
-
-        const pureUserTotal = user.filter(t => !t.sourceTemplateId).length;
-
-        // [Fix] Do NOT slice here. Pass the full list to the UI layer so search works.
-        const fullUserTemplates = user.filter(t => !t.sourceTemplateId);
-
-        return {
-            userTemplates: fullUserTemplates,
-            userTemplatesTotal: pureUserTotal,
-            shadowTemplatesMap: shadowMap
-        };
-    }, [filteredUserTemplates, prefsMap, mergePrefs]);
+    }, [enabled, pinnedIds]);
 
 
     const { t: tApp } = useAppTranslation();
@@ -192,22 +172,22 @@ export const useTemplateQuery = (
         // Standardize Built-ins to TemplateSummary for consistent search architecture
         return {
             templates: raw.map(t => extractTemplateSummary(t, new Set())),
-            shareableTemplateIds: includeShareableTemplateIds
-                ? raw.filter(template => !isDisposableTemplate(template)).map(template => template.id)
-                : []
+            shareableTemplateIds: raw.filter(template => !isDisposableTemplate(template)).map(template => template.id)
         };
-    }, [enabled, includeShareableTemplateIds]);
+    }, [enabled]);
 
+    // Depend on the language code, not tApp: the translation hook returns a new function on every
+    // render, which would rebuild this list (and every list derived from it) each time.
+    const langCode = tApp('app_lang_code') || 'zh-TW';
     const allBuiltinsData = useMemo<TemplateSummary[]>(() => {
-        if (!allBuiltinsRaw) return [];
-        const lang = tApp('app_lang_code') || 'zh-TW';
-        const isEn = lang.startsWith('en');
+        if (!allBuiltinsRaw) return EMPTY_TEMPLATE_SUMMARIES;
+        const isEn = langCode.startsWith('en');
 
         return allBuiltinsRaw.templates.filter(t => {
              const isEnTemplate = t.id.startsWith('Built-in-EN-');
              return isEn ? isEnTemplate : !isEnTemplate;
         });
-    }, [allBuiltinsRaw, tApp]);
+    }, [allBuiltinsRaw, langCode]);
 
     const getBuiltinTemplateByShortId = async (shortId: string): Promise<GameTemplate | null> => {
         // 1. Try direct lookup (fastest)
@@ -223,31 +203,15 @@ export const useTemplateQuery = (
         }
 
         if (!template) return null;
-        return mergePrefs(template, prefsMap);
+        return mergePrefs(template);
     };
 
-    const filteredBuiltins = useMemo<{ total: number, items: TemplateSummary[] }>(() => {
-        if (!allBuiltinsData) return { total: 0, items: [] };
-        // [Update] Use _searchName architecture
-        const filtered = searchService.search<TemplateSummary>(allBuiltinsData, searchQuery, [
-            { name: '_searchName', weight: 1.0 }
-        ]);
-        return {
-            total: filtered.length,
-            // [Fix] Do NOT slice here. Allow full list to propagate.
-            items: filtered
-        };
-    }, [allBuiltinsData, searchQuery]);
-
-    const systemTemplates = useMemo(() => {
-        return filteredBuiltins.items.map((dt) => {
-            // Check if there is a shadow/override from user templates
-            if (shadowTemplatesMap[dt.id]) {
-                return shadowTemplatesMap[dt.id];
-            }
-            return mergePrefs(dt, prefsMap);
-        });
-    }, [filteredBuiltins.items, shadowTemplatesMap, prefsMap, mergePrefs]);
+    const userSummaries = allUserTemplatesData?.templates ?? EMPTY_TEMPLATE_SUMMARIES;
+    const unfiltered = useMemo(() => buildTemplateView(userSummaries, allBuiltinsData, '', mergePrefs),
+        [userSummaries, allBuiltinsData, mergePrefs]);
+    const visible = useMemo(() => searchQuery.trim()
+        ? buildTemplateView(userSummaries, allBuiltinsData, searchQuery, mergePrefs)
+        : unfiltered, [searchQuery, userSummaries, allBuiltinsData, mergePrefs, unfiltered]);
 
     const shareableTemplateIds = useMemo(() => new Set([
         ...(allUserTemplatesData?.shareableTemplateIds ?? []),
@@ -255,13 +219,12 @@ export const useTemplateQuery = (
     ]), [allUserTemplatesData, allBuiltinsRaw]);
 
     return {
-        templates: userTemplates,
+        ...visible,
+        unfiltered,
         hiddenTemplateIdentities: allUserTemplatesData?.hiddenTemplateIdentities ?? EMPTY_TEMPLATE_IDENTITIES,
         templatesLoaded: allUserTemplatesData !== undefined && allBuiltinsRaw !== undefined,
-        userTemplatesCount: userTemplatesTotal,
-        systemTemplates,
-        systemTemplatesCount: filteredBuiltins.total,
-        systemOverrides: shadowTemplatesMap,
+        userTemplatesCount: visible.templates.length,
+        systemTemplatesCount: visible.systemTemplates.length,
         shareableTemplateIds,
         getTemplate,
         getBuiltinTemplateByShortId
