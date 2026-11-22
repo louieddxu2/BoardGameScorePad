@@ -4,6 +4,7 @@ import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedList
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
 import type { CatalogSyncState, OfficialCatalogEntry, OfficialVersionRecord, ShareCatalogEntry } from './features/official-boards/types';
+import type { RuleContentRecord, RuleSummaryRecord } from './features/game-rules/types';
 
 export class ScorePadDatabase extends Dexie {
     templates!: Table<GameTemplate>;
@@ -35,6 +36,8 @@ export class ScorePadDatabase extends Dexie {
     officialVersions!: Table<OfficialVersionRecord>; // [v34] 已下載的雲端內建版本
     shareCatalog!: Table<ShareCatalogEntry>; // [v34] 雲端分享目錄（本機副本）
     catalogSync!: Table<CatalogSyncState>; // [v34] 各目錄的同步位置
+    ruleSummaries!: Table<RuleSummaryRecord>; // [v35] 規則站：各 BGG 編號的規則數與版本（快取 1 小時）
+    ruleContents!: Table<RuleContentRecord>; // [v35] 規則站：各本體遊戲的規則（依版本，最多 7 天）
 
     /** 
      * [Arch] 宣告式清理註冊表 
@@ -446,6 +449,12 @@ export class ScorePadDatabase extends Dexie {
             officialVersions: '[id+version], id',
             shareCatalog: 'id, bggId',
             catalogSync: 'kind'
+        });
+
+        // Version 35: Cached rules from the rules site (src/features/game-rules/rulesCache.ts).
+        (this as any).version(35).stores({
+            ruleSummaries: 'bggId, ruleGameId',
+            ruleContents: 'gameId'
         });
     }
 }
