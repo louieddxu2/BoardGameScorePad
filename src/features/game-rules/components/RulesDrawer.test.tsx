@@ -151,6 +151,12 @@ describe('rules drawer', () => {
     };
     swipe(40, 0);
     swipe(20, 200);
+    // A swipe on the tag row scrolls the tags and never closes the drawer.
+    const tags = await within(dialog).findByRole('button', { name: '#行動' });
+    fireEvent.touchStart(tags, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchMove(tags, { touches: [{ clientX: 260, clientY: 100 }] });
+    fireEvent.touchEnd(tags);
+    await settle();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     swipe(120, 10);
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());

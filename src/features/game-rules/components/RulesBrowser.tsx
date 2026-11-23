@@ -58,29 +58,32 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
       </label>
 
       {(result.tagOptions.length > 0 || result.hasActiveFilters) && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           {result.hasActiveFilters && (
             <button
               type="button"
               onClick={() => setView((current) => ({ ...EMPTY_VIEW, category: current.category }))}
               aria-label={t('clear_filters')}
-              className="flex h-7 w-7 items-center justify-center rounded-full bg-status-danger text-txt-on-color"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-status-danger text-txt-on-color"
             >
               <X size={14} aria-hidden="true" />
             </button>
           )}
-          {result.tagOptions.map((option) => (
-            <button
-              key={option.name}
-              type="button"
-              aria-pressed={option.selected}
-              onClick={() => toggleTag(option.name)}
-              className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs transition-colors ${option.selected ? 'border-txt-secondary bg-txt-secondary text-app-bg' : 'border-surface-border text-txt-secondary hover:bg-surface-hover'}`}
-            >
-              #{option.name}
-              {option.selected && <X size={12} aria-hidden="true" />}
-            </button>
-          ))}
+          {/* One line that scrolls sideways; swipes here scroll the tags instead of closing the drawer. */}
+          <div data-drawer-no-swipe className="no-scrollbar -mr-3 flex min-w-0 flex-1 gap-1.5 overflow-x-auto pr-3">
+            {result.tagOptions.map((option) => (
+              <button
+                key={option.name}
+                type="button"
+                aria-pressed={option.selected}
+                onClick={() => toggleTag(option.name)}
+                className={`flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-xs transition-colors ${option.selected ? 'border-txt-secondary bg-txt-secondary text-app-bg' : 'border-surface-border text-txt-secondary hover:bg-surface-hover'}`}
+              >
+                #{option.name}
+                {option.selected && <X size={12} aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

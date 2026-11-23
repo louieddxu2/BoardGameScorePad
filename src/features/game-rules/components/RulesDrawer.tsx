@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ExternalLink, Plus } from 'lucide-react';
 import { useRulesTranslation } from '../../../i18n/rules';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
@@ -11,6 +11,8 @@ import RulesSiteLogo from './RulesSiteLogo';
 const SITE_PAPER = '#f6f3eb';
 const SITE_INK = '#16352f';
 const CLOSE_DISTANCE = 80;
+/** Slide in and out from the right. */
+const SLIDE_MS = 240;
 
 interface RulesDrawerProps {
   isOpen: boolean;
@@ -29,11 +31,35 @@ const RulesDrawer: React.FC<RulesDrawerProps> = ({ isOpen, onClose, state }) => 
   const [dragX, setDragX] = useState(0);
   const start = useRef<{ x: number; y: number; horizontal?: boolean } | null>(null);
   const { zIndex } = useModalBackHandler(isOpen, onClose, 'game-rules-drawer');
-  if (!isOpen) return null;
+  // Stay mounted while sliding out, at the layer it had while open.
+  const [mounted, setMounted] = useState(isOpen);
+  const [shown, setShown] = useState(false);
+  const lastZIndex = useRef(zIndex);
+  if (isOpen) lastZIndex.current = zIndex;
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      // Start off-screen, then slide in on the next frame.
+      const frame = requestAnimationFrame(() => requestAnimationFrame(() => setShown(true)));
+      return () => cancelAnimationFrame(frame);
+    }
+    setShown(false);
+    const timer = setTimeout(() => {
+      setMounted(false);
+      setDragX(0);
+    }, SLIDE_MS);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+  if (!mounted) return null;
 
   const slug = state.status === 'ready' ? state.rules?.slug : undefined;
 
   const onTouchStart = (event: React.TouchEvent) => {
+    // A row that scrolls sideways (the tags) keeps its swipes.
+    if ((event.target as HTMLElement).closest?.('[data-drawer-no-swipe]')) {
+      start.current = null;
+      return;
+    }
     const touch = event.touches[0];
     start.current = { x: touch.clientX, y: touch.clientY };
   };
@@ -49,13 +75,23 @@ const RulesDrawer: React.FC<RulesDrawerProps> = ({ isOpen, onClose, state }) => 
   const onTouchEnd = () => {
     const shouldClose = dragX > CLOSE_DISTANCE;
     start.current = null;
-    setDragX(0);
+    // A closing swipe slides on from where the finger let go; otherwise it springs back.
     if (shouldClose) onClose();
+    else setDragX(0);
   };
 
+  const dragging = start.current !== null && dragX > 0;
+  const offset = !shown ? '100%' : `${dragX}px`;
+
   return (
-    <div className="fixed inset-0 flex" role="presentation" style={{ zIndex }}>
-      <button type="button" aria-label={t('close')} onClick={onClose} className="h-full w-[72px] shrink-0 grow bg-modal-backdrop/40" />
+    <div className="fixed inset-0 flex" role="presentation" style={{ zIndex: lastZIndex.current }}>
+      <button
+        type="button"
+        aria-label={t('close')}
+        onClick={onClose}
+        className="h-full w-[72px] shrink-0 grow bg-modal-backdrop/40 transition-opacity ease-out"
+        style={{ opacity: shown ? 1 : 0, transitionDuration: `${SLIDE_MS}ms` }}
+      />
       <aside
         role="dialog"
         aria-modal="true"
@@ -64,8 +100,11 @@ const RulesDrawer: React.FC<RulesDrawerProps> = ({ isOpen, onClose, state }) => 
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
-        style={{ transform: dragX ? `translateX(${dragX}px)` : undefined, transition: dragX ? 'none' : undefined }}
-        className="flex h-full w-[calc(100%-72px)] max-w-md flex-col border-l border-surface-border bg-app-bg shadow-2xl transition-transform duration-200 animate-in slide-in-from-right"
+        style={{
+          transform: `translateX(${offset})`,
+          transition: dragging ? 'none' : `transform ${SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+        }}
+        className="flex h-full w-[calc(100%-72px)] max-w-md flex-col border-l border-surface-border bg-app-bg shadow-2xl"
       >
         <header className="safe-area-top-medium flex shrink-0 items-center gap-2 px-3 pb-2.5" style={{ backgroundColor: SITE_PAPER, color: SITE_INK }}>
           <RulesSiteLogo size={24} className="shrink-0 rounded-md" />

@@ -33,14 +33,15 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
         <ChevronDown size={16} className={`mt-0.5 shrink-0 text-txt-muted transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
 
-      <p className={`mt-2 flex gap-2 text-sm leading-relaxed text-txt-primary ${expanded ? '' : 'line-clamp-2'}`}>
-        <Check size={16} className="mt-0.5 shrink-0 text-brand-primary" aria-hidden="true" />
-        <span className="whitespace-pre-line">{rule.statement}</span>
+      {/* The correct rule leads; the mistake follows, smaller and quieter, so the eye lands on what is right. */}
+      <p className="mt-2 flex gap-2 text-[15px] font-semibold leading-snug text-txt-title">
+        <Check size={18} strokeWidth={2.5} className="mt-0.5 shrink-0 text-brand-primary" aria-hidden="true" />
+        <span className={`whitespace-pre-line ${expanded ? '' : 'line-clamp-3'}`}>{rule.statement}</span>
       </p>
 
       {rule.commonMistake && (
-        <div className="mt-2 flex gap-2 rounded-r-lg border-l-2 border-status-danger bg-status-danger/10 px-2 py-1.5 text-sm leading-relaxed text-status-danger">
-          <X size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+        <div className="ml-[26px] mt-2 flex gap-1.5 rounded-r-md border-l border-status-danger/50 bg-status-danger/5 px-2 py-1 text-xs leading-relaxed text-status-danger/90">
+          <X size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span className={expanded ? 'whitespace-pre-line' : 'line-clamp-2'}>
             {expanded && <span className="sr-only">{t('common_mistake')}：</span>}
             {rule.commonMistake}
