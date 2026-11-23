@@ -48,7 +48,22 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
 
   return (
     <div className="space-y-3">
-      {/* Search first; the game's external resources open from the button beside it. */}
+      {/* The game's external resources open above the search row, right under the rules site's header. */}
+      {showResources && resources.length > 0 && (
+        <ul id="rules-resources" className="space-y-0.5 rounded-xl border border-surface-border bg-surface-bg px-3 py-1.5">
+          {resources.map((resource) => (
+            <li key={resource.id}>
+              <a href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-1.5 text-sm text-txt-secondary">
+                <span className="shrink-0 text-[11px] text-txt-muted">{t(resourceCategoryKey(resource.category))}</span>
+                <span className="min-w-0 flex-1 truncate">{resource.name}</span>
+                <ExternalLink size={14} className="shrink-0 text-txt-muted" aria-hidden="true" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Search first; the resources button sits beside it. */}
       <div className="flex items-center gap-2">
         <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-surface-border bg-surface-alt px-3">
           <Search size={16} className="shrink-0 text-txt-muted" aria-hidden="true" />
@@ -70,24 +85,11 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
           >
             {t('resources')}
             <span className="text-xs text-txt-muted">{resources.length}</span>
-            <ChevronDown size={14} className={`transition-transform ${showResources ? 'rotate-180' : ''}`} aria-hidden="true" />
+            {/* Points up while closed (the list opens above), down while open. */}
+            <ChevronDown size={14} className={`transition-transform ${showResources ? '' : 'rotate-180'}`} aria-hidden="true" />
           </button>
         )}
       </div>
-
-      {showResources && resources.length > 0 && (
-        <ul id="rules-resources" className="space-y-0.5 rounded-xl border border-surface-border bg-surface-bg px-3 py-1.5">
-          {resources.map((resource) => (
-            <li key={resource.id}>
-              <a href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-1.5 text-sm text-txt-secondary">
-                <span className="shrink-0 text-[11px] text-txt-muted">{t(resourceCategoryKey(resource.category))}</span>
-                <span className="min-w-0 flex-1 truncate">{resource.name}</span>
-                <ExternalLink size={14} className="shrink-0 text-txt-muted" aria-hidden="true" />
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
 
       {categories.length > 1 && (
         // All categories on one row, sharing the full width.
