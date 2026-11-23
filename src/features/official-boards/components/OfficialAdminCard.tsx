@@ -62,10 +62,13 @@ const OfficialAdminCard: React.FC = () => {
     }
   };
 
-  /** Rebuild the official snapshot and download it only when a new generation exists. */
+  /**
+   * Rebuild the game catalog, then check its generation (one row) so this device downloads it
+   * whenever it moved, including when the rules sync inside the rebuild already published it.
+   */
   const rebuildOfficial = async () => {
     const result = await rebuildCatalogSnapshot('games');
-    if (result.rebuilt) await syncCatalog('games', 'snapshot');
+    await syncCatalog('games', 'changes');
     return result;
   };
 
