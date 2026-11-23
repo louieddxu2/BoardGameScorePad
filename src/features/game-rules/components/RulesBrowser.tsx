@@ -9,6 +9,23 @@ import RuleCard from './RuleCard';
 const EMPTY_VIEW: RuleFilterView = { category: 'all', tags: [], playerCounts: [], editions: [] };
 
 /**
+ * A category name such as 教學、設置、開局 shown as 教學·設置·開局. When the button is too narrow,
+ * only the last part moves to a second line; the parts before it never break apart.
+ */
+const CategoryLabel: React.FC<{ label: string }> = ({ label }) => {
+  const parts = label.split('、');
+  if (parts.length < 2) return <>{label}</>;
+  const last = parts.pop()!;
+  return (
+    <>
+      <span className="whitespace-nowrap">{parts.join('·')}·</span>
+      <wbr />
+      <span className="whitespace-nowrap">{last}</span>
+    </>
+  );
+};
+
+/**
  * A game's rules with the rules site's filters: categories that lead somewhere, keyword search
  * and tags, in the site's order. Player-count and edition filters are left to the site.
  */
@@ -28,18 +45,21 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
   return (
     <div className="space-y-3">
       {categories.length > 1 && (
-        <div className="grid grid-cols-2 gap-2">
+        // All categories on one row, sharing the full width.
+        <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }}>
           {categories.map((category) => {
             const selected = result.selectedCategory === category;
+            const label = t(ruleCategoryKey(category));
             return (
               <button
                 key={category}
                 type="button"
                 aria-pressed={selected}
+                aria-label={label}
                 onClick={() => setView((current) => ({ ...current, category: selected ? 'all' : category }))}
-                className={`rounded-xl border px-2 py-2 text-xs transition-colors ${selected ? 'border-brand-primary bg-brand-primary text-txt-on-color' : 'border-surface-border text-txt-secondary hover:bg-surface-hover'}`}
+                className={`rounded-xl border px-1 py-2 text-xs leading-tight transition-colors ${selected ? 'border-brand-primary bg-brand-primary text-txt-on-color' : 'border-surface-border text-txt-secondary hover:bg-surface-hover'}`}
               >
-                {t(ruleCategoryKey(category))}
+                <CategoryLabel label={label} />
               </button>
             );
           })}

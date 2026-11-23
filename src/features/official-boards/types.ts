@@ -16,6 +16,8 @@ export interface GameCatalogBoard {
  */
 export interface GameRuleRef {
   gameId: string;
+  /** The rules site's kind of game, when it says. */
+  entityKind?: 'base' | 'expansion' | 'version' | 'unknown';
   ruleGameId: string | null;
   publishedRuleCount?: number;
   ruleVersion?: string;

@@ -24,11 +24,26 @@ const distinct = (names: (string | null | undefined)[]): string[] => {
   });
 };
 
-/** Every name of each catalog game, with an English name first when one is known. */
+/**
+ * Whether a catalog game belongs in the start panel's search. Scoreboards are per base game, so
+ * expansions and versions stay out (they remain in the catalog for their base game's rule count).
+ * A game with an official board is always listed. Without the rules site's kind, a rules game
+ * that leads to another game's rules is taken as an expansion or version.
+ */
+export const isSearchableCatalogGame = (entry: GameCatalogEntry): boolean => {
+  if (entry.boards?.length) return true;
+  const rules = entry.rules ?? [];
+  if (rules.length === 0) return true;
+  return rules.some((rule) => rule.entityKind
+    ? rule.entityKind === 'base' || rule.entityKind === 'unknown'
+    : rule.ruleGameId === null || rule.ruleGameId === rule.gameId);
+};
+
+/** Every name of each searchable catalog game, with an English name first when one is known. */
 const namesByBggId = (catalog: GameCatalogEntry[]): Map<string, { name?: string; names: string[] }> => {
   const out = new Map<string, { name?: string; names: string[] }>();
   for (const entry of catalog) {
-    if (!entry.bggId) continue;
+    if (!entry.bggId || !isSearchableCatalogGame(entry)) continue;
     const boards = entry.boards ?? [];
     const names = distinct([entry.name, ...(entry.altNames ?? []), ...boards.flatMap((b) => [b.enName, b.name])]);
     const name = entry.name || distinct([...boards.map((b) => b.enName), ...boards.map((b) => b.name)]).find(isLatin);

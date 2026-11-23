@@ -47,9 +47,23 @@ describe('official game names', () => {
     ]);
   });
 
-  it('adds catalog games without an official board, so they can be found and started', () => {
-    const merged = mergeGames([], [{ bggId: '244358', name: null, altNames: ['達爾加德學院'], rules: [{ gameId: 'g', ruleGameId: 'base' }], boards: [] }]);
-    expect(merged.map((g) => [g.id, g.name, g.altNames])).toEqual([['244358', '達爾加德學院', []]]);
+  it('adds base games without an official board, but leaves expansions and versions out of search', () => {
+    const merged = mergeGames([], [
+      { bggId: '163068', name: 'Trickerion', altNames: ['大魔術師'], rules: [{ gameId: 'base', entityKind: 'base', ruleGameId: 'base', publishedRuleCount: 19, ruleVersion: 'v' }], boards: [] },
+      { bggId: '244358', name: null, altNames: ['達爾加德學院'], rules: [{ gameId: 'exp', entityKind: 'expansion', ruleGameId: 'base' }], boards: [] },
+      { bggId: '441548', name: null, altNames: ['新版'], rules: [{ gameId: 'ver', entityKind: 'version', ruleGameId: 'base' }], boards: [] },
+      // Without the rules site's kind: one that leads to another game's rules is an expansion or version.
+      { bggId: '500', name: null, altNames: ['舊資料擴充'], rules: [{ gameId: 'old', ruleGameId: 'base' }], boards: [] },
+      // An expansion with no base game found, but marked unknown, stays findable.
+      { bggId: '600', name: null, altNames: ['不明'], rules: [{ gameId: 'u', entityKind: 'unknown', ruleGameId: null }], boards: [] },
+    ]);
+    expect(merged.map((g) => [g.id, g.name])).toEqual([['163068', 'Trickerion'], ['600', '不明']]);
+  });
+
+  it('keeps a game with an official board searchable even if the rules site calls it an expansion', () => {
+    const merged = mergeGames([], [{ bggId: '700', name: null, altNames: [], rules: [{ gameId: 'e', entityKind: 'expansion', ruleGameId: 'b' }],
+      boards: [{ id: 'Built-in-Exp', lang: 'zh-TW', name: '擴充計分板', version: 0, bundled: true, updatedAt: 1 }] }]);
+    expect(merged.map((g) => g.id)).toEqual(['700']);
   });
 
   it('returns the same array when the catalog adds nothing', () => {
