@@ -68,7 +68,11 @@ describe('sync:builtins command', () => {
   it('stops before copying a board that was removed from a stale pack', () => {
     const files = fixture();
     const result = runSync(files.root, { changes: [
-      { templateId: 'Built-in-Fixture', catalogVersion: 8, template: { lang: 'zh-TW', bundled: false } },
+      // Game catalog change for BGG ID 1: its zh-TW board is no longer bundled.
+      { templateId: '1', catalogVersion: 8, template: { bggId: '1', boards: [
+        { id: 'Built-in-Fixture', lang: 'zh-TW', bundled: false, version: 1 },
+        { id: 'Built-in-EN-Fixture', lang: 'en', bundled: true, version: 1 },
+      ] } },
     ] });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('Built-in-Fixture');

@@ -11,6 +11,7 @@ import {
   getOfficialTemplateAtVersion,
   reapplyDownloadedOfficialVersions,
 } from './officialBoards';
+import { gameEntriesFromBoards, loadOfficialBoards } from './gameCatalog';
 import type { OfficialCatalogEntry } from './types';
 
 const entry = (id: string, version: number, extra: Partial<OfficialCatalogEntry> = {}): OfficialCatalogEntry => ({
@@ -23,6 +24,14 @@ const entry = (id: string, version: number, extra: Partial<OfficialCatalogEntry>
   updatedAt: 1,
   ...extra,
 });
+
+/** Put boards into the game catalog, merged with the boards already there (one entry per BGG ID). */
+const putBoards = async (boards: OfficialCatalogEntry | OfficialCatalogEntry[]) => {
+  const added = Array.isArray(boards) ? boards : [boards];
+  const kept = (await loadOfficialBoards()).filter((existing) => !added.some((board) => board.id === existing.id));
+  await db.gameCatalog.clear();
+  await db.gameCatalog.bulkPut(gameEntriesFromBoards([...kept, ...added]));
+};
 
 const board = (id: string, columns: string[], officialVersion?: number): GameTemplate => ({
   id,
@@ -64,7 +73,7 @@ describe('official boards (local)', () => {
   it('downloads the catalog version on start and falls back to the local copy offline', async () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
     await db.sessions.put(activeGame('Built-in-Agricola', 0));
-    await db.officialCatalog.put(entry('Built-in-Agricola', 2));
+    await putBoards(entry('Built-in-Agricola', 2));
     const fetchMock = mockWorker(() => ({ ...entry('Built-in-Agricola', 2), payload: board('Built-in-Agricola', ['田地', '牧場']) }));
 
     const ready = await ensureOfficialBoard('Built-in-Agricola');
@@ -80,7 +89,7 @@ describe('official boards (local)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     // A newer version that cannot be downloaded falls back to the local v2.
-    await db.officialCatalog.put(entry('Built-in-Agricola', 3));
+    await putBoards(entry('Built-in-Agricola', 3));
     fetchMock.mockRejectedValue(new TypeError('offline'));
     const fallback = await ensureOfficialBoard('Built-in-Agricola');
     expect(fallback.status).toBe('fallback');
@@ -88,7 +97,7 @@ describe('official boards (local)', () => {
   });
 
   it('reports unavailable when a cloud-only board cannot be downloaded the first time', async () => {
-    await db.officialCatalog.put(entry('Built-in-New', 1));
+    await putBoards(entry('Built-in-New', 1));
     mockWorker(() => new Response('{}', { status: 500 }));
     expect((await ensureOfficialBoard('Built-in-New')).status).toBe('unavailable');
     expect(await db.builtins.get('Built-in-New')).toBeUndefined();
@@ -97,13 +106,13 @@ describe('official boards (local)', () => {
   it('resumes the started version and keeps downloads across a bundled rebuild', async () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
     await db.sessions.bulkPut([activeGame('Built-in-Agricola', 0), activeGame('Built-in-Agricola', 1)]);
-    await db.officialCatalog.put(entry('Built-in-Agricola', 1));
+    await putBoards(entry('Built-in-Agricola', 1));
     mockWorker((url) => {
       const version = Number(new URL(url).searchParams.get('version'));
       return { ...entry('Built-in-Agricola', version), payload: board('Built-in-Agricola', version === 1 ? ['v1'] : ['v2', 'x']) };
     });
     await ensureOfficialBoard('Built-in-Agricola');
-    await db.officialCatalog.put(entry('Built-in-Agricola', 2));
+    await putBoards(entry('Built-in-Agricola', 2));
     await ensureOfficialBoard('Built-in-Agricola');
 
     // A session that started on v1 still gets v1 after updating to v2.
@@ -128,13 +137,13 @@ describe('official boards (local)', () => {
       { id, version: 2, template: current, downloadedAt: 2 },
     ]);
     const other = 'Built-in-New';
-    await db.officialCatalog.put(entry(other, 1));
+    await putBoards(entry(other, 1));
     const fetchMock = mockWorker(() => ({ ...entry(other, 1), payload: board(other, ['new']) }));
     expect((await ensureOfficialBoard(other)).status).toBe('ready');
     expect(await db.officialVersions.where('id').equals(id).primaryKeys()).toEqual([[id, 0], [id, 2]]);
 
     await db.sessions.delete(active.id);
-    await db.officialCatalog.put(entry(other, 2));
+    await putBoards(entry(other, 2));
     fetchMock.mockRejectedValueOnce(new Error('offline'));
     expect((await ensureOfficialBoard(other)).status).toBe('fallback');
     expect(await db.officialVersions.get([id, 0])).toBeDefined();
@@ -145,19 +154,30 @@ describe('official boards (local)', () => {
     expect(await db.officialVersions.where('id').equals(other).primaryKeys()).toEqual([[other, 2]]);
   });
 
-  it('syncs the catalog from a snapshot, then only changes after its version', async () => {
+  it('syncs the game catalog from a snapshot, then only changes after its version', async () => {
     const calls: string[] = [];
+    const game = (bggId: string, boards: OfficialCatalogEntry[], rest: object = {}) => ({
+      bggId, name: null, altNames: [], rules: [], boards: boards.map(({ bggId: _b, game: _g, ...b }) => b), ...rest,
+    });
     mockWorker((url) => {
       calls.push(new URL(url).pathname + new URL(url).search);
-      if (url.endsWith('/api/official/catalog')) {
-        return { generation: 3, throughVersion: 10, generatedAt: 1, templates: [entry('Built-in-A', 1), entry('Built-in-B', 0)] };
+      if (url.endsWith('/api/games/catalog')) {
+        return {
+          generation: 3, throughVersion: 10, generatedAt: 1,
+          templates: [
+            game('1', [entry('Built-in-A', 1, { bggId: '1' })]),
+            game('2', [entry('Built-in-B', 0, { bggId: '2' })]),
+            // A game without an official board, with rules.
+            game('3', [], { name: 'Rules Only', rules: [{ gameId: 'g3', ruleGameId: 'g3', publishedRuleCount: 4, ruleVersion: 'v' }] }),
+          ],
+        };
       }
       const after = Number(new URL(url).searchParams.get('after'));
       if (after === 10) {
         return {
           changes: [
-            { templateId: 'Built-in-A', catalogVersion: 11, deleted: false, template: entry('Built-in-A', 2) },
-            { templateId: 'Built-in-B', catalogVersion: 12, deleted: true },
+            { templateId: '1', catalogVersion: 11, deleted: false, template: game('1', [entry('Built-in-A', 2, { bggId: '1' })]) },
+            { templateId: '2', catalogVersion: 12, deleted: true },
           ],
           throughVersion: 12,
           hasMore: false,
@@ -166,24 +186,26 @@ describe('official boards (local)', () => {
       return { changes: [], throughVersion: after, hasMore: false };
     });
 
-    const first = await syncCatalog('official');
-    expect(first).toMatchObject({ ran: 'snapshot', changed: 4, state: { throughVersion: 12, generation: 3 } });
-    expect((await db.officialCatalog.toArray()).map((e) => [e.id, e.version])).toEqual([['Built-in-A', 2]]);
+    const first = await syncCatalog('games');
+    expect(first).toMatchObject({ ran: 'snapshot', changed: 5, state: { throughVersion: 12, generation: 3 } });
+    expect((await loadOfficialBoards()).map((e) => [e.id, e.version])).toEqual([['Built-in-A', 2]]);
+    expect(await db.gameCatalog.get('3')).toMatchObject({ name: 'Rules Only', boards: [], ruleGameIds: ['g3'] });
+    expect(await db.gameCatalog.where('boardIds').equals('Built-in-A').primaryKeys()).toEqual(['1']);
 
     // Within 6 hours an automatic sync does nothing; a manual check asks for changes after 12.
-    expect((await syncCatalog('official')).ran).toBe('none');
-    const manual = await syncCatalog('official', 'changes');
+    expect((await syncCatalog('games')).ran).toBe('none');
+    const manual = await syncCatalog('games', 'changes');
     expect(manual).toMatchObject({ ran: 'changes', changed: 0 });
     expect(calls).toEqual([
-      '/api/official/catalog',
-      '/api/official/catalog/changes?after=10',
-      '/api/official/catalog/changes?after=12',
+      '/api/games/catalog',
+      '/api/games/catalog/changes?after=10',
+      '/api/games/catalog/changes?after=12',
     ]);
   });
 
   it('gives up on a slow download at start and uses the local copy', async () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
-    await db.officialCatalog.put(entry('Built-in-Agricola', 2));
+    await putBoards(entry('Built-in-Agricola', 2));
     // A Worker that never answers: only the abort signal ends the request.
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       (_input, init) =>
@@ -217,7 +239,7 @@ describe('official pack (first open)', () => {
     await db.builtins.put(board('Built-in-Agricola', ['田地']));
     await db.sessions.put(activeGame('Built-in-Agricola', 0));
     await db.builtins.put(board('Built-in-Same', ['A']));
-    await db.officialCatalog.bulkPut([
+    await putBoards([
       entry('Built-in-Agricola', 2),
       entry('Built-in-Same', 0),
       entry('Built-in-CloudOnly', 0),
@@ -254,7 +276,7 @@ describe('official pack (first open)', () => {
 
   it('skips the pack and per-board checks when the installed bundled catalog version matches', async () => {
     vi.spyOn(dbMigration, 'getInstalledBundledOfficialCatalogVersion').mockReturnValue(70);
-    const scan = vi.spyOn(db.officialCatalog, 'toArray');
+    const scan = vi.spyOn(db.gameCatalog, 'toArray');
     const fetchMock = mockWorker(() => null);
 
     expect(await installOfficialPack('zh-TW', 70)).toBe(0);
@@ -265,7 +287,7 @@ describe('official pack (first open)', () => {
   it('skips the pack if a later catalog has no missing or newer bundled boards in this language', async () => {
     vi.spyOn(dbMigration, 'getInstalledBundledOfficialCatalogVersion').mockReturnValue(70);
     await db.builtins.put(board('Built-in-Same', ['A'], 2));
-    await db.officialCatalog.bulkPut([
+    await putBoards([
       entry('Built-in-Same', 2, { enName: 'Alias updated' }),
       entry('Built-in-EN-New', 1, { lang: 'en' }),
       entry('Built-in-CloudOnly', 1, { bundled: false }),
@@ -277,7 +299,7 @@ describe('official pack (first open)', () => {
   });
 
   it('retries on a later open when the download fails', async () => {
-    await db.officialCatalog.put(entry('Built-in-EN-New', 1, { lang: 'en' }));
+    await putBoards(entry('Built-in-EN-New', 1, { lang: 'en' }));
     mockWorker(() => new Response(JSON.stringify({ error: 'pack_not_found' }), { status: 404 }));
     await expect(installOfficialPack('en', 70)).rejects.toMatchObject({ code: 'pack_not_found' });
     expect(localStorage.getItem('sm_official_pack_installed_en')).toBeNull();

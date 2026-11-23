@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { extractBggGameSummary } from '../../utils/extractDataSummaries';
-import { mergeOfficialGameInfo } from './officialGameInfo';
+import { gameEntriesFromBoards } from './gameCatalog';
+import { mergeOfficialGameInfo as mergeGames } from './officialGameInfo';
 import type { OfficialCatalogEntry } from './types';
 
 const entry = (bggId: string, lang: string, name: string, extra: Partial<OfficialCatalogEntry> = {}): OfficialCatalogEntry => ({
@@ -13,6 +14,10 @@ const entry = (bggId: string, lang: string, name: string, extra: Partial<Officia
   updatedAt: 1,
   ...extra,
 });
+
+// These cases start from boards; the catalog groups them into one entry per BGG ID.
+const mergeOfficialGameInfo = (local: Parameters<typeof mergeGames>[0], boards: OfficialCatalogEntry[]) =>
+  mergeGames(local, gameEntriesFromBoards(boards));
 
 describe('official game names', () => {
   it('keeps the local dictionary and adds the rules names and every board name', () => {
@@ -40,6 +45,11 @@ describe('official game names', () => {
       ['4', 'Featherlight', ['羽光']],
       ['5', '築夢頌', []],
     ]);
+  });
+
+  it('adds catalog games without an official board, so they can be found and started', () => {
+    const merged = mergeGames([], [{ bggId: '244358', name: null, altNames: ['達爾加德學院'], rules: [{ gameId: 'g', ruleGameId: 'base' }], boards: [] }]);
+    expect(merged.map((g) => [g.id, g.name, g.altNames])).toEqual([['244358', '達爾加德學院', []]]);
   });
 
   it('returns the same array when the catalog adds nothing', () => {

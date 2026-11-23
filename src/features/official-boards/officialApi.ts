@@ -14,6 +14,7 @@ import type {
   CatalogChangesPayload,
   CatalogKind,
   CatalogSnapshotPayload,
+  GameCatalogEntry,
   OfficialCatalogEntry,
   OfficialPackPayload,
   OfficialPublishResult,
@@ -47,12 +48,12 @@ const request = async <T>(path: string, init: RequestInit = {}, timeoutMs = REQU
   }
 };
 
-const catalogPath = (kind: CatalogKind) => (kind === 'official' ? '/api/official/catalog' : '/api/share/catalog');
+const catalogPath = (kind: CatalogKind) => (kind === 'games' ? '/api/games/catalog' : '/api/share/catalog');
 
-export const fetchCatalogSnapshot = <T extends OfficialCatalogEntry | ShareCatalogEntry>(kind: CatalogKind) =>
+export const fetchCatalogSnapshot = <T extends GameCatalogEntry | ShareCatalogEntry>(kind: CatalogKind) =>
   request<CatalogSnapshotPayload<T>>(catalogPath(kind));
 
-export const fetchCatalogChanges = <T extends OfficialCatalogEntry | ShareCatalogEntry>(kind: CatalogKind, after: number) =>
+export const fetchCatalogChanges = <T extends GameCatalogEntry | ShareCatalogEntry>(kind: CatalogKind, after: number) =>
   request<CatalogChangesPayload<T>>(`${catalogPath(kind)}/changes?after=${after}`);
 
 export const fetchOfficialTemplate = (id: string, version: number | undefined, timeoutMs?: number) =>
@@ -156,6 +157,6 @@ export const rollbackOfficialTemplate = (id: string, version: number, expectedVe
 
 export const rebuildCatalogSnapshot = (kind: CatalogKind) =>
   adminRequest<{ rebuilt: boolean; generation: number; throughVersion: number }>(
-    kind === 'official' ? '/api/admin/official/catalog/rebuild' : '/api/admin/share/catalog/rebuild',
+    kind === 'games' ? '/api/admin/games/catalog/rebuild' : '/api/admin/share/catalog/rebuild',
     { method: 'POST' }
   );

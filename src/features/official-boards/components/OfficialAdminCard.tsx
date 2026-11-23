@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Hammer, ListPlus, Loader2, LogIn, ShieldCheck } from 'lucide-react';
 import { useCloudSession } from '../../../hooks/useCloudSession';
 import { ensureCloudSession } from '../../../services/cloud/cloudSession';
-import { db } from '../../../db';
 import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
+import { loadOfficialBoards } from '../gameCatalog';
 import {
   OfficialApiError,
   rebuildCatalogSnapshot,
@@ -23,7 +23,7 @@ const loadUnregisteredBuiltins = async (): Promise<BuiltinRegistration[]> => {
   const [{ DEFAULT_TEMPLATES }, { DEFAULT_TEMPLATES_EN }, catalog] = await Promise.all([
     import('../../../data/templates'),
     import('../../../data/templates-en'),
-    db.officialCatalog.toArray(),
+    loadOfficialBoards(),
   ]);
   const listed = new Set(catalog.flatMap((e) => [e.id, `${e.bggId}|${e.lang}`]));
   return ([...DEFAULT_TEMPLATES, ...DEFAULT_TEMPLATES_EN] as GameTemplate[])
@@ -64,14 +64,14 @@ const OfficialAdminCard: React.FC = () => {
 
   /** Rebuild the official snapshot and download it only when a new generation exists. */
   const rebuildOfficial = async () => {
-    const result = await rebuildCatalogSnapshot('official');
-    if (result.rebuilt) await syncCatalog('official', 'snapshot');
+    const result = await rebuildCatalogSnapshot('games');
+    if (result.rebuilt) await syncCatalog('games', 'snapshot');
     return result;
   };
 
   const register = () =>
     run('register', async () => {
-      await syncCatalog('official', 'changes');
+      await syncCatalog('games', 'changes');
       const items = await loadUnregisteredBuiltins();
       if (items.length === 0) return t('official_admin_register_none');
       let registered = 0;
@@ -83,7 +83,7 @@ const OfficialAdminCard: React.FC = () => {
       }
       // New devices then read one snapshot instead of every registration as a change.
       if (registered > 0) await rebuildOfficial();
-      else await syncCatalog('official', 'changes');
+      else await syncCatalog('games', 'changes');
       return t('official_admin_register_done', { registered, skipped });
     });
 

@@ -109,7 +109,7 @@ describe('bundled copies that record their cloud version', () => {
     await act(async () => { expect(await result.current.resumeSession(oldBoard.id)).toMatchObject({ sessionId: oldSession.id }); });
     expect(result.current.activeTemplate?.columns.map(column => column.id)).toEqual(['old']);
     expect(confirm).not.toHaveBeenCalled();
-    expect(await db.officialCatalog.count()).toBe(0);
+    expect(await db.gameCatalog.count()).toBe(0);
     expect(new URL(String(fetchMock.mock.calls[0][0])).searchParams.get('version')).toBe('0');
     expect(await db.officialVersions.get([oldBoard.id, 0])).toBeDefined();
   });

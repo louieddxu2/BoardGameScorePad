@@ -3,7 +3,7 @@ import Dexie, { Table } from 'dexie';
 import { GameTemplate, GameSession, TemplatePreference, HistoryRecord, SavedListItem, LocalImage, AnalyticsLog, BggGame, SystemWeightConfig, TemplateShareCache, MultiplayerRoomRecord, MultiplayerDeviceRecord, MultiplayerSequenceRecord, MultiplayerOutboxRecord, MultiplayerPatchReceiptRecord, MultiplayerParticipantBindingRecord } from './types';
 import { generateId } from './utils/idGenerator';
 import { DATA_LIMITS } from './dataLimits';
-import type { CatalogSyncState, OfficialCatalogEntry, OfficialVersionRecord, ShareCatalogEntry } from './features/official-boards/types';
+import type { CatalogSyncState, OfficialVersionRecord, ShareCatalogEntry, StoredGameCatalogEntry } from './features/official-boards/types';
 import type { RuleContentRecord, RuleSummaryRecord } from './features/game-rules/types';
 
 export class ScorePadDatabase extends Dexie {
@@ -32,7 +32,7 @@ export class ScorePadDatabase extends Dexie {
     analyticsLogs!: Table<AnalyticsLog>; // [v14] 統計處理記錄表
     weights!: Table<SystemWeightConfig>; // [v24] 系統權重設定表
     savedGameLifecycleContexts!: Table<SavedListItem>;
-    officialCatalog!: Table<OfficialCatalogEntry>; // [v34] 雲端內建目錄（本機副本）
+    gameCatalog!: Table<StoredGameCatalogEntry, string>; // [v36] 遊戲目錄：每個 BGG 編號一筆，含官方計分板與規則（取代 v34 officialCatalog）
     officialVersions!: Table<OfficialVersionRecord>; // [v34] 已下載的雲端內建版本
     shareCatalog!: Table<ShareCatalogEntry>; // [v34] 雲端分享目錄（本機副本）
     catalogSync!: Table<CatalogSyncState>; // [v34] 各目錄的同步位置
@@ -455,6 +455,15 @@ export class ScorePadDatabase extends Dexie {
         (this as any).version(35).stores({
             ruleSummaries: 'bggId, ruleGameId',
             ruleContents: 'gameId'
+        });
+
+        // Version 36: The game catalog (every game with a BGG ID, its official boards and rules)
+        // replaces the board-only official catalog. Its sync position starts over under a new kind.
+        (this as any).version(36).stores({
+            officialCatalog: null,
+            gameCatalog: 'bggId, *boardIds, *ruleGameIds'
+        }).upgrade(async (trans: any) => {
+            await trans.table('catalogSync').delete('official');
         });
     }
 }

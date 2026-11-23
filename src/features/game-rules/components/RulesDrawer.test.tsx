@@ -7,6 +7,7 @@ import { LanguageProvider } from '../../../i18n';
 import { _resetActiveCountForTesting } from '../../../hooks/useModalBackHandler';
 import GridFooter from '../../../components/session/parts/GridFooter';
 import { useSessionRules } from '../hooks/useSessionRules';
+import { toStoredGameEntry } from '../../official-boards/gameCatalog';
 import type { GameRules } from '../types';
 
 const RULES: GameRules = {
@@ -67,8 +68,11 @@ describe('rules entry', () => {
     expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
     cleanup();
 
-    mockCloud(-1);
+    const unknownGame = mockCloud(-1);
     renderSession('2');
+    // The catalog is read first; the cloud is asked once it has no entry for this BGG ID.
+    // (The fetch spy is shared with the case above, so wait for this ID's request itself.)
+    await waitFor(() => expect(unknownGame.mock.calls.some(([input]) => String(input).includes('bggId=2'))).toBe(true));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
     expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
     cleanup();
@@ -82,6 +86,44 @@ describe('rules entry', () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
     expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
     expect(notAsked).not.toHaveBeenCalled();
+  });
+});
+
+describe('rules entry from the local game catalog', () => {
+  const putGames = () => db.gameCatalog.bulkPut([
+    toStoredGameEntry({ bggId: '163068', name: 'Trickerion', boards: [],
+      rules: [{ gameId: 'g-base', ruleGameId: 'g-base', publishedRuleCount: 19, ruleVersion: 'v1' }] }),
+    toStoredGameEntry({ bggId: '244358', altNames: ['達爾加德學院'], boards: [], rules: [{ gameId: 'g-exp', ruleGameId: 'g-base' }] }),
+    toStoredGameEntry({ bggId: '13', name: 'Catan', boards: [], rules: [{ gameId: 'g-catan', ruleGameId: null }] }),
+  ]);
+  afterEach(() => db.gameCatalog.clear());
+
+  it('shows the count from the catalog, and an expansion its base game\'s count, without asking the cloud', async () => {
+    await putGames();
+    const fetchSpy = mockCloud(99);
+    renderSession('244358');
+    expect(await screen.findByRole('button', { name: '玩錯規則，19 條' })).toBeInTheDocument();
+    cleanup();
+    renderSession('163068');
+    expect(await screen.findByRole('button', { name: '玩錯規則，19 條' })).toBeInTheDocument();
+    expect(fetchSpy.mock.calls.filter(([input]) => String(input).includes('/api/rules/summary'))).toEqual([]);
+  });
+
+  it('shows no entry for a catalog game without rules, also without asking the cloud', async () => {
+    await putGames();
+    const fetchSpy = mockCloud(5);
+    renderSession('13');
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('asks the cloud only for a BGG ID the catalog does not have yet', async () => {
+    await putGames();
+    const fetchSpy = mockCloud(2);
+    renderSession('999');
+    expect(await screen.findByRole('button', { name: '玩錯規則，2 條' })).toBeInTheDocument();
+    expect(fetchSpy.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual(['/api/rules/summary']);
   });
 });
 

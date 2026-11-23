@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { db } from './db';
 
-describe('database schema guard (v35)', () => {
+describe('database schema guard (v36)', () => {
   it('keeps expected schema version', () => {
-    expect(db.verno).toBe(35);
+    expect(db.verno).toBe(36);
   });
 
   it('includes key tables required by migration path', () => {
@@ -16,7 +16,8 @@ describe('database schema guard (v35)', () => {
     expect(schema.savedCurrentSession).toBeTruthy();
     expect(schema.multiplayerRooms).toBeTruthy();
     expect(schema.savedGameLifecycleContexts).toBeTruthy();
-    expect(schema.officialCatalog).toBeTruthy();
+    expect(schema.officialCatalog).toBeUndefined();
+    expect(schema.gameCatalog).toBeTruthy();
     expect(schema.officialVersions).toBeTruthy();
     expect(schema.shareCatalog).toBeTruthy();
     expect(schema.catalogSync).toBeTruthy();

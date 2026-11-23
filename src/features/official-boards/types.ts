@@ -1,4 +1,44 @@
-/** One official (cloud built-in) scoreboard as listed in the catalog: metadata only. */
+/** One official board of a game in the game catalog. */
+export interface GameCatalogBoard {
+  id: string;
+  lang: string;
+  name: string;
+  enName?: string | null;
+  /** Latest published version; 0 means only the copy bundled with the app exists. */
+  version: number;
+  bundled: boolean;
+  updatedAt: number;
+}
+
+/**
+ * Where a rules game's rules are on the rules site. A base game points at itself and carries
+ * its rule count and version; an expansion or edition points at its base game without them.
+ */
+export interface GameRuleRef {
+  gameId: string;
+  ruleGameId: string | null;
+  publishedRuleCount?: number;
+  ruleVersion?: string;
+}
+
+/** One game in the game catalog the cloud serves: every game with a BGG ID the app should know. */
+export interface GameCatalogEntry {
+  bggId: string;
+  /** The rules site's English name, when known. */
+  name?: string | null;
+  altNames?: string[];
+  rules?: GameRuleRef[];
+  /** Empty when the game has no official board. */
+  boards: GameCatalogBoard[];
+}
+
+/** A catalog entry as kept in IndexedDB, with the keys its indexes need. */
+export interface StoredGameCatalogEntry extends GameCatalogEntry {
+  boardIds: string[];
+  ruleGameIds: string[];
+}
+
+/** One official (cloud built-in) scoreboard: a board of a catalog game, with that game's names. */
 export interface OfficialCatalogEntry {
   id: string;
   bggId: string;
@@ -39,7 +79,7 @@ export interface ShareCatalogEntry {
   downloadCount?: number;
 }
 
-export type CatalogKind = 'official' | 'share';
+export type CatalogKind = 'games' | 'share';
 
 /** Local sync position for one catalog. */
 export interface CatalogSyncState {

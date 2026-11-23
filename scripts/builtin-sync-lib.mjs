@@ -142,16 +142,28 @@ export const setBundledCatalogVersion = (migrationText, version) => {
  * Detect catalog changes that affect a pack, including boards still in a pack
  * after the cloud stopped bundling them.
  */
+/**
+ * Boards whose packed copy no longer matches the game catalog changes made since the packs
+ * were built: a packed board that changed version, stopped being bundled or disappeared, and a
+ * newly bundled board missing from its language's pack. Changes to a game's names or rules alone
+ * leave its boards as packed and are not stale. Each change is one game (templateId = BGG ID).
+ */
 export const staleBundledChanges = (changes, packs) => {
-  const packedThrough = new Map();
+  const packed = new Map();
   for (const pack of Object.values(packs)) {
-    for (const item of pack.templates) packedThrough.set(item.id, pack.throughVersion);
+    for (const item of pack.templates) packed.set(item.id, item);
   }
-  return changes.filter(change => {
-    const includedThrough = packedThrough.get(change.templateId);
-    if (includedThrough !== undefined) return change.catalogVersion > includedThrough;
-    if (change.deleted) return true;
-    const pack = packs[change.template?.lang];
-    return !!change.template?.bundled && !!pack && change.catalogVersion > pack.throughVersion;
-  }).map(change => change.templateId);
+  const stale = [];
+  for (const change of changes) {
+    const boards = change.deleted ? [] : change.template?.boards ?? [];
+    for (const [id, item] of packed) {
+      if (item.bggId !== change.templateId) continue;
+      const board = boards.find(b => b.id === id);
+      if (!board || !board.bundled || board.version !== item.version) stale.push(id);
+    }
+    for (const board of boards) {
+      if (board.bundled && packs[board.lang] && !packed.has(board.id)) stale.push(board.id);
+    }
+  }
+  return stale;
 };

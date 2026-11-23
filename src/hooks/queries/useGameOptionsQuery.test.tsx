@@ -5,6 +5,8 @@ import type { BggGameSummary } from '../../utils/extractDataSummaries';
 import { useGameOptionsQuery as useOptions } from './useGameOptionsQuery';
 import { getSearchResults } from '../../features/game-selector/utils/sortStrategies';
 import { getRecentOptions } from '../../features/game-selector/utils/recentGameOptions';
+import { gameEntriesFromBoards } from '../../features/official-boards/gameCatalog';
+import type { OfficialCatalogEntry } from '../../features/official-boards/types';
 
 const fixtures = vi.hoisted(() => ({
   templates: [] as GameTemplate[],
@@ -17,10 +19,17 @@ const fixtures = vi.hoisted(() => ({
   officialCatalog: [] as unknown[],
 }));
 
+// Fixtures list boards; the game catalog groups them into one entry per BGG ID. Each set of
+// fixtures gets one grouped array, so the hook sees the same array across renders.
+const groupedGames = new WeakMap<unknown[], unknown[]>();
 vi.mock('dexie-react-hooks', () => ({
   useLiveQuery: (query: () => unknown, [enabled]: [boolean]) => {
     if (!enabled) return undefined;
-    return String(query).includes('officialCatalog') ? fixtures.officialCatalog : fixtures.bggGames;
+    if (!String(query).includes('gameCatalog')) return fixtures.bggGames;
+    if (!groupedGames.has(fixtures.officialCatalog)) {
+      groupedGames.set(fixtures.officialCatalog, gameEntriesFromBoards(fixtures.officialCatalog as OfficialCatalogEntry[]));
+    }
+    return groupedGames.get(fixtures.officialCatalog);
   },
 }));
 

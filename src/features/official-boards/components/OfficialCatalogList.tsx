@@ -8,6 +8,7 @@ import { useConfirm } from '../../../hooks/useConfirm';
 import { OfficialApiError, fetchOfficialVersions, rollbackOfficialTemplate, updateOfficialSettings } from '../officialApi';
 import { downloadOfficialVersion, localOfficialVersion } from '../officialBoards';
 import { syncCatalog } from '../catalogSync';
+import { loadOfficialBoards } from '../gameCatalog';
 import type { OfficialCatalogEntry, OfficialVersionSummary } from '../types';
 
 interface OfficialCatalogListProps {
@@ -26,7 +27,7 @@ const OfficialCatalogList: React.FC<OfficialCatalogListProps> = ({ isAdmin }) =>
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<OfficialVersionSummary[] | null>(null);
 
-  const catalog = useLiveQuery(() => db.officialCatalog.toArray(), []) ?? [];
+  const catalog = useLiveQuery(loadOfficialBoards, []) ?? [];
   // Local version per official ID (bundled copy = 0, downloaded = its version).
   const localVersions = useLiveQuery(async () => {
     const builtins = await db.builtins.toArray();
@@ -60,7 +61,7 @@ const OfficialCatalogList: React.FC<OfficialCatalogListProps> = ({ isAdmin }) =>
   const toggleBundled = (entry: OfficialCatalogEntry) =>
     withBusy(entry.id, async () => {
       await updateOfficialSettings(entry.id, { bundled: !entry.bundled });
-      await syncCatalog('official', 'changes');
+      await syncCatalog('games', 'changes');
     });
 
   const toggleHistory = (entry: OfficialCatalogEntry) =>
@@ -83,7 +84,7 @@ const OfficialCatalogList: React.FC<OfficialCatalogListProps> = ({ isAdmin }) =>
     if (!ok) return;
     await withBusy(entry.id, async () => {
       const result = await rollbackOfficialTemplate(entry.id, version, entry.version);
-      await syncCatalog('official', 'changes');
+      await syncCatalog('games', 'changes');
       setHistory((await fetchOfficialVersions(entry.id)).versions);
       showToast({ message: t('official_admin_restored', { from: version, to: result.version }), type: 'success' });
     });

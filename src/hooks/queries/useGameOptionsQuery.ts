@@ -11,9 +11,10 @@ import { getGameSearchNames, getRecentSearchUids, normalizeGameSearch } from '..
 import { LanguageContext } from '../../i18n';
 import { computeOfficialLaunchStates, localOfficialVersion } from '../../features/official-boards/officialBoards';
 import { mergeOfficialGameInfo } from '../../features/official-boards/officialGameInfo';
-import type { OfficialCatalogEntry } from '../../features/official-boards/types';
+import { officialBoardsOf } from '../../features/official-boards/gameCatalog';
+import type { GameCatalogEntry } from '../../features/official-boards/types';
 
-const EMPTY_CATALOG: OfficialCatalogEntry[] = [];
+const EMPTY_GAMES: GameCatalogEntry[] = [];
 
 const useIsOnline = () => {
   const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
@@ -78,11 +79,13 @@ export const useGameOptionsQuery = (
   // 3a. Official catalog (local copy) for the current language.
   // Read the language without requiring a provider (zh-TW is the app default).
   const isEnglish = (useContext(LanguageContext)?.language ?? 'zh-TW').startsWith('en');
+  // The game catalog: every game with a BGG ID, its official boards and rules.
   const localOfficialCatalog = useLiveQuery(
-    async () => enabled ? db.officialCatalog.toArray() : undefined,
+    async (): Promise<GameCatalogEntry[] | undefined> => enabled ? db.gameCatalog.toArray() : undefined,
     [enabled]
   );
-  const officialCatalog = localOfficialCatalog ?? EMPTY_CATALOG;
+  const catalogGames = localOfficialCatalog ?? EMPTY_GAMES;
+  const officialCatalog = useMemo(() => officialBoardsOf(catalogGames), [catalogGames]);
   const languageCatalog = useMemo(
     () => officialCatalog.filter(entry =>
       typeof entry.version === 'number' && typeof entry.lang === 'string' && entry.lang.startsWith('en') === isEnglish),
@@ -113,8 +116,8 @@ export const useGameOptionsQuery = (
     return (await db.bggGames.toArray()).map(extractBggGameSummary);
   }, [readDictionary]);
   const bggGamesForOptions = useMemo(
-    () => mergeOfficialGameInfo(allBggGames ?? EMPTY_BGG_GAMES, officialCatalog),
-    [allBggGames, officialCatalog],
+    () => mergeOfficialGameInfo(allBggGames ?? EMPTY_BGG_GAMES, catalogGames),
+    [allBggGames, catalogGames],
   );
   const recentlyPlayedGamesLoaded = enabled && sourcesLoaded && (!needsDictionary || allBggGames !== undefined);
   const mergedOptions = useGameOptionAggregator(

@@ -8,6 +8,7 @@
  */
 import { db } from '../../db';
 import { getInstalledBundledOfficialCatalogVersion } from '../../utils/dbMigration';
+import { loadOfficialBoards } from './gameCatalog';
 import { fetchOfficialPack } from './officialApi';
 import { archiveOfficialVersion, isOfficialTemplateId, localOfficialVersion, pruneOfficialVersions, toOfficialTemplate } from './officialBoards';
 
@@ -44,7 +45,7 @@ export const installOfficialPack = async (lang: OfficialPackLang, catalogVersion
     return 0;
   }
 
-  const entries = (await db.officialCatalog.toArray()).filter(entry =>
+  const entries = (await loadOfficialBoards()).filter(entry =>
     entry.bundled && entry.lang === lang && isOfficialTemplateId(entry.id)
   );
   const localBoards = await db.builtins.bulkGet(entries.map(entry => entry.id));

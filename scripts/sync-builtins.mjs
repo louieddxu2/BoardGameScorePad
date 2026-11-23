@@ -6,7 +6,7 @@
  * Reads the public content packs (one D1 row per language) and the catalog
  * changes since they were built. Stops without writing when a bundled board
  * changed after the last pack rebuild (press "Rebuild official catalog
- * snapshot" in the admin card first). Records the verified catalog version
+ * snapshot" in the admin card first). Catalog changes are per game (BGG ID). Records the verified catalog version
  * and raises the built-in data version when scoreboard content changes.
  *
  * Options: --check (report only; exit 1 when the bundle is behind).
@@ -77,7 +77,7 @@ for (const lang of Object.keys(FILES)) packs[lang] = await getJson(`/api/officia
 let after = Math.min(...Object.values(packs).map((p) => p.throughVersion));
 const changes = [];
 for (;;) {
-  const page = await getJson(`/api/official/catalog/changes?after=${after}`);
+  const page = await getJson(`/api/games/catalog/changes?after=${after}`);
   changes.push(...page.changes);
   after = page.throughVersion;
   if (!page.hasMore) break;
@@ -85,7 +85,7 @@ for (;;) {
 const stale = staleBundledChanges(changes, packs);
 if (stale.length) {
   console.error(`The content packs are older than these bundled boards: ${[...new Set(stale)].join(', ')}`);
-  console.error('Rebuild the official catalog snapshot in the admin card (cloud built-in tab), then run this again.');
+  console.error('Rebuild the game catalog snapshot in the admin card (cloud built-in tab), then run this again.');
   process.exit(2);
 }
 

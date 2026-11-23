@@ -8,7 +8,8 @@
 import type { Table } from 'dexie';
 import { db } from '../../db';
 import { fetchCatalogChanges, fetchCatalogSnapshot } from './officialApi';
-import type { CatalogKind, CatalogSyncState, OfficialCatalogEntry, ShareCatalogEntry } from './types';
+import { toStoredGameEntry } from './gameCatalog';
+import type { CatalogKind, CatalogSyncState, GameCatalogEntry, ShareCatalogEntry } from './types';
 
 export const CHANGES_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const SNAPSHOT_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -24,10 +25,14 @@ export interface CatalogSyncResult {
   state: CatalogSyncState;
 }
 
-type CatalogEntry = OfficialCatalogEntry | ShareCatalogEntry;
+type CatalogEntry = GameCatalogEntry | ShareCatalogEntry;
 
 const tableFor = (kind: CatalogKind): Table<CatalogEntry> =>
-  (kind === 'official' ? db.officialCatalog : db.shareCatalog) as Table<CatalogEntry>;
+  (kind === 'games' ? db.gameCatalog : db.shareCatalog) as unknown as Table<CatalogEntry>;
+
+/** Game entries are kept with the keys their indexes use; share entries as they come. */
+const toStored = (kind: CatalogKind, entry: CatalogEntry): CatalogEntry =>
+  kind === 'games' ? toStoredGameEntry(entry as GameCatalogEntry) : entry;
 
 const emptyState = (kind: CatalogKind): CatalogSyncState => ({
   kind,
@@ -51,7 +56,7 @@ const applyChanges = async (kind: CatalogKind, after: number): Promise<{ through
       await db.transaction('rw', table, async () => {
         for (const change of result.changes) {
           if (change.deleted || !change.template) await table.delete(change.templateId);
-          else await table.put(change.template);
+          else await table.put(toStored(kind, change.template));
         }
       });
       changed += result.changes.length;
@@ -76,7 +81,7 @@ const runSync = async (kind: CatalogKind, mode: CatalogSyncMode): Promise<Catalo
     const table = tableFor(kind);
     await db.transaction('rw', table, async () => {
       await table.clear();
-      if (snapshot.templates.length > 0) await table.bulkPut(snapshot.templates);
+      if (snapshot.templates.length > 0) await table.bulkPut(snapshot.templates.map((entry) => toStored(kind, entry)));
     });
     changed = snapshot.templates.length;
     next = { ...next, throughVersion: snapshot.throughVersion, generation: snapshot.generation, snapshotAt: now };
@@ -102,7 +107,7 @@ export const syncCatalog = (kind: CatalogKind, mode: CatalogSyncMode = 'auto'): 
   return tracked;
 };
 
-/** Background sync used on app start and reconnect. Reuse the official result for the first-open pack check. */
+/** Background sync used on app start and reconnect. Reuse the game catalog result for the first-open pack check. */
 export const syncCatalogsInBackground = () => {
   // Unit tests drive sync explicitly and must not reach the network on app start.
   if (import.meta.env.MODE === 'test') return;
@@ -111,7 +116,7 @@ export const syncCatalogsInBackground = () => {
     console.warn(`[catalog] ${kind} sync failed`, error);
     return null;
   });
-  const official = sync('official');
+  const official = sync('games');
   void sync('share');
   return official;
 };

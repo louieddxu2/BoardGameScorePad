@@ -124,7 +124,7 @@ const OfficialPublishSection: React.FC<OfficialPublishSectionProps> = ({ templat
         expectedVersion: target.exists ? target.version ?? 0 : 0,
       });
       // Pull the change into the local catalog right away so the result is visible here.
-      await syncCatalog('official', 'changes').catch(() => undefined);
+      await syncCatalog('games', 'changes').catch(() => undefined);
       await loadTarget();
       setNotice(
         result.unchanged

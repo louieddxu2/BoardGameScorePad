@@ -49,16 +49,19 @@ describe('bundled scoreboard sync', () => {
 
   it('detects later bundled changes and boards that became cloud-only after packing', () => {
     const packs = {
-      'zh-TW': { throughVersion: 5, templates: [{ id: 'Built-in-B' }] },
-      en: { throughVersion: 8, templates: [{ id: 'Built-in-EN-D' }] },
+      'zh-TW': { throughVersion: 5, templates: [{ id: 'Built-in-B', bggId: '2', version: 1 }, { id: 'Built-in-C', bggId: '3', version: 0 }] },
+      en: { throughVersion: 8, templates: [{ id: 'Built-in-EN-D', bggId: '4', version: 3 }] },
     };
+    // Each change is one game of the game catalog (templateId = BGG ID) with all its boards.
+    const game = (bggId, boards, extra = {}) => ({ templateId: bggId, catalogVersion: 6, template: { bggId, boards, ...extra } });
     expect(
       staleBundledChanges([
-        { templateId: 'Built-in-A', catalogVersion: 6, template: { lang: 'zh-TW', bundled: true } },
-        { templateId: 'Built-in-B', catalogVersion: 6, template: { lang: 'zh-TW', bundled: false } },
-        { templateId: 'Built-in-C', catalogVersion: 6, deleted: true },
-        { templateId: 'Built-in-EN-D', catalogVersion: 7, template: { lang: 'en', bundled: true } },
-        { templateId: 'Built-in-E', catalogVersion: 6, template: { lang: 'zh-TW', bundled: false } },
+        game('1', [{ id: 'Built-in-A', lang: 'zh-TW', bundled: true, version: 1 }]),
+        game('2', [{ id: 'Built-in-B', lang: 'zh-TW', bundled: false, version: 1 }]),
+        { templateId: '3', catalogVersion: 6, deleted: true },
+        // Only the rules changed: its board is still the packed version.
+        game('4', [{ id: 'Built-in-EN-D', lang: 'en', bundled: true, version: 3 }], { rules: [{ gameId: 'g', ruleGameId: 'g', publishedRuleCount: 2 }] }),
+        game('5', [{ id: 'Built-in-E', lang: 'zh-TW', bundled: false, version: 1 }]),
       ], packs)
     ).toEqual(['Built-in-A', 'Built-in-B', 'Built-in-C']);
   });

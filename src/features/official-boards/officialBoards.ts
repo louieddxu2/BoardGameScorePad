@@ -10,6 +10,7 @@ import { db } from '../../db';
 import type { GameSession, GameTemplate } from '../../types';
 import { migrateTemplate } from '../../utils/dataMigration';
 import { fetchOfficialTemplate } from './officialApi';
+import { findOfficialBoard } from './gameCatalog';
 import type { OfficialCatalogEntry } from './types';
 
 export const isOfficialTemplateId = (id: string | undefined): id is string => !!id && id.startsWith('Built-in-');
@@ -119,7 +120,7 @@ export type EnsureOfficialResult =
  * Falls back to an older local copy when the download fails.
  */
 export const ensureOfficialBoard = async (id: string, timeoutMs = START_DOWNLOAD_TIMEOUT_MS): Promise<EnsureOfficialResult> => {
-  const [entry, local] = await Promise.all([db.officialCatalog.get(id), db.builtins.get(id)]);
+  const [entry, local] = await Promise.all([findOfficialBoard(id), db.builtins.get(id)]);
   const localVersion = localOfficialVersion(local);
   if (!entry || entry.version <= localVersion) {
     return local ? { status: 'ready', template: local, downloaded: false } : { status: 'unavailable', error: new Error('not_in_catalog') };

@@ -22,7 +22,7 @@ const CatalogSyncCard: React.FC = () => {
     setRunning(mode);
     setMessage(null);
     try {
-      const results = await Promise.all((['official', 'share'] as CatalogKind[]).map((kind) => syncCatalog(kind, mode)));
+      const results = await Promise.all((['games', 'share'] as CatalogKind[]).map((kind) => syncCatalog(kind, mode)));
       const changed = results.reduce((sum, r) => sum + r.changed, 0);
       setMessage({ error: false, text: changed > 0 ? t('official_sync_done', { count: changed }) : t('official_sync_up_to_date') });
     } catch (error) {
@@ -57,7 +57,7 @@ const CatalogSyncCard: React.FC = () => {
     <div className="modal-bg-elevated rounded-xl p-3 border border-surface-border space-y-3">
       <div className="text-xs font-bold text-txt-muted uppercase tracking-wider">{t('official_sync_title')}</div>
       <div className="grid grid-cols-2 gap-3">
-        {renderState('official', t('official_sync_official'))}
+        {renderState('games', t('official_sync_official'))}
         {renderState('share', t('official_sync_share'))}
       </div>
       <div className="grid grid-cols-2 gap-2">
