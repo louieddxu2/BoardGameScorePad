@@ -104,7 +104,10 @@ describe('rules drawer', () => {
     expect(await within(dialog).findByText('建造船隻時不能從遠方拉部落上船')).toBeInTheDocument();
     expect(within(dialog).getByText('玩成可以從遠方拉部落')).toBeInTheDocument();
     expect(within(dialog).getByText('未審核')).toBeInTheDocument();
-    expect(within(dialog).getByText('教學影片')).toBeInTheDocument();
+    // External resources open from the button beside the search box.
+    expect(within(dialog).queryByText('教學影片')).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: /^資源/ }));
+    expect(within(dialog).getByRole('link', { name: /教學影片/ })).toHaveAttribute('href', 'https://example.com/video');
 
     fireEvent.click(within(dialog).getByRole('button', { name: '到玩錯的桌遊規則記錄這款遊戲的規則' }));
     fireEvent.click(within(dialog).getByRole('button', { name: '到玩錯的桌遊規則查看這款遊戲' }));

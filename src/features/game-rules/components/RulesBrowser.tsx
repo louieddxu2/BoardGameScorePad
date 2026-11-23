@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ExternalLink, Search, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, Search, X } from 'lucide-react';
 import { useRulesTranslation, ruleCategoryKey, resourceCategoryKey } from '../../../i18n/rules';
 import { computeRuleFilter, type RuleFilterView } from '../../../shared/ruleFilter';
 import { toFilterableRules } from '../rulesCache';
@@ -26,13 +26,15 @@ const CategoryLabel: React.FC<{ label: string }> = ({ label }) => {
 };
 
 /**
- * A game's rules with the rules site's filters: categories that lead somewhere, keyword search
- * and tags, in the site's order. Player-count and edition filters are left to the site.
+ * A game's rules with the rules site's filters: keyword search (with the game's external
+ * resources beside it), categories that lead somewhere and tags, in the site's order.
+ * Player-count and edition filters are left to the site.
  */
 const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
   const { t } = useRulesTranslation();
   const [view, setView] = useState<RuleFilterView>(EMPTY_VIEW);
   const [query, setQuery] = useState('');
+  const [showResources, setShowResources] = useState(false);
   const filterable = useMemo(() => toFilterableRules(rules), [rules]);
   const result = useMemo(() => computeRuleFilter(filterable, rules.tags, view, query), [filterable, rules.tags, view, query]);
 
@@ -42,8 +44,51 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
   }));
   const categories = result.availableCategories;
 
+  const resources = rules.externalResources;
+
   return (
     <div className="space-y-3">
+      {/* Search first; the game's external resources open from the button beside it. */}
+      <div className="flex items-center gap-2">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-surface-border bg-surface-alt px-3">
+          <Search size={16} className="shrink-0 text-txt-muted" aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t('search_placeholder')}
+            className="h-10 min-w-0 flex-1 bg-transparent text-sm text-txt-primary outline-none placeholder:text-txt-muted"
+          />
+        </label>
+        {resources.length > 0 && (
+          <button
+            type="button"
+            aria-expanded={showResources}
+            aria-controls="rules-resources"
+            onClick={() => setShowResources((open) => !open)}
+            className={`flex h-10 shrink-0 items-center gap-1 rounded-xl border px-3 text-sm transition-colors ${showResources ? 'border-brand-primary text-brand-primary' : 'border-surface-border text-txt-secondary hover:bg-surface-hover'}`}
+          >
+            {t('resources')}
+            <span className="text-xs text-txt-muted">{resources.length}</span>
+            <ChevronDown size={14} className={`transition-transform ${showResources ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
+      {showResources && resources.length > 0 && (
+        <ul id="rules-resources" className="space-y-0.5 rounded-xl border border-surface-border bg-surface-bg px-3 py-1.5">
+          {resources.map((resource) => (
+            <li key={resource.id}>
+              <a href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-1.5 text-sm text-txt-secondary">
+                <span className="shrink-0 text-[11px] text-txt-muted">{t(resourceCategoryKey(resource.category))}</span>
+                <span className="min-w-0 flex-1 truncate">{resource.name}</span>
+                <ExternalLink size={14} className="shrink-0 text-txt-muted" aria-hidden="true" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {categories.length > 1 && (
         // All categories on one row, sharing the full width.
         <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }}>
@@ -65,17 +110,6 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
           })}
         </div>
       )}
-
-      <label className="flex items-center gap-2 rounded-xl border border-surface-border bg-surface-alt px-3">
-        <Search size={16} className="shrink-0 text-txt-muted" aria-hidden="true" />
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t('search_placeholder')}
-          className="h-10 min-w-0 flex-1 bg-transparent text-sm text-txt-primary outline-none placeholder:text-txt-muted"
-        />
-      </label>
 
       {(result.tagOptions.length > 0 || result.hasActiveFilters) && (
         <div className="flex items-center gap-1.5">
@@ -113,23 +147,6 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
         <div className="space-y-2">
           {result.filteredRules.map((rule) => <RuleCard key={rule.id} rule={rule} />)}
         </div>
-      )}
-
-      {rules.externalResources.length > 0 && (
-        <section className="border-t border-surface-border pt-3">
-          <h3 className="mb-1.5 text-xs text-txt-muted">{t('resources')}</h3>
-          <ul className="space-y-1">
-            {rules.externalResources.map((resource) => (
-              <li key={resource.id}>
-                <a href={resource.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-1 text-sm text-txt-secondary">
-                  <span className="shrink-0 text-[11px] text-txt-muted">{t(resourceCategoryKey(resource.category))}</span>
-                  <span className="min-w-0 flex-1 truncate">{resource.name}</span>
-                  <ExternalLink size={14} className="shrink-0 text-txt-muted" aria-hidden="true" />
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
     </div>
   );
