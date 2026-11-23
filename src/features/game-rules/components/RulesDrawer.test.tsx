@@ -27,13 +27,17 @@ const RULES: GameRules = {
   externalResources: [{ id: 'x1', name: '教學影片', category: 'teaching', url: 'https://example.com/video' }],
 };
 
-const mockCloud = (summaryCount: number) => vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-  const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
-  if (url.pathname === '/api/rules/summary') {
-    return Response.json({ summary: summaryCount >= 0 ? { ruleGameId: RULES.gameId, publishedRuleCount: summaryCount, ruleVersion: 'v1' } : null });
-  }
-  return Response.json({ rules: RULES });
-});
+/** The cloud as the drawer sees it: only the rules themselves are ever fetched. */
+const mockCloud = () => vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ rules: RULES }));
+
+/** The local game catalog: a base game with rules, its expansion, a game without rules. */
+const putGames = () => db.gameCatalog.bulkPut([
+  toStoredGameEntry({ bggId: '321', name: 'Civolution', boards: [],
+    rules: [{ gameId: RULES.gameId, ruleGameId: RULES.gameId, publishedRuleCount: 2, ruleVersion: 'v1' }] }),
+  toStoredGameEntry({ bggId: '322', altNames: ['文明演化擴充'], boards: [], rules: [{ gameId: 'g-exp', ruleGameId: RULES.gameId }] }),
+  toStoredGameEntry({ bggId: '13', name: 'Catan', boards: [], rules: [{ gameId: 'g-catan', ruleGameId: null }] }),
+  toStoredGameEntry({ bggId: '14', name: 'Zero', boards: [], rules: [{ gameId: 'g-zero', ruleGameId: 'g-zero', publishedRuleCount: 0, ruleVersion: 'v0' }] }),
+]);
 
 const Harness = ({ bggId }: { bggId?: string }) => {
   const { entry, drawer } = useSessionRules(bggId);
@@ -43,93 +47,52 @@ const Harness = ({ bggId }: { bggId?: string }) => {
   </>;
 };
 const renderSession = (bggId = '321') => render(<LanguageProvider><Harness bggId={bggId} /></LanguageProvider>);
+const settle = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
 
 beforeEach(async () => {
   localStorage.setItem('app_language', 'zh-TW');
   _resetActiveCountForTesting();
-  await Promise.all([db.ruleSummaries.clear(), db.ruleContents.clear()]);
+  await Promise.all([db.ruleSummaries.clear(), db.ruleContents.clear(), db.gameCatalog.clear()]);
+  await putGames();
 });
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
 
-describe('rules entry', () => {
-  it('shows the rule count for a game with rules', async () => {
-    mockCloud(2);
-    renderSession();
-    expect(await screen.findByRole('button', { name: '玩錯規則，2 條' })).toHaveTextContent('玩錯規則2');
-  });
-
-  it('stays hidden for a game with no rules, an unknown game, no BGG ID, or the English interface', async () => {
-    const fetchSpy = mockCloud(0);
-    renderSession('1');
-    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
-    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
-    cleanup();
-
-    const unknownGame = mockCloud(-1);
-    renderSession('2');
-    // The catalog is read first; the cloud is asked once it has no entry for this BGG ID.
-    // (The fetch spy is shared with the case above, so wait for this ID's request itself.)
-    await waitFor(() => expect(unknownGame.mock.calls.some(([input]) => String(input).includes('bggId=2'))).toBe(true));
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
-    cleanup();
-
-    vi.restoreAllMocks();
-    const notAsked = mockCloud(2);
-    render(<LanguageProvider><Harness /></LanguageProvider>);
-    cleanup();
-    localStorage.setItem('app_language', 'en');
-    renderSession('3');
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
-    expect(notAsked).not.toHaveBeenCalled();
-  });
-});
-
 describe('rules entry from the local game catalog', () => {
-  const putGames = () => db.gameCatalog.bulkPut([
-    toStoredGameEntry({ bggId: '163068', name: 'Trickerion', boards: [],
-      rules: [{ gameId: 'g-base', ruleGameId: 'g-base', publishedRuleCount: 19, ruleVersion: 'v1' }] }),
-    toStoredGameEntry({ bggId: '244358', altNames: ['達爾加德學院'], boards: [], rules: [{ gameId: 'g-exp', ruleGameId: 'g-base' }] }),
-    toStoredGameEntry({ bggId: '13', name: 'Catan', boards: [], rules: [{ gameId: 'g-catan', ruleGameId: null }] }),
-  ]);
-  afterEach(() => db.gameCatalog.clear());
-
-  it('shows the count from the catalog, and an expansion its base game\'s count, without asking the cloud', async () => {
-    await putGames();
-    const fetchSpy = mockCloud(99);
-    renderSession('244358');
-    expect(await screen.findByRole('button', { name: '玩錯規則，19 條' })).toBeInTheDocument();
+  it('shows the count from the catalog, and an expansion its base game\'s count, without any request', async () => {
+    const fetchSpy = mockCloud();
+    renderSession('321');
+    expect(await screen.findByRole('button', { name: '玩錯規則，2 條' })).toHaveTextContent('玩錯規則2');
     cleanup();
-    renderSession('163068');
-    expect(await screen.findByRole('button', { name: '玩錯規則，19 條' })).toBeInTheDocument();
-    expect(fetchSpy.mock.calls.filter(([input]) => String(input).includes('/api/rules/summary'))).toEqual([]);
-  });
-
-  it('shows no entry for a catalog game without rules, also without asking the cloud', async () => {
-    await putGames();
-    const fetchSpy = mockCloud(5);
-    renderSession('13');
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
+    renderSession('322');
+    expect(await screen.findByRole('button', { name: '玩錯規則，2 條' })).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('asks the cloud only for a BGG ID the catalog does not have yet', async () => {
-    await putGames();
-    const fetchSpy = mockCloud(2);
-    renderSession('999');
-    expect(await screen.findByRole('button', { name: '玩錯規則，2 條' })).toBeInTheDocument();
-    expect(fetchSpy.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual(['/api/rules/summary']);
+  it('stays hidden, without any request, for no rules, zero rules, an unknown game, no BGG ID, or English', async () => {
+    const fetchSpy = mockCloud();
+    for (const bggId of ['13', '14', '999']) {
+      renderSession(bggId);
+      await settle();
+      expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
+      cleanup();
+    }
+    render(<LanguageProvider><Harness /></LanguageProvider>);
+    await settle();
+    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
+    cleanup();
+    localStorage.setItem('app_language', 'en');
+    renderSession('321');
+    await settle();
+    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
-
 describe('rules drawer', () => {
   const openDrawer = async () => {
-    mockCloud(2);
+    mockCloud();
     renderSession();
     fireEvent.click(await screen.findByRole('button', { name: '玩錯規則，2 條' }));
     return screen.findByRole('dialog', { name: '玩錯的桌遊規則' });

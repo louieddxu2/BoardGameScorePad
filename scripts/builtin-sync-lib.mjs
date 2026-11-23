@@ -143,27 +143,26 @@ export const setBundledCatalogVersion = (migrationText, version) => {
  * after the cloud stopped bundling them.
  */
 /**
- * Boards whose packed copy no longer matches the game catalog changes made since the packs
- * were built: a packed board that changed version, stopped being bundled or disappeared, and a
- * newly bundled board missing from its language's pack. Changes to a game's names or rules alone
- * leave its boards as packed and are not stale. Each change is one game (templateId = BGG ID).
+ * Boards whose packed copy no longer matches the game catalog (one entry per game, with all its
+ * boards): a packed board whose version changed, that stopped being bundled or that is gone, and a
+ * bundled board missing from its language's pack. A game's names or rules do not matter here.
  */
-export const staleBundledChanges = (changes, packs) => {
+export const staleBundledBoards = (games, packs) => {
+  const boards = new Map();
+  for (const game of games) {
+    for (const board of game.boards ?? []) boards.set(board.id, board);
+  }
   const packed = new Map();
   for (const pack of Object.values(packs)) {
     for (const item of pack.templates) packed.set(item.id, item);
   }
   const stale = [];
-  for (const change of changes) {
-    const boards = change.deleted ? [] : change.template?.boards ?? [];
-    for (const [id, item] of packed) {
-      if (item.bggId !== change.templateId) continue;
-      const board = boards.find(b => b.id === id);
-      if (!board || !board.bundled || board.version !== item.version) stale.push(id);
-    }
-    for (const board of boards) {
-      if (board.bundled && packs[board.lang] && !packed.has(board.id)) stale.push(board.id);
-    }
+  for (const [id, item] of packed) {
+    const board = boards.get(id);
+    if (!board || !board.bundled || board.version !== item.version) stale.push(id);
+  }
+  for (const board of boards.values()) {
+    if (board.bundled && packs[board.lang] && !packed.has(board.id)) stale.push(board.id);
   }
   return stale;
 };

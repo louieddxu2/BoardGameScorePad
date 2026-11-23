@@ -154,53 +154,42 @@ describe('official boards (local)', () => {
     expect(await db.officialVersions.where('id').equals(other).primaryKeys()).toEqual([[other, 2]]);
   });
 
-  it('syncs the game catalog from a snapshot, then only changes after its version', async () => {
+  it('downloads the game catalog snapshot only when its generation moved', async () => {
     const calls: string[] = [];
     const game = (bggId: string, boards: OfficialCatalogEntry[], rest: object = {}) => ({
       bggId, name: null, altNames: [], rules: [], boards: boards.map(({ bggId: _b, game: _g, ...b }) => b), ...rest,
     });
+    let generation = 3;
+    let games = [
+      game('1', [entry('Built-in-A', 1, { bggId: '1' })]),
+      game('2', [entry('Built-in-B', 0, { bggId: '2' })]),
+      // A game without an official board, with rules.
+      game('3', [], { name: 'Rules Only', rules: [{ gameId: 'g3', ruleGameId: 'g3', publishedRuleCount: 4, ruleVersion: 'v' }] }),
+    ];
     mockWorker((url) => {
-      calls.push(new URL(url).pathname + new URL(url).search);
-      if (url.endsWith('/api/games/catalog')) {
-        return {
-          generation: 3, throughVersion: 10, generatedAt: 1,
-          templates: [
-            game('1', [entry('Built-in-A', 1, { bggId: '1' })]),
-            game('2', [entry('Built-in-B', 0, { bggId: '2' })]),
-            // A game without an official board, with rules.
-            game('3', [], { name: 'Rules Only', rules: [{ gameId: 'g3', ruleGameId: 'g3', publishedRuleCount: 4, ruleVersion: 'v' }] }),
-          ],
-        };
-      }
-      const after = Number(new URL(url).searchParams.get('after'));
-      if (after === 10) {
-        return {
-          changes: [
-            { templateId: '1', catalogVersion: 11, deleted: false, template: game('1', [entry('Built-in-A', 2, { bggId: '1' })]) },
-            { templateId: '2', catalogVersion: 12, deleted: true },
-          ],
-          throughVersion: 12,
-          hasMore: false,
-        };
-      }
-      return { changes: [], throughVersion: after, hasMore: false };
+      calls.push(new URL(url).pathname);
+      if (url.endsWith('/api/games/catalog/version')) return { generation, generatedAt: 1 };
+      return { generation, generatedAt: 1, games };
     });
 
+    // First run: no local copy, so the snapshot itself.
     const first = await syncCatalog('games');
-    expect(first).toMatchObject({ ran: 'snapshot', changed: 5, state: { throughVersion: 12, generation: 3 } });
-    expect((await loadOfficialBoards()).map((e) => [e.id, e.version])).toEqual([['Built-in-A', 2]]);
+    expect(first).toMatchObject({ ran: 'snapshot', changed: 3, state: { generation: 3 } });
+    expect((await loadOfficialBoards()).map((e) => [e.id, e.version])).toEqual([['Built-in-A', 1], ['Built-in-B', 0]]);
     expect(await db.gameCatalog.get('3')).toMatchObject({ name: 'Rules Only', boards: [], ruleGameIds: ['g3'] });
     expect(await db.gameCatalog.where('boardIds').equals('Built-in-A').primaryKeys()).toEqual(['1']);
 
-    // Within 6 hours an automatic sync does nothing; a manual check asks for changes after 12.
+    // Within 6 hours an automatic sync does nothing; a manual check reads only the version.
     expect((await syncCatalog('games')).ran).toBe('none');
-    const manual = await syncCatalog('games', 'changes');
-    expect(manual).toMatchObject({ ran: 'changes', changed: 0 });
-    expect(calls).toEqual([
-      '/api/games/catalog',
-      '/api/games/catalog/changes?after=10',
-      '/api/games/catalog/changes?after=12',
-    ]);
+    expect(await syncCatalog('games', 'changes')).toMatchObject({ ran: 'changes', changed: 0 });
+
+    // A new generation replaces the local copy as a whole.
+    generation = 4;
+    games = [game('1', [entry('Built-in-A', 2, { bggId: '1' })])];
+    expect(await syncCatalog('games', 'changes')).toMatchObject({ ran: 'snapshot', changed: 1, state: { generation: 4 } });
+    expect((await loadOfficialBoards()).map((e) => [e.id, e.version])).toEqual([['Built-in-A', 2]]);
+    expect(await db.gameCatalog.get('3')).toBeUndefined();
+    expect(calls).toEqual(['/api/games/catalog', '/api/games/catalog/version', '/api/games/catalog/version', '/api/games/catalog']);
   });
 
   it('gives up on a slow download at start and uses the local copy', async () => {

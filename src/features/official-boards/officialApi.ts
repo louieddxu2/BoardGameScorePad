@@ -48,13 +48,18 @@ const request = async <T>(path: string, init: RequestInit = {}, timeoutMs = REQU
   }
 };
 
-const catalogPath = (kind: CatalogKind) => (kind === 'games' ? '/api/games/catalog' : '/api/share/catalog');
+/** The share catalog: a snapshot plus changes after a version. */
+export const fetchCatalogSnapshot = <T extends ShareCatalogEntry>(_kind: 'share') =>
+  request<CatalogSnapshotPayload<T>>('/api/share/catalog');
 
-export const fetchCatalogSnapshot = <T extends GameCatalogEntry | ShareCatalogEntry>(kind: CatalogKind) =>
-  request<CatalogSnapshotPayload<T>>(catalogPath(kind));
+export const fetchCatalogChanges = <T extends ShareCatalogEntry>(_kind: 'share', after: number) =>
+  request<CatalogChangesPayload<T>>(`/api/share/catalog/changes?after=${after}`);
 
-export const fetchCatalogChanges = <T extends GameCatalogEntry | ShareCatalogEntry>(kind: CatalogKind, after: number) =>
-  request<CatalogChangesPayload<T>>(`${catalogPath(kind)}/changes?after=${after}`);
+/** The game catalog's current generation: one D1 row, so devices can tell whether to download. */
+export const fetchGameCatalogVersion = () => request<{ generation: number; generatedAt: number }>('/api/games/catalog/version');
+
+/** The whole game catalog: every game with its names, official boards and rules (a few D1 rows). */
+export const fetchGameCatalog = () => request<{ generation: number; generatedAt: number; games: GameCatalogEntry[] }>('/api/games/catalog');
 
 export const fetchOfficialTemplate = (id: string, version: number | undefined, timeoutMs?: number) =>
   request<OfficialCatalogEntry & { payload: GameTemplate }>(

@@ -3,17 +3,17 @@
  * npm run sync:builtins — copy the cloud's bundled official scoreboards into
  * src/data/templates.ts and templates-en.ts. Run before merging into main.
  *
- * Reads the public content packs (one D1 row per language) and the catalog
- * changes since they were built. Stops without writing when a bundled board
- * changed after the last pack rebuild (press "Rebuild official catalog
- * snapshot" in the admin card first). Catalog changes are per game (BGG ID). Records the verified catalog version
+ * Reads the public content packs (one D1 row per language) and the game
+ * catalog snapshot. Stops without writing when a bundled board's catalog
+ * version differs from its packed copy (press "Rebuild official catalog
+ * snapshot" in the admin card first). Records the verified catalog generation
  * and raises the built-in data version when scoreboard content changes.
  *
  * Options: --check (report only; exit 1 when the bundle is behind).
  */
 import { randomUUID } from 'node:crypto';
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { bumpBuiltinVersion, planSync, renderDataFile, setBundledCatalogVersion, splitDataFile, staleBundledChanges } from './builtin-sync-lib.mjs';
+import { bumpBuiltinVersion, planSync, renderDataFile, setBundledCatalogVersion, splitDataFile, staleBundledBoards } from './builtin-sync-lib.mjs';
 
 const FILES = { 'zh-TW': 'src/data/templates.ts', en: 'src/data/templates-en.ts' };
 const MIGRATION = 'src/utils/dbMigration.ts';
@@ -73,16 +73,10 @@ const replaceFiles = (updates) => {
 const packs = {};
 for (const lang of Object.keys(FILES)) packs[lang] = await getJson(`/api/official/pack?lang=${encodeURIComponent(lang)}`);
 
-// Stop if a board has changed or is still in a pack after being excluded.
-let after = Math.min(...Object.values(packs).map((p) => p.throughVersion));
-const changes = [];
-for (;;) {
-  const page = await getJson(`/api/games/catalog/changes?after=${after}`);
-  changes.push(...page.changes);
-  after = page.throughVersion;
-  if (!page.hasMore) break;
-}
-const stale = staleBundledChanges(changes, packs);
+// Stop if a bundled board in the game catalog no longer matches its packed copy.
+const catalog = await getJson('/api/games/catalog');
+const after = catalog.generation;
+const stale = staleBundledBoards(catalog.games, packs);
 if (stale.length) {
   console.error(`The content packs are older than these bundled boards: ${[...new Set(stale)].join(', ')}`);
   console.error('Rebuild the game catalog snapshot in the admin card (cloud built-in tab), then run this again.');

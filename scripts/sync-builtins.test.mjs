@@ -22,15 +22,21 @@ const fixture = (overrides = {}) => {
   return { root, initial };
 };
 
-const runSync = (root, { changes = [], failRename = false } = {}) => {
+// The game catalog the cloud serves by default: both fixture boards bundled, as packed.
+const matchingGames = [{ bggId: '1', name: null, altNames: [], rules: [], boards: [
+  { id: 'Built-in-Fixture', lang: 'zh-TW', bundled: true, version: 1 },
+  { id: 'Built-in-EN-Fixture', lang: 'en', bundled: true, version: 1 },
+] }];
+
+const runSync = (root, { games = matchingGames, failRename = false } = {}) => {
   const bootstrap = `
     import fs from 'node:fs';
     import { syncBuiltinESMExports } from 'node:module';
-    const changes = ${JSON.stringify(changes)};
+    const games = ${JSON.stringify(games)};
     globalThis.fetch = async (input) => {
       const url = new URL(input);
       if (!url.pathname.endsWith('/pack')) {
-        return Response.json({ throughVersion: 8, hasMore: false, changes });
+        return Response.json({ generation: 8, generatedAt: 1, games });
       }
       const id = url.searchParams.get('lang') === 'en' ? 'Built-in-EN-Fixture' : 'Built-in-Fixture';
       const board = { id, name: 'Fixture', bggId: '1', version: 1, payload: { columns: [{ id: 'score', name: 'Score' }] } };
@@ -67,13 +73,11 @@ describe('sync:builtins command', () => {
 
   it('stops before copying a board that was removed from a stale pack', () => {
     const files = fixture();
-    const result = runSync(files.root, { changes: [
-      // Game catalog change for BGG ID 1: its zh-TW board is no longer bundled.
-      { templateId: '1', catalogVersion: 8, template: { bggId: '1', boards: [
-        { id: 'Built-in-Fixture', lang: 'zh-TW', bundled: false, version: 1 },
-        { id: 'Built-in-EN-Fixture', lang: 'en', bundled: true, version: 1 },
-      ] } },
-    ] });
+    // The game catalog says the zh-TW board is no longer bundled.
+    const result = runSync(files.root, { games: [{ bggId: '1', name: null, altNames: [], rules: [], boards: [
+      { id: 'Built-in-Fixture', lang: 'zh-TW', bundled: false, version: 1 },
+      { id: 'Built-in-EN-Fixture', lang: 'en', bundled: true, version: 1 },
+    ] }] });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('Built-in-Fixture');
     expectUnchanged(files);

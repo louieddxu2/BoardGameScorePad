@@ -1,15 +1,18 @@
 /**
- * Local-first catalog sync (same rhythm as BoardGameHelper's game list):
- * - The app always reads the local copy in IndexedDB.
- * - Changes after the local version are checked at most every 6 hours.
- * - The full snapshot is re-downloaded weekly, or when there is no local copy.
+ * Local-first catalog sync. The app always reads the local copy in IndexedDB.
+ *
+ * - Game catalog (every game, its official boards and rules): at most every 6 hours
+ *   the app reads the cloud's generation (one D1 row) and downloads the whole
+ *   snapshot (a few rows) only when it moved.
+ * - Share catalog: changes after the local version at most every 6 hours, and the
+ *   full snapshot weekly or when there is no local copy.
  * A manual refresh can force either step.
  */
 import type { Table } from 'dexie';
 import { db } from '../../db';
-import { fetchCatalogChanges, fetchCatalogSnapshot } from './officialApi';
+import { fetchCatalogChanges, fetchCatalogSnapshot, fetchGameCatalog, fetchGameCatalogVersion } from './officialApi';
 import { toStoredGameEntry } from './gameCatalog';
-import type { CatalogKind, CatalogSyncState, GameCatalogEntry, ShareCatalogEntry } from './types';
+import type { CatalogKind, CatalogSyncState, ShareCatalogEntry } from './types';
 
 export const CHANGES_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const SNAPSHOT_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -19,20 +22,11 @@ export type CatalogSyncMode = 'auto' | 'changes' | 'snapshot';
 
 export interface CatalogSyncResult {
   kind: CatalogKind;
-  /** What actually ran: nothing (still fresh), changes only, or snapshot + changes. */
+  /** What actually ran: nothing (still fresh), changes only (or a version check), or a snapshot download. */
   ran: 'none' | 'changes' | 'snapshot';
   changed: number;
   state: CatalogSyncState;
 }
-
-type CatalogEntry = GameCatalogEntry | ShareCatalogEntry;
-
-const tableFor = (kind: CatalogKind): Table<CatalogEntry> =>
-  (kind === 'games' ? db.gameCatalog : db.shareCatalog) as unknown as Table<CatalogEntry>;
-
-/** Game entries are kept with the keys their indexes use; share entries as they come. */
-const toStored = (kind: CatalogKind, entry: CatalogEntry): CatalogEntry =>
-  kind === 'games' ? toStoredGameEntry(entry as GameCatalogEntry) : entry;
 
 const emptyState = (kind: CatalogKind): CatalogSyncState => ({
   kind,
@@ -45,18 +39,45 @@ const emptyState = (kind: CatalogKind): CatalogSyncState => ({
 export const getCatalogSyncState = async (kind: CatalogKind): Promise<CatalogSyncState> =>
   (await db.catalogSync.get(kind)) ?? emptyState(kind);
 
-/** Apply change pages after `after` until caught up; returns the new position and change count. */
-const applyChanges = async (kind: CatalogKind, after: number): Promise<{ throughVersion: number; changed: number }> => {
-  const table = tableFor(kind);
+/** Game catalog: check the generation, then replace the local copy only when it moved. */
+const runGamesSync = async (mode: CatalogSyncMode): Promise<CatalogSyncResult> => {
+  const now = Date.now();
+  const state = await getCatalogSyncState('games');
+  const due = mode !== 'auto' || state.snapshotAt === 0 || now - state.checkedAt >= CHANGES_CHECK_INTERVAL_MS;
+  if (!due) return { kind: 'games', ran: 'none', changed: 0, state };
+
+  // Without a local copy there is nothing to compare: download right away.
+  const remote = mode === 'snapshot' || state.snapshotAt === 0 ? null : await fetchGameCatalogVersion();
+  if (remote && state.snapshotAt !== 0 && remote.generation === state.generation) {
+    const next = { ...state, checkedAt: now };
+    await db.catalogSync.put(next);
+    return { kind: 'games', ran: 'changes', changed: 0, state: next };
+  }
+
+  const catalog = await fetchGameCatalog();
+  await db.transaction('rw', db.gameCatalog, async () => {
+    await db.gameCatalog.clear();
+    if (catalog.games.length > 0) await db.gameCatalog.bulkPut(catalog.games.map(toStoredGameEntry));
+  });
+  const next: CatalogSyncState = {
+    ...state, generation: catalog.generation, throughVersion: catalog.generation, snapshotAt: now, checkedAt: now,
+  };
+  await db.catalogSync.put(next);
+  return { kind: 'games', ran: 'snapshot', changed: catalog.games.length, state: next };
+};
+
+/** Share catalog: apply change pages after `after` until caught up. */
+const applyShareChanges = async (after: number): Promise<{ throughVersion: number; changed: number }> => {
+  const table = db.shareCatalog as Table<ShareCatalogEntry>;
   let position = after;
   let changed = 0;
   for (let page = 0; page < MAX_CHANGE_PAGES; page++) {
-    const result = await fetchCatalogChanges<CatalogEntry>(kind, position);
+    const result = await fetchCatalogChanges<ShareCatalogEntry>('share', position);
     if (result.changes.length > 0) {
       await db.transaction('rw', table, async () => {
         for (const change of result.changes) {
           if (change.deleted || !change.template) await table.delete(change.templateId);
-          else await table.put(toStored(kind, change.template));
+          else await table.put(change.template);
         }
       });
       changed += result.changes.length;
@@ -67,30 +88,29 @@ const applyChanges = async (kind: CatalogKind, after: number): Promise<{ through
   return { throughVersion: position, changed };
 };
 
-const runSync = async (kind: CatalogKind, mode: CatalogSyncMode): Promise<CatalogSyncResult> => {
+const runShareSync = async (mode: CatalogSyncMode): Promise<CatalogSyncResult> => {
   const now = Date.now();
-  const state = await getCatalogSyncState(kind);
+  const state = await getCatalogSyncState('share');
   const needsSnapshot = mode === 'snapshot' || state.snapshotAt === 0 || now - state.snapshotAt >= SNAPSHOT_REFRESH_INTERVAL_MS;
   const needsChanges = needsSnapshot || mode === 'changes' || now - state.checkedAt >= CHANGES_CHECK_INTERVAL_MS;
-  if (!needsChanges) return { kind, ran: 'none', changed: 0, state };
+  if (!needsChanges) return { kind: 'share', ran: 'none', changed: 0, state };
 
   let next: CatalogSyncState = { ...state };
   let changed = 0;
   if (needsSnapshot) {
-    const snapshot = await fetchCatalogSnapshot<CatalogEntry>(kind);
-    const table = tableFor(kind);
-    await db.transaction('rw', table, async () => {
-      await table.clear();
-      if (snapshot.templates.length > 0) await table.bulkPut(snapshot.templates.map((entry) => toStored(kind, entry)));
+    const snapshot = await fetchCatalogSnapshot<ShareCatalogEntry>('share');
+    await db.transaction('rw', db.shareCatalog, async () => {
+      await db.shareCatalog.clear();
+      if (snapshot.templates.length > 0) await db.shareCatalog.bulkPut(snapshot.templates);
     });
     changed = snapshot.templates.length;
     next = { ...next, throughVersion: snapshot.throughVersion, generation: snapshot.generation, snapshotAt: now };
   }
 
-  const applied = await applyChanges(kind, next.throughVersion);
+  const applied = await applyShareChanges(next.throughVersion);
   next = { ...next, throughVersion: applied.throughVersion, checkedAt: Date.now() };
   await db.catalogSync.put(next);
-  return { kind, ran: needsSnapshot ? 'snapshot' : 'changes', changed: changed + applied.changed, state: next };
+  return { kind: 'share', ran: needsSnapshot ? 'snapshot' : 'changes', changed: changed + applied.changed, state: next };
 };
 
 const inFlight = new Map<CatalogKind, Promise<CatalogSyncResult>>();
@@ -99,7 +119,8 @@ const inFlight = new Map<CatalogKind, Promise<CatalogSyncResult>>();
 export const syncCatalog = (kind: CatalogKind, mode: CatalogSyncMode = 'auto'): Promise<CatalogSyncResult> => {
   const running = inFlight.get(kind);
   if (running && mode === 'auto') return running;
-  const task = (running ? running.catch(() => undefined) : Promise.resolve()).then(() => runSync(kind, mode));
+  const run = () => (kind === 'games' ? runGamesSync(mode) : runShareSync(mode));
+  const task = (running ? running.catch(() => undefined) : Promise.resolve()).then(run);
   const tracked = task.finally(() => {
     if (inFlight.get(kind) === tracked) inFlight.delete(kind);
   });

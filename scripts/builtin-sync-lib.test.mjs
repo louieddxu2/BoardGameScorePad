@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { bumpBuiltinVersion, formatEntry, planSync, renderDataFile, splitDataFile, staleBundledChanges } from './builtin-sync-lib.mjs';
+import { bumpBuiltinVersion, formatEntry, planSync, renderDataFile, splitDataFile, staleBundledBoards } from './builtin-sync-lib.mjs';
 
 const file = (entries) =>
   `// @ts-nocheck\nimport { GameTemplate } from './types';\n\nexport const DEFAULT_TEMPLATES: GameTemplate[] =\n  [\n${entries.map((e) => `    ${formatEntry(e)}`).join(',\n')}\n  ];\n`;
@@ -47,23 +47,22 @@ describe('bundled scoreboard sync', () => {
     expect(bumpBuiltinVersion('x\nconst CURRENT_BUILTIN_VERSION = 23;\ny')).toEqual({ text: 'x\nconst CURRENT_BUILTIN_VERSION = 24;\ny', from: 23, to: 24 });
   });
 
-  it('detects later bundled changes and boards that became cloud-only after packing', () => {
+  it('detects bundled boards whose packed copy no longer matches the game catalog', () => {
     const packs = {
       'zh-TW': { throughVersion: 5, templates: [{ id: 'Built-in-B', bggId: '2', version: 1 }, { id: 'Built-in-C', bggId: '3', version: 0 }] },
-      en: { throughVersion: 8, templates: [{ id: 'Built-in-EN-D', bggId: '4', version: 3 }] },
+      en: { throughVersion: 5, templates: [{ id: 'Built-in-EN-D', bggId: '4', version: 3 }] },
     };
-    // Each change is one game of the game catalog (templateId = BGG ID) with all its boards.
-    const game = (bggId, boards, extra = {}) => ({ templateId: bggId, catalogVersion: 6, template: { bggId, boards, ...extra } });
+    // The game catalog: one entry per game with all its boards; Built-in-C's game is gone.
+    const game = (bggId, boards, extra = {}) => ({ bggId, name: null, altNames: [], rules: [], boards, ...extra });
     expect(
-      staleBundledChanges([
+      staleBundledBoards([
         game('1', [{ id: 'Built-in-A', lang: 'zh-TW', bundled: true, version: 1 }]),
         game('2', [{ id: 'Built-in-B', lang: 'zh-TW', bundled: false, version: 1 }]),
-        { templateId: '3', catalogVersion: 6, deleted: true },
-        // Only the rules changed: its board is still the packed version.
+        // Only the rules differ: its board is still the packed version.
         game('4', [{ id: 'Built-in-EN-D', lang: 'en', bundled: true, version: 3 }], { rules: [{ gameId: 'g', ruleGameId: 'g', publishedRuleCount: 2 }] }),
         game('5', [{ id: 'Built-in-E', lang: 'zh-TW', bundled: false, version: 1 }]),
       ], packs)
-    ).toEqual(['Built-in-A', 'Built-in-B', 'Built-in-C']);
+    ).toEqual(['Built-in-B', 'Built-in-C', 'Built-in-A']);
   });
 
   it('reports invalid entries without including any scoreboard content', () => {

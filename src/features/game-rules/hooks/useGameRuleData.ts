@@ -1,30 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { findLocalRuleSummary } from '../../official-boards/gameCatalog';
-import { getGameRules, getRuleSummary } from '../rulesCache';
+import { getGameRules } from '../rulesCache';
 import type { GameRules, RuleSummary } from '../types';
 
 /**
- * A game's rule count and version. Read from the local game catalog, so opening a game needs
- * no network; only a BGG ID the catalog does not know yet asks the cloud (cached for an hour
- * in rulesCache, "no rules" included). null until known, when disabled, or without rules.
+ * A game's rule count and version, from the local game catalog only: opening a game never
+ * reaches the network. A game the catalog does not know yet shows no count until the catalog
+ * is updated. null when disabled, unknown or without rules.
  */
 export const useRuleSummary = (bggId: string | undefined, enabled: boolean): RuleSummary | null => {
   const id = enabled ? bggId?.trim() : undefined;
-  // undefined while reading; then the catalog's answer, or 'unknown' when it does not have this game.
-  const local = useLiveQuery(async () => (id ? (await findLocalRuleSummary(id)) ?? 'unknown' : null), [id]);
-  const [fallback, setFallback] = useState<RuleSummary | null>(null);
-  useEffect(() => {
-    setFallback(null);
-    if (!id || local !== 'unknown') return;
-    let cancelled = false;
-    getRuleSummary(id)
-      .then((result) => { if (!cancelled) setFallback(result.value); })
-      .catch(() => { /* No summary means no entry; the score pad works the same without it. */ });
-    return () => { cancelled = true; };
-  }, [id, local]);
-  if (!id || local === undefined || local === null) return null;
-  return local === 'unknown' ? fallback : local;
+  const local = useLiveQuery(async () => (id ? (await findLocalRuleSummary(id)) ?? null : null), [id]);
+  return local ?? null;
 };
 
 export type GameRulesState =
