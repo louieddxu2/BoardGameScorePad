@@ -89,7 +89,7 @@ const RulesDrawer: React.FC<RulesDrawerProps> = ({ isOpen, onClose, state }) => 
         type="button"
         aria-label={t('close')}
         onClick={onClose}
-        className="h-full w-[72px] shrink-0 grow bg-modal-backdrop/40 transition-opacity ease-out"
+        className="h-full w-10 shrink-0 grow bg-modal-backdrop/40 transition-opacity ease-out"
         style={{ opacity: shown ? 1 : 0, transitionDuration: `${SLIDE_MS}ms` }}
       />
       <aside
@@ -104,7 +104,7 @@ const RulesDrawer: React.FC<RulesDrawerProps> = ({ isOpen, onClose, state }) => 
           transform: `translateX(${offset})`,
           transition: dragging ? 'none' : `transform ${SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
         }}
-        className="flex h-full w-[calc(100%-72px)] max-w-md flex-col border-l border-surface-border bg-app-bg shadow-2xl"
+        className="flex h-full w-[calc(100%-2.5rem)] max-w-lg flex-col border-l border-surface-border bg-app-bg shadow-2xl"
       >
         <header className="safe-area-top-medium flex shrink-0 items-center gap-2 px-3 pb-2.5" style={{ backgroundColor: SITE_PAPER, color: SITE_INK }}>
           <RulesSiteLogo size={24} className="shrink-0 rounded-md" />
