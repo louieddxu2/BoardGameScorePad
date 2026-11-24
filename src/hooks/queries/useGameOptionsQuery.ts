@@ -113,7 +113,8 @@ export const useGameOptionsQuery = (
   const readDictionary = enabled && (loadFullDictionary || (sourcesLoaded && needsDictionary));
   const allBggGames = useLiveQuery(async () => {
     if (!readDictionary) return undefined;
-    return (await db.bggGames.toArray()).map(extractBggGameSummary);
+    // Expansions stay in the dictionary but out of search: scoreboards are per base game.
+    return (await db.bggGames.toArray()).filter((game) => !game.isExpansion).map(extractBggGameSummary);
   }, [readDictionary]);
   const bggGamesForOptions = useMemo(
     () => mergeOfficialGameInfo(allBggGames ?? EMPTY_BGG_GAMES, catalogGames),

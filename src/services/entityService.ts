@@ -173,6 +173,7 @@ class EntityService {
                     rank: metadata?.rank ?? existingBgg?.rank,
                     complexity: metadata?.complexity ?? existingBgg?.complexity,
                     bestPlayers: metadata?.bestPlayers ?? existingBgg?.bestPlayers,
+                    isExpansion: existingBgg?.isExpansion,
 
                     updatedAt: Date.now()
                 };

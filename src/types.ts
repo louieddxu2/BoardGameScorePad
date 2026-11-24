@@ -365,6 +365,8 @@ export interface BggGame {
   domains?: string[]; // [New] e.g. ["Strategy Games", "Party Games"]
   families?: string[]; // [New] e.g. ["Series: Pocket Games"]
   cooperative?: boolean; // Direct flag for easier filtering
+  /** An expansion, as marked by an imported game list. Scoreboards are per base game, so it stays out of search. */
+  isExpansion?: boolean;
 
   updatedAt: number; // Last cache update
 }

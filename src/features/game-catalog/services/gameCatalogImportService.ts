@@ -91,6 +91,8 @@ export const gameCatalogImportService = {
             categories: findIdx(['Categories', 'Category', '分類', '遊戲分類']),
             domains: findIdx(['Domain', 'Domains', '領域', '遊戲領域']),
             families: findIdx(['Family', 'Families', '家族', '系列']),
+            // BGG's collection export has an Expansion column (Y / -); its other export an itemtype column (expansion / standalone).
+            expansion: findIdx(['Expansion', 'itemtype', '擴充']),
         };
 
         if (idx.id === -1 || idx.name === -1) {
@@ -161,6 +163,9 @@ export const gameCatalogImportService = {
             const categories = parseTags(getVal(idx.categories));
             const domains = parseTags(getVal(idx.domains), true); // 空間分隔
             const families = parseTags(getVal(idx.families), true); // 空間分隔
+            // Only when the file has the column: a game it marks as a base game loses an earlier expansion mark.
+            const expansionVal = getVal(idx.expansion)?.trim().toLowerCase();
+            const isExpansion = idx.expansion === -1 ? undefined : ['y', 'yes', 'true', '1', 'expansion', '是', '擴充'].includes(expansionVal ?? '');
             const isCooperative = mechanisms.some(m => m.toLowerCase().includes('cooperative game'));
 
             const game: any = {
@@ -185,7 +190,8 @@ export const gameCatalogImportService = {
                 mechanisms: mechanisms,
                 categories: categories,
                 domains: domains,
-                families: families
+                families: families,
+                isExpansion
             };
 
             importGames.push(game);
@@ -379,6 +385,7 @@ export const gameCatalogImportService = {
                 domains: (srcGame as any).domains,
                 families: (srcGame as any).families,
                 cooperative: (srcGame as any).cooperative,
+                isExpansion: (srcGame as any).isExpansion,
                 updatedAt: Date.now()
             };
 
@@ -420,7 +427,8 @@ export const gameCatalogImportService = {
                             categories: newG.categories?.length ? newG.categories : oldG.categories,
                             domains: newG.domains?.length ? newG.domains : oldG.domains,
                             families: newG.families?.length ? newG.families : oldG.families,
-                            cooperative: typeof newG.cooperative === 'boolean' ? newG.cooperative : oldG.cooperative
+                            cooperative: typeof newG.cooperative === 'boolean' ? newG.cooperative : oldG.cooperative,
+                            isExpansion: typeof newG.isExpansion === 'boolean' ? newG.isExpansion : oldG.isExpansion
                         };
                     }
                     return newG;
