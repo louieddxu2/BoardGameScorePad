@@ -7,6 +7,8 @@ import {
 import { bgStatsEntityService } from '../../bgstats/services/bgStatsEntityService';
 import { integrationTranslations, IntegrationTranslationKey } from '../../../i18n/integration';
 
+const EXPANSION_CELL_VALUES = new Set(['y', 'yes', 'true', '1', 'expansion', '是', '擴充']); // CSV 擴充欄中代表擴充的值
+
 // Static translation helper for non-React context
 const t = (key: IntegrationTranslationKey, params?: Record<string, string | number>): string => {
     const lang = (localStorage.getItem('app_language') || 'zh-TW') as 'zh-TW' | 'en';
@@ -165,7 +167,7 @@ export const gameCatalogImportService = {
             const families = parseTags(getVal(idx.families), true); // 空間分隔
             // Only when the file has the column: a game it marks as a base game loses an earlier expansion mark.
             const expansionVal = getVal(idx.expansion)?.trim().toLowerCase();
-            const isExpansion = idx.expansion === -1 ? undefined : ['y', 'yes', 'true', '1', 'expansion', '是', '擴充'].includes(expansionVal ?? '');
+            const isExpansion = idx.expansion === -1 ? undefined : EXPANSION_CELL_VALUES.has(expansionVal ?? '');
             const isCooperative = mechanisms.some(m => m.toLowerCase().includes('cooperative game'));
 
             const game: any = {
