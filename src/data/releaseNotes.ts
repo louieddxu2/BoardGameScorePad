@@ -34,6 +34,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       { kind: 'new', zh: '有 BGG 編號的遊戲，若在「玩錯的桌遊規則」網站上有記錄，計分項目最下方會出現「玩錯規則」按鈕。點開後可依分類、關鍵字與標籤查看大家玩錯過的規則，也能直接前往該網站記錄或查看這款遊戲。' },
       { kind: 'improved', zh: '開局面板也能搜尋到「玩錯的桌遊規則」網站上有 BGG 編號、但還沒有內建計分板的遊戲；選擇後會建立簡易計分板。',
         en: 'The start panel can now also find games listed with a BGG ID on the rules site that have no built-in scoreboard yet; choosing one creates a simple scoreboard.' },
+      { kind: 'improved', zh: '匯入的 BGG 遊戲清單中標為擴充的遊戲，不會出現在開局面板的搜尋裡。之前已匯入的擴充，再匯入一次清單後就會隱藏。',
+        en: 'Games marked as expansions in an imported BGG game list no longer appear in start panel search. Expansions imported earlier are hidden after you import the list again.' },
       { kind: 'fixed', zh: '對局標題列的遊戲名稱過長時，會以省略號截斷，不再被右側按鈕蓋住。',
         en: 'Long game names in the session header are now shortened with an ellipsis instead of running under the buttons beside them.' },
       { kind: 'improved', zh: '開啟 App 時，畫面直接以上次選擇的主題底色顯示。首頁的進行中、快速開始與遊戲庫會在資料到齊後一起出現，不再陸續把已顯示的內容往下推。歷史紀錄與完整的開局遊戲清單改在打開歷史頁或開局面板時才讀取。',
