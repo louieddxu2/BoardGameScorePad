@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, ChevronDown, Link2, MessageSquareText, X } from 'lucide-react';
+import { Check, ChevronDown, MessageSquareText, X } from 'lucide-react';
 import { useRulesTranslation } from '../../../i18n/rules';
 import { getRuleEditions } from '../../../shared/ruleFilter';
 import type { FilterableGameRule } from '../rulesCache';
@@ -16,7 +16,7 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
   const pending = rule.reviewStatus === 'pending';
 
   // The correct rule leads; the mistake follows, smaller and quieter, so the eye lands on what is right.
-  const rows: { key: string; icon: React.ReactNode; content: React.ReactNode }[] = [{
+  const rows: { key: string; icon: React.ReactNode | null; content: React.ReactNode }[] = [{
     key: 'statement',
     icon: <Check size={18} strokeWidth={2.5} className="mt-0.5 text-brand-primary" aria-hidden="true" />,
     content: <p className={`whitespace-pre-line text-[15px] font-semibold leading-snug text-txt-title ${expanded ? '' : 'line-clamp-3'}`}>{rule.statement}</p>,
@@ -43,7 +43,8 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
   });
   if (expanded && rule.sourceLinks.length > 0) rows.push({
     key: 'sources',
-    icon: <Link2 size={15} className="mt-0.5 text-txt-muted" aria-hidden="true" />,
+    // No icon of its own: the expand arrow sits beside the links.
+    icon: null,
     content: (
       <div className="text-xs leading-relaxed">
         <span className="sr-only">{t('source')}</span>
@@ -78,12 +79,12 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
         </div>
       ) : null}
 
-      {/* Each row has its icon in a left column. The expand arrow sits under the last row's icon,
-          so a row of two lines or more holds it without growing. */}
+      {/* Each row has its icon in a left column. The expand arrow sits at the bottom of the last
+          row's cell, so a row tall enough holds it under its icon without growing. */}
       <div className="grid grid-cols-[18px_minmax(0,1fr)] gap-x-2 gap-y-1.5">
         {rows.map((row, index) => (
           <React.Fragment key={row.key}>
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex h-full flex-col items-center gap-1">
               {row.icon}
               {index === rows.length - 1 && (
                 // Clicks bubble to the card, which toggles; the button is there for keyboards and screen readers.
@@ -91,7 +92,7 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
                   type="button"
                   aria-expanded={expanded}
                   aria-label={`${t(expanded ? 'collapse' : 'expand')}：${rule.statement}`}
-                  className="flex h-4 w-[18px] items-center justify-center text-txt-muted"
+                  className="mt-auto flex h-5 w-[18px] items-center justify-center text-txt-muted"
                 >
                   <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
