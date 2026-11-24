@@ -138,6 +138,13 @@ describe('rules drawer', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /^展開規則：建造船隻/ }));
     expect(within(dialog).getByText('只能拉相鄰的部落')).toBeInTheDocument();
     expect(within(dialog).getByRole('link', { name: '英文規則書' })).toHaveAttribute('href', 'https://example.com/rules');
+    // A source link opens without folding the card; a tap anywhere else on the card folds it.
+    fireEvent.click(within(dialog).getByRole('link', { name: '英文規則書' }));
+    expect(within(dialog).getByText('只能拉相鄰的部落')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByText('玩成可以從遠方拉部落'));
+    expect(within(dialog).queryByText('只能拉相鄰的部落')).not.toBeInTheDocument();
+    fireEvent.click(within(dialog).getByText('回合結束時每個部落需要食物'));
+    expect(within(dialog).getByRole('button', { name: /^收合規則：回合結束/ })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('closes from the strip on the left and from a swipe to the right, but not from a short or vertical drag', async () => {
