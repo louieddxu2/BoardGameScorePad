@@ -4,14 +4,24 @@ import { useRulesTranslation } from '../../../i18n/rules';
 import { getRuleEditions } from '../../../shared/ruleFilter';
 import type { FilterableGameRule } from '../rulesCache';
 
+const lineHeightOf = (el: HTMLElement) => {
+  const style = getComputedStyle(el);
+  return parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5 || 20;
+};
+
 /** How many lines of a line-clamped paragraph are cut off. */
 const hiddenLines = (el: HTMLElement | null): number => {
   if (!el) return 0;
   const extra = el.scrollHeight - el.clientHeight;
   if (extra <= 1) return 0;
-  const style = getComputedStyle(el);
-  const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5 || 20;
-  return Math.max(1, Math.round(extra / lineHeight));
+  return Math.max(1, Math.round(extra / lineHeightOf(el)));
+};
+
+/** How many lines a block takes. Without layout (nothing rendered on screen), it counts as many, so the card stays folded. */
+const blockLines = (el: HTMLElement | null): number => {
+  if (!el) return 0;
+  if (el.offsetHeight <= 0) return Infinity;
+  return Math.max(1, Math.round(el.offsetHeight / lineHeightOf(el)));
 };
 
 /**
@@ -26,27 +36,25 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
   const pending = rule.reviewStatus === 'pending';
   const statementRef = useRef<HTMLParagraphElement>(null);
   const mistakeRef = useRef<HTMLParagraphElement>(null);
-  const hasExtras = Boolean(rule.details) || rule.sourceLinks.length > 0;
-  // Whether the folded card cuts off its rule or mistake; measured only while folded.
-  const [clipped, setClipped] = useState(false);
-  // When folding would hide only one line in all and there is nothing else to show, the card prints
-  // that line instead. Kept per text, so changed text is measured again.
-  const textKey = JSON.stringify([rule.statement, rule.commonMistake ?? '']);
-  const [flatKey, setFlatKey] = useState<string | null>(null);
-  const flat = flatKey === textKey;
+  const detailsRef = useRef<HTMLParagraphElement>(null);
+  const sourcesRef = useRef<HTMLDivElement>(null);
+  // Expanding must never reveal just one line. Before the first paint the card is laid out folded,
+  // with its details and sources shown, and counts what folding would hide: the rule's and mistake's
+  // cut-off lines plus the details and sources. One line or none, and the card stays printed in full;
+  // more, and it folds behind the arrow. Kept per content, so changed content is measured again.
+  const contentKey = JSON.stringify([rule.statement, rule.commonMistake ?? '', rule.details ?? '', rule.sourceLinks]);
+  const [layout, setLayout] = useState<{ key: string; fold: boolean } | null>(null);
+  const measuring = layout?.key !== contentKey;
+  const fold = !measuring && layout!.fold;
   useLayoutEffect(() => {
-    if (expanded || flat) return;
-    const hidden = hiddenLines(statementRef.current) + hiddenLines(mistakeRef.current);
-    if (hidden === 1 && !hasExtras) {
-      setFlatKey(textKey);
-      setClipped(false);
-    } else {
-      setClipped(hidden > 0);
-    }
-  }, [expanded, flat, textKey, hasExtras]);
-  const folded = !expanded && !flat;
-  // The card expands only when that shows more: cut-off text, details or sources.
-  const expandable = !flat && (clipped || hasExtras);
+    if (!measuring) return;
+    const hidden = hiddenLines(statementRef.current) + hiddenLines(mistakeRef.current)
+      + blockLines(detailsRef.current) + blockLines(sourcesRef.current);
+    setLayout({ key: contentKey, fold: hidden > 1 });
+  }, [measuring, contentKey]);
+  const expandable = fold;
+  const folded = measuring || (fold && !expanded);
+  const showExtras = measuring || !folded;
 
   // The correct rule leads; the mistake follows, smaller and quieter, so the eye lands on what is right.
   const rows: { key: string; icon: React.ReactNode | null; content: React.ReactNode }[] = [{
@@ -59,27 +67,27 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
     icon: <X size={15} className="mt-[3px] text-status-danger/90" aria-hidden="true" />,
     content: (
       <p ref={mistakeRef} className={`whitespace-pre-line text-[13px] leading-relaxed text-status-danger/90 ${folded ? 'line-clamp-2' : ''}`}>
-        {expanded && <span className="sr-only">{t('common_mistake')}：</span>}
+        {!folded && <span className="sr-only">{t('common_mistake')}：</span>}
         {rule.commonMistake}
       </p>
     ),
   });
-  if (expanded && rule.details) rows.push({
+  if (showExtras && rule.details) rows.push({
     key: 'details',
     icon: <MessageSquareText size={15} className="mt-[3px] text-txt-muted" aria-hidden="true" />,
     content: (
-      <p className="whitespace-pre-line text-sm leading-relaxed text-txt-secondary">
+      <p ref={detailsRef} className="whitespace-pre-line text-sm leading-relaxed text-txt-secondary">
         <span className="sr-only">{t('details')}：</span>
         {rule.details}
       </p>
     ),
   });
-  if (expanded && rule.sourceLinks.length > 0) rows.push({
+  if (showExtras && rule.sourceLinks.length > 0) rows.push({
     key: 'sources',
     // No icon of its own: the expand arrow sits beside the links.
     icon: null,
     content: (
-      <div className="text-xs leading-relaxed">
+      <div ref={sourcesRef} className="text-xs leading-relaxed">
         <span className="sr-only">{t('source')}</span>
         {rule.sourceLinks.map((link) => (
           <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer" className="block break-all text-txt-secondary underline">
