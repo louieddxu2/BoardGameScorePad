@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, MessageSquareText, X } from 'lucide-react';
 import { useRulesTranslation } from '../../../i18n/rules';
 import { getRuleEditions } from '../../../shared/ruleFilter';
@@ -14,18 +14,29 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
   const players = formatPlayerCounts(rule.playerCounts ?? []);
   const badges = [...rule.tags.map((tag) => `#${tag.name}`), ...(players ? [players] : []), ...getRuleEditions(rule)];
   const pending = rule.reviewStatus === 'pending';
+  const statementRef = useRef<HTMLParagraphElement>(null);
+  const mistakeRef = useRef<HTMLParagraphElement>(null);
+  // Whether the folded card cuts off its rule or mistake; measured only while folded.
+  const [clipped, setClipped] = useState(false);
+  useLayoutEffect(() => {
+    if (expanded) return;
+    const cut = (el: HTMLElement | null) => !!el && el.scrollHeight > el.clientHeight + 1;
+    setClipped(cut(statementRef.current) || cut(mistakeRef.current));
+  }, [expanded, rule.statement, rule.commonMistake]);
+  // The card expands only when that shows more: cut-off text, details or sources.
+  const expandable = clipped || Boolean(rule.details) || rule.sourceLinks.length > 0;
 
   // The correct rule leads; the mistake follows, smaller and quieter, so the eye lands on what is right.
   const rows: { key: string; icon: React.ReactNode | null; content: React.ReactNode }[] = [{
     key: 'statement',
     icon: <Check size={18} strokeWidth={2.5} className="mt-0.5 text-brand-primary" aria-hidden="true" />,
-    content: <p className={`whitespace-pre-line text-[15px] font-semibold leading-snug text-txt-title ${expanded ? '' : 'line-clamp-3'}`}>{rule.statement}</p>,
+    content: <p ref={statementRef} className={`whitespace-pre-line text-[15px] font-semibold leading-snug text-txt-title ${expanded ? '' : 'line-clamp-3'}`}>{rule.statement}</p>,
   }];
   if (rule.commonMistake) rows.push({
     key: 'mistake',
     icon: <X size={15} className="mt-[3px] text-status-danger/90" aria-hidden="true" />,
     content: (
-      <p className={`text-[13px] leading-relaxed text-status-danger/90 ${expanded ? 'whitespace-pre-line' : 'line-clamp-2'}`}>
+      <p ref={mistakeRef} className={`whitespace-pre-line text-[13px] leading-relaxed text-status-danger/90 ${expanded ? '' : 'line-clamp-2'}`}>
         {expanded && <span className="sr-only">{t('common_mistake')}：</span>}
         {rule.commonMistake}
       </p>
@@ -60,6 +71,7 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
   const toggle = () => setExpanded((value) => !value);
   // A tap anywhere on the card toggles it, except on a link or while selecting text.
   const onCardClick = (event: React.MouseEvent) => {
+    if (!expandable) return;
     if ((event.target as HTMLElement).closest('a')) return;
     if (window.getSelection?.()?.toString()) return;
     toggle();
@@ -68,7 +80,7 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
   return (
     <article
       onClick={onCardClick}
-      className={`cursor-pointer rounded-xl border border-surface-border bg-surface-bg p-3 ${pending ? 'opacity-80' : ''}`}
+      className={`${expandable ? 'cursor-pointer' : ''} rounded-xl border border-surface-border bg-surface-bg p-3 ${pending ? 'opacity-80' : ''}`}
     >
       {badges.length > 0 || pending ? (
         <div className="mb-2 flex flex-wrap gap-1">
@@ -86,7 +98,7 @@ const RuleCard: React.FC<{ rule: FilterableGameRule }> = ({ rule }) => {
           <React.Fragment key={row.key}>
             <div className="flex h-full flex-col items-center gap-1">
               {row.icon}
-              {index === rows.length - 1 && (
+              {expandable && index === rows.length - 1 && (
                 // Clicks bubble to the card, which toggles; the button is there for keyboards and screen readers.
                 <button
                   type="button"

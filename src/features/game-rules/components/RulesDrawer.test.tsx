@@ -143,8 +143,10 @@ describe('rules drawer', () => {
     expect(within(dialog).getByText('只能拉相鄰的部落')).toBeInTheDocument();
     fireEvent.click(within(dialog).getByText('玩成可以從遠方拉部落'));
     expect(within(dialog).queryByText('只能拉相鄰的部落')).not.toBeInTheDocument();
+    // A short rule without details or sources has nothing more to show: no arrow, and a tap does nothing.
+    expect(within(dialog).queryByRole('button', { name: /規則：回合結束/ })).not.toBeInTheDocument();
     fireEvent.click(within(dialog).getByText('回合結束時每個部落需要食物'));
-    expect(within(dialog).getByRole('button', { name: /^收合規則：回合結束/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(within(dialog).queryByRole('button', { name: /規則：回合結束/ })).not.toBeInTheDocument();
   });
 
   it('closes from the strip on the left and from a swipe to the right, but not from a short or vertical drag', async () => {

@@ -85,8 +85,8 @@ const RulesBrowser: React.FC<{ rules: GameRules }> = ({ rules }) => {
           >
             {t('resources')}
             <span className="text-xs text-txt-muted">{resources.length}</span>
-            {/* Points up while closed (the list opens above), down while open. */}
-            <ChevronDown size={14} className={`transition-transform ${showResources ? '' : 'rotate-180'}`} aria-hidden="true" />
+            {/* Down while closed and up while open, like a rule card's arrow. */}
+            <ChevronDown size={14} className={`transition-transform ${showResources ? 'rotate-180' : ''}`} aria-hidden="true" />
           </button>
         )}
       </div>
