@@ -202,7 +202,8 @@ const ImportStagingView: React.FC<ImportStagingViewProps> = ({ report, onConfirm
                         </div>
                     </div>
 
-                    <div className="flex-1 min-h-0">
+                    {/* A flex column, so the list below gets a bounded height and scrolls instead of spilling over the actions. */}
+                    <div className="flex flex-1 min-h-0 flex-col">
                         <LinkerList
                             items={importListItems}
                             title={<><FileJson size={12} /> {t('staging_import_data', { count: activeHook.totalImportCount })}</>}

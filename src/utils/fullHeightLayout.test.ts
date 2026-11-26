@@ -58,5 +58,7 @@ describe('full-height layout contracts', () => {
     expect(historyPhotoGrid).toContain('max-h-[70dvh]');
     expect(importStaging).toContain('safe-area-top-medium');
     expect(importStaging).toContain('safe-area-bottom-medium');
+    // The searchable import list sits in a flex column, so it scrolls within the screen instead of covering the confirm bar.
+    expect(importStaging).toContain('<div className="flex flex-1 min-h-0 flex-col">');
   });
 });
