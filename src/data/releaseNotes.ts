@@ -38,6 +38,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'Games marked as expansions in an imported BGG game list no longer appear in start panel search. Expansions imported earlier are hidden after you import the list again.' },
       { kind: 'fixed', zh: '對局標題列的遊戲名稱過長時，會以省略號截斷，不再被右側按鈕蓋住。',
         en: 'Long game names in the session header are now shortened with an ellipsis instead of running under the buttons beside them.' },
+      { kind: 'fixed', zh: '匯入 BGG 遊戲清單或 BG Stats 資料時，確認畫面右側的清單較長時會超出畫面，無法捲動也按不到確認。現在清單會在畫面內捲動。',
+        en: 'When importing a BGG game list or BG Stats data, a long list on the right of the review screen no longer runs off the screen and blocks scrolling and the confirm button. The list now scrolls in place.' },
       { kind: 'improved', zh: '開啟 App 時，畫面直接以上次選擇的主題底色顯示。首頁的進行中、快速開始與遊戲庫會在資料到齊後一起出現，不再陸續把已顯示的內容往下推。歷史紀錄與完整的開局遊戲清單改在打開歷史頁或開局面板時才讀取。',
         en: 'When the app opens, the screen starts in the background color of your last chosen theme. On the home screen, active games, Quick Start and the library appear together once their data is ready, instead of pushing visible content down as they arrive. History and the full game list for starting a game now load when you open the history view or the start panel.' },
     ],
