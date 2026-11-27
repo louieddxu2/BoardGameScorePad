@@ -44,9 +44,10 @@ function SettingsWithLivePreferences() {
     onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />;
 }
 
-it('shows the cloud opt-in copy and remembers the checkbox on this device', () => {
+it('only shows the cloud opt-in in Traditional Chinese and remembers the checkbox on this device', () => {
   const view = renderSettings(undefined, 'zh-TW');
-  const checkbox = screen.getByRole('checkbox', { name: '連結雲端資料庫(尚未完善暫時供手動啟用，未來會預設開啟)：' });
+  const name = '連結雲端資料庫(尚未完善暫時供手動啟用，未來會預設開啟)：';
+  const checkbox = screen.getByRole('checkbox', { name });
   expect(checkbox).not.toBeChecked();
   expect(screen.getByText('啟用後App會在需要時連結雲端資料庫取得資料，此功能不會傳遞你的資料出去。')).toBeVisible();
   expect(screen.getByText('下載雲端有的遊戲目錄與內建計分板(如果有的話)。')).toBeVisible();
@@ -58,8 +59,13 @@ it('shows the cloud opt-in copy and remembers the checkbox on this device', () =
     expect(mocks.openCloud).not.toHaveBeenCalled();
     view.unmount();
 
-    renderSettings();
-    const savedCheckbox = screen.getByRole('checkbox', { name: /^Connect to the cloud database/ });
+    const english = renderSettings();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /BGG \/ GeekGroup game data/ })).toBeVisible();
+    english.unmount();
+
+    renderSettings(undefined, 'zh-TW');
+    const savedCheckbox = screen.getByRole('checkbox', { name });
     expect(savedCheckbox).toBeChecked();
     fireEvent.click(savedCheckbox);
     expect(savedCheckbox).not.toBeChecked();
@@ -288,8 +294,10 @@ it('shows release status and notes in the reader language with earlier updates c
   expect(screen.getByText(latest.date ? 'Latest update' : 'Upcoming update')).toBeInTheDocument();
   if (latest.date) expect(screen.getByText(latest.date)).toBeInTheDocument();
   else expect(screen.queryByText('Latest update')).not.toBeInTheDocument();
-  expect(screen.getByText(latest.items[0].en!)).toBeVisible();
+  const visibleNote = latest.items.find(item => item.en);
+  expect(screen.getByText(visibleNote!.en!)).toBeVisible();
   expect(screen.queryByText(latest.items[0].zh)).toBeNull();
+  expect(screen.queryByText(/connect to the cloud database|cloud built-in scoreboard|rule mistakes site/i)).not.toBeInTheDocument();
   const earlier = screen.getByText('Earlier updates').closest('details')!;
   expect(earlier).not.toHaveAttribute('open');
   expect(earlier).toHaveTextContent(previous.items[0].en!);
@@ -302,6 +310,7 @@ it('shows release status and notes in the reader language with earlier updates c
   expect(october).not.toHaveTextContent('Sweet Lands');
   view.unmount();
   renderSettings(undefined, 'zh-TW');
+  expect(screen.getByText(latest.items[0].zh)).toBeVisible();
   expect(screen.getByText('內建計分板新增甜蜜國度。')).toBeInTheDocument();
 });
 

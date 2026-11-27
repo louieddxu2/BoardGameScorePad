@@ -44,6 +44,7 @@ describe('bundled copies that record their cloud version', () => {
   beforeEach(async () => {
     await Promise.all(db.tables.map((table) => table.clear()));
     localStorage.clear();
+    document.documentElement.lang = 'zh-TW';
     setCloudDataEnabled(true);
     showToast.mockClear();
     confirm.mockReset();

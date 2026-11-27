@@ -23,17 +23,12 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '可在設定手動開啟「連結雲端資料庫」，搜尋更多遊戲。這項功能目前預設關閉。',
-        en: 'Turn on Connect to the cloud database in Settings to find more games in search. The option is off by default.' },
-      { kind: 'new', zh: '雲端有目前介面語言的內建計分板時，開局可下載或更新。下載失敗時，仍可用裝置上已有的版本開局。',
-        en: 'If a cloud built-in scoreboard is available in your app language, you can download or update it when starting a game. If the download fails, you can still use a copy on your device.' },
-      { kind: 'improved', zh: '續局優先用原本的內建計分板。找不到原版且沒有進行中的多人房間時，可選用新版，保留能對應的分數並重算總分。',
-        en: 'Resume with the original built-in scoreboard when available. If it’s unavailable and there’s no active multiplayer room, you can choose a newer version, keep scores in matching fields and recalculate totals.' },
-      { kind: 'new', zh: '管理員可在分享選單發布或更新官方計分板，裝置會記住管理員的登入狀態。',
-        en: 'Admins can publish or update official scoreboards from the share menu and stay signed in on the device.' },
+      { kind: 'new', zh: '可在設定手動開啟「連結雲端資料庫」，搜尋更多遊戲。這項功能目前預設關閉。' },
+      { kind: 'new', zh: '開局可下載或更新雲端內建計分板。下載失敗時，仍可用裝置上已有的版本開局。' },
+      { kind: 'improved', zh: '續局優先用原本的內建計分板。找不到原版且沒有進行中的多人房間時，可選用新版，保留能對應的分數並重算總分。' },
+      { kind: 'new', zh: '管理員可在分享選單發布或更新官方計分板，裝置會記住管理員的登入狀態。' },
       { kind: 'new', zh: '部分遊戲可在計分表下方查看常玩錯的規則，也能前往「玩錯的桌遊規則」網站補充。' },
-      { kind: 'improved', zh: '開局可用英文名稱和別名找內建計分板。也能找到「玩錯的桌遊規則」收錄的部分遊戲，用簡易計分板開局。',
-        en: 'Find built-in scoreboards by English names and aliases. You can also find some games from the rule mistakes site and start them with a simple scoreboard.' },
+      { kind: 'improved', zh: '開局可用英文名稱和別名找內建計分板。也能找到「玩錯的桌遊規則」收錄的部分遊戲，用簡易計分板開局。' },
       { kind: 'improved', zh: 'BGG 清單中標為擴充的遊戲會從開局搜尋隱藏。舊清單需重新匯入才會套用。',
         en: 'Start search hides games marked as expansions in imported BGG lists. Re-import older lists to apply this change.' },
       { kind: 'improved', zh: 'App 開啟時會沿用上次的主題。首頁內容會一起出現，避免畫面跳動。',

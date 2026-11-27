@@ -2,12 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Download, Upload, Loader2, Cloud, CloudOff, Database, FileJson } from 'lucide-react';
 import type { AppTheme } from '../../../theme';
-import { useSettingsTranslation } from '../../../i18n/settings';
+import { useTranslation } from '../../../i18n';
+import { cloudDataSettingsCopy, useSettingsTranslation } from '../../../i18n/settings';
 import { useCommonTranslation } from '../../../i18n/common';
 import { SettingsPreferences } from './SettingsPreferences';
 import { SettingsAbout } from './SettingsAbout';
 import { NavRow, SettingsGroup } from './SettingsRows';
-import { setCloudDataEnabled, useCloudDataEnabled } from '../../../features/cloud-data/cloudDataPreference';
+import { setCloudDataEnabled, supportsCloudData, useCloudDataEnabled } from '../../../features/cloud-data/cloudDataPreference';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { BackupInProgressError, withBackupAccess } from '../../../services/backupAccess';
 import { BackupError } from '../../../services/offlineBackup/errors';
@@ -34,6 +35,7 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
 }) {
   const t = useSettingsTranslation();
   const { t: tCommon } = useCommonTranslation();
+  const { language } = useTranslation();
   const cloudDataEnabled = useCloudDataEnabled();
   const { confirm } = useConfirm();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -182,20 +184,20 @@ export function SettingsView({ themeMode, onSelectTheme, onBusyChange, zoomLevel
       </div>
     </SettingsGroup>
     <SettingsGroup title={t('external_data')} footer={t('external_footer')}>
-      <div className="px-4 py-3 space-y-2">
+      {supportsCloudData(language) && <div className="px-4 py-3 space-y-2">
         <label className="flex items-start gap-3 font-medium has-[:disabled]:opacity-50">
           <input type="checkbox" checked={cloudDataEnabled} disabled={!!operation}
             aria-describedby="settings-cloud-data-description settings-cloud-data-features"
             onChange={event => setCloudDataEnabled(event.target.checked)}
             className="mt-0.5 h-5 w-5 shrink-0 accent-brand-primary" />
-          <span>{t('cloud_data_opt_in')}</span>
+          <span>{cloudDataSettingsCopy.label}</span>
         </label>
-        <p id="settings-cloud-data-description" className="text-sm text-txt-secondary">{t('cloud_data_description')}</p>
+        <p id="settings-cloud-data-description" className="text-sm text-txt-secondary">{cloudDataSettingsCopy.description}</p>
         <ol id="settings-cloud-data-features" className="list-decimal space-y-1 pl-5 text-sm text-txt-secondary">
-          <li>{t('cloud_data_catalog')}</li>
-          <li>{t('cloud_data_rules')}</li>
+          <li>{cloudDataSettingsCopy.catalog}</li>
+          <li>{cloudDataSettingsCopy.rules}</li>
         </ol>
-      </div>
+      </div>}
       <NavRow disabled={!!operation} onClick={onOpenGameCatalogImport} label={t('catalog_import')}
         icon={<Database size={20} className="text-txt-muted shrink-0" />} />
       <NavRow disabled={!!operation} onClick={onOpenBgStats} label={t('bgstats_transfer')}

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { GameTemplate } from '../../../types';
 import { X, Cloud } from 'lucide-react';
+import { useTranslation } from '../../../i18n';
 import { useCloudLibraryTranslation } from '../../../i18n/cloud_library';
+import { supportsCloudData } from '../../../features/cloud-data/cloudDataPreference';
 import OfficialBoardsPanel from '../../../features/official-boards/components/OfficialBoardsPanel';
 import { useOfficialBoardsTranslation } from '../../../i18n/officialBoards';
 import ShareCatalogTab from './cloud-library/ShareCatalogTab';
@@ -25,6 +27,8 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, 
   const ownerSession = useCloudSession();
   const { t } = useCloudLibraryTranslation();
   const { t: tOfficial } = useOfficialBoardsTranslation();
+  const { language } = useTranslation();
+  const showOfficialTab = supportsCloudData(language);
   const [tab, setTab] = useState<'share' | 'official'>('share');
   const [isBusy, setIsBusy] = useState(false);
 
@@ -54,7 +58,7 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, 
           </div>
           <p className="text-xs text-txt-muted mt-1.5 leading-relaxed">{t('lib_subtitle')}</p>
           {/* Equal-width segmented tabs; both use the same box so switching never resizes them. */}
-          <div className="flex gap-1 mt-3 p-1 rounded-xl modal-bg-recessed">
+          {showOfficialTab && <div className="flex gap-1 mt-3 p-1 rounded-xl modal-bg-recessed">
             {(['share', 'official'] as const).map((key) => (
               <button
                 key={key}
@@ -66,12 +70,12 @@ const CloudLibraryModal: React.FC<CloudLibraryModalProps> = ({ isOpen, onClose, 
                 {key === 'share' ? tOfficial('official_tab_share') : tOfficial('official_tab_official')}
               </button>
             ))}
-          </div>
+          </div>}
         </div>
 
         {/* Body */}
         <div className="modal-body flex-1 p-4 overflow-y-auto no-scrollbar min-h-0">
-          {tab === 'official' ? (
+          {showOfficialTab && tab === 'official' ? (
             <OfficialBoardsPanel isAdmin={isOwnerEmail(userEmail) || ownerSession.isAdmin} />
           ) : (
             <ShareCatalogTab userTemplates={userTemplates} onImport={onImport} onBusyChange={setIsBusy} />

@@ -1,9 +1,11 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fetchGameRules, fetchRuleSummary } from '../game-rules/rulesApi';
 import { fetchGameCatalog, fetchGameCatalogVersion, fetchOfficialPack, fetchOfficialTemplate } from '../official-boards/officialApi';
 import { setCloudDataEnabled } from './cloudDataPreference';
 
+beforeEach(() => { document.documentElement.lang = 'zh-TW'; });
 afterEach(() => {
+  document.documentElement.lang = '';
   localStorage.clear();
   vi.restoreAllMocks();
 });
@@ -15,7 +17,7 @@ it.each([
   ['scoreboard version', () => fetchOfficialTemplate('Built-in-Catan', 1), '/api/official/template/Built-in-Catan?version=1'],
   ['rules summary', () => fetchRuleSummary('13'), '/api/rules/summary?bggId=13'],
   ['game rules', () => fetchGameRules('catan'), '/api/rules/game?gameId=catan'],
-] as const)('only requests the %s after opt-in and uses an anonymous GET', async (_label, read, expectedPath) => {
+] as const)('only requests the %s when opted in with the Traditional Chinese interface', async (_label, read, expectedPath) => {
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ rules: null, summary: null }));
 
   await expect(read()).rejects.toMatchObject({ code: 'cloud_data_disabled' });
@@ -34,6 +36,11 @@ it.each([
   expect(request.headers.has('Authorization')).toBe(false);
   expect(request.body).toBeNull();
 
+  document.documentElement.lang = 'en';
+  await expect(read()).rejects.toMatchObject({ code: 'cloud_data_disabled' });
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+
+  document.documentElement.lang = 'zh-TW';
   setCloudDataEnabled(false);
   await expect(read()).rejects.toMatchObject({ code: 'cloud_data_disabled' });
   expect(fetchMock).toHaveBeenCalledTimes(1);

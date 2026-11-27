@@ -5,9 +5,11 @@ import { GameTemplate } from '../../../types';
 import { db } from '../../../db';
 import { uploadTemplateToCloud, buildCloudShareUrl } from '../../../services/templateShareService';
 import { useToast } from '../../../hooks/useToast';
+import { useTranslation } from '../../../i18n';
 import { useDashboardTranslation } from '../../../i18n/dashboard';
 import { useCommonTranslation } from '../../../i18n/common';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
+import { supportsCloudData } from '../../../features/cloud-data/cloudDataPreference';
 import OfficialPublishSection from '../../../features/official-boards/components/OfficialPublishSection';
 
 interface ShareTemplateModalProps {
@@ -28,6 +30,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
 }) => {
     const { t } = useDashboardTranslation();
     const { t: tCommon } = useCommonTranslation();
+    const { language } = useTranslation();
     const { showToast } = useToast();
 
     // [Migrated] 返回鍵關閉分享彈窗
@@ -301,7 +304,7 @@ const ShareTemplateModal: React.FC<ShareTemplateModalProps> = ({
                 </div>
 
                 {/* Owner only: publish as an official (cloud built-in) scoreboard */}
-                {isOwner && (
+                {isOwner && supportsCloudData(language) && (
                     <OfficialPublishSection template={template} onGetFullTemplate={onGetFullTemplate} />
                 )}
             </div>

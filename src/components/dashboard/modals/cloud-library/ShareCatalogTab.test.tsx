@@ -3,6 +3,8 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { db } from '../../../../db';
+import { LanguageContext, type Language } from '../../../../i18n';
+import CloudLibraryModal from '../CloudLibraryModal';
 import ShareCatalogTab from './ShareCatalogTab';
 
 const fetchTemplateFromCloud = vi.fn();
@@ -33,6 +35,22 @@ describe('ShareCatalogTab', () => {
     syncCatalog.mockResolvedValue({ ran: 'none', changed: 0 });
   });
   afterEach(() => vi.clearAllMocks());
+
+  it('shows the official tab only in Traditional Chinese and keeps shared scoreboards accessible', async () => {
+    const library = (language: Language) => (
+      <LanguageContext.Provider value={{ language, setLanguage: vi.fn() }}>
+        <CloudLibraryModal isOpen userTemplates={[]} onImport={vi.fn()} onClose={vi.fn()} />
+      </LanguageContext.Provider>
+    );
+    const { rerender } = render(library('zh-TW'));
+    fireEvent.click(screen.getByRole('button', { name: 'official_tab_official' }));
+    expect(screen.getByText('official_cloud_data_disabled')).toBeVisible();
+
+    rerender(library('en'));
+    expect(screen.queryByRole('button', { name: 'official_tab_official' })).not.toBeInTheDocument();
+    expect(screen.queryByText('official_cloud_data_disabled')).not.toBeInTheDocument();
+    expect(await screen.findByText('Cascadia')).toBeVisible();
+  });
 
   it('lists the local catalog and downloads a payload only when importing', async () => {
     fetchTemplateFromCloud.mockResolvedValue({ id: 'share-1', name: 'Cascadia', payload: { name: 'Cascadia', columns: [{ id: 'c1', name: 'Bear' }] } });

@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useLayoutEffect, ReactNode } from 'react';
 
 // --- 1. 型別定義 ---
 export type Language = 'zh-TW' | 'en';
@@ -24,7 +24,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     });
 
     // 同步 HTML lang 屬性，避免 Chrome 誤判語系跳出翻譯提示
-    useEffect(() => {
+    useLayoutEffect(() => {
         document.documentElement.lang = LANG_MAP[language];
     }, [language]);
 

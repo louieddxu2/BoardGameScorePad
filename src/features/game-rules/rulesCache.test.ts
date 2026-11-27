@@ -70,6 +70,7 @@ const cloud = () => {
 };
 
 beforeEach(async () => {
+  document.documentElement.lang = 'zh-TW';
   setCloudDataEnabled(true);
   await Promise.all([db.ruleSummaries.clear(), db.ruleContents.clear()]);
 });

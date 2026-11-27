@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from '../../../i18n';
 import { useCloudDataEnabled } from '../../cloud-data/cloudDataPreference';
 import { useGameRules, useRuleSummary } from './useGameRuleData';
 import RulesEntryButton from '../components/RulesEntryButton';
@@ -10,8 +9,7 @@ import RulesDrawer from '../components/RulesDrawer';
  * are written in Chinese) and only when the game's BGG ID leads to at least one rule.
  */
 export const useSessionRules = (bggId: string | undefined) => {
-  const { language } = useTranslation();
-  const canShowRules = useCloudDataEnabled() && language === 'zh-TW';
+  const canShowRules = useCloudDataEnabled();
   const summary = useRuleSummary(bggId, canShowRules);
   const [isOpen, setIsOpen] = useState(false);
   const state = useGameRules(summary, isOpen);

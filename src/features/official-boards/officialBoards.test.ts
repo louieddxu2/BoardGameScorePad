@@ -59,6 +59,7 @@ const mockWorker = (route: Route) =>
 
 describe('official boards (local)', () => {
   beforeEach(async () => {
+    document.documentElement.lang = 'zh-TW';
     setCloudDataEnabled(true);
     await Promise.all(db.tables.map((table) => table.clear()));
   });
@@ -215,6 +216,7 @@ describe('official pack (first open)', () => {
   beforeEach(async () => {
     await Promise.all(db.tables.map((table) => table.clear()));
     localStorage.clear();
+    document.documentElement.lang = 'zh-TW';
     setCloudDataEnabled(true);
   });
   afterEach(() => { setCloudDataEnabled(false); vi.restoreAllMocks(); });
