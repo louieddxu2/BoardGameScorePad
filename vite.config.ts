@@ -42,6 +42,10 @@ export default defineConfig(({ command }) => ({
             if (id.includes('dexie')) {
               return 'db-vendor';
             }
+            // Keep PeerJS and its WebRTC dependencies out of the main app chunk.
+            if (id.includes('/node_modules/peerjs/')) {
+              return 'multiplayer-vendor';
+            }
           }
         }
       }

@@ -23,10 +23,10 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '可在設定手動開啟「連結雲端資料庫」，下載遊戲目錄與內建計分板。這項功能目前預設關閉。',
-        en: 'Turn on Connect to the cloud database in Settings to download the game catalog and built-in scoreboards. The option is off by default.' },
-      { kind: 'new', zh: '開局可搜尋、下載與更新雲端內建計分板。下載失敗時，仍可用裝置上已有的版本開局。',
-        en: 'Find, download and update built-in scoreboards from the cloud when starting a game. If a download fails, you can start with an existing copy on your device.' },
+      { kind: 'new', zh: '可在設定手動開啟「連結雲端資料庫」，搜尋更多遊戲。這項功能目前預設關閉。',
+        en: 'Turn on Connect to the cloud database in Settings to find more games in search. The option is off by default.' },
+      { kind: 'new', zh: '雲端有目前介面語言的內建計分板時，開局可下載或更新。下載失敗時，仍可用裝置上已有的版本開局。',
+        en: 'If a cloud built-in scoreboard is available in your app language, you can download or update it when starting a game. If the download fails, you can still use a copy on your device.' },
       { kind: 'improved', zh: '續局優先用原本的內建計分板。找不到原版且沒有進行中的多人房間時，可選用新版，保留能對應的分數並重算總分。',
         en: 'Resume with the original built-in scoreboard when available. If it’s unavailable and there’s no active multiplayer room, you can choose a newer version, keep scores in matching fields and recalculate totals.' },
       { kind: 'new', zh: '管理員可在分享選單發布或更新官方計分板，裝置會記住管理員的登入狀態。',
