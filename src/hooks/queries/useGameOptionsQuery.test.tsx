@@ -1,6 +1,7 @@
-import { renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GameTemplate, SavedListItem } from '../../types';
+import { setCloudDataEnabled } from '../../features/cloud-data/cloudDataPreference';
 import type { BggGameSummary } from '../../utils/extractDataSummaries';
 import { useGameOptionsQuery as useOptions } from './useGameOptionsQuery';
 import { getSearchResults } from '../../features/game-selector/utils/sortStrategies';
@@ -38,6 +39,7 @@ const useGameOptionsQuery = (query: string, pinnedIds: string[], loadFullDiction
 
 describe('useGameOptionsQuery', () => {
   beforeEach(() => {
+    setCloudDataEnabled(true);
     fixtures.templates = [];
     fixtures.systemTemplates = [];
     fixtures.hiddenTemplateIdentities = [];
@@ -47,6 +49,7 @@ describe('useGameOptionsQuery', () => {
     fixtures.bggGames = [];
     fixtures.officialCatalog = [];
   });
+  afterEach(() => setCloudDataEnabled(false));
 
   it('keeps recent game order and exclusions when the full dictionary is opened later', () => {
     fixtures.templates = [
@@ -121,6 +124,26 @@ describe('useGameOptionsQuery', () => {
     const cloud = result.current.allOptions.find(o => o.templateId === 'Built-in-Cloud');
     expect(local?.officialBoardStatus).toBeUndefined();
     expect(cloud?.officialBoardStatus).toBe('needs_download');
+  });
+
+  it('keeps local boards available while hiding cloud-only games and update prompts when disabled', () => {
+    fixtures.officialCatalog = [
+      { id: 'Built-in-Local', bggId: '1', lang: 'zh-TW', name: 'Local Board', version: 1, bundled: true, updatedAt: 1 },
+      { id: 'Built-in-Cloud', bggId: '2', lang: 'zh-TW', name: 'Cloud Board', version: 1, bundled: false, updatedAt: 1 },
+    ];
+    fixtures.systemTemplates = [{ id: 'Built-in-Local', name: 'Local Board', bggId: '1', columns: [], createdAt: 1 }];
+    const pinnedIds: string[] = [];
+    const { result } = renderHook(() => useGameOptionsQuery('', pinnedIds));
+    const local = () => result.current.gameOptions.find(o => o.templateId === 'Built-in-Local');
+
+    expect(local()?.officialBoardStatus).toBe('update_available');
+    expect(result.current.gameOptions.some(o => o.templateId === 'Built-in-Cloud')).toBe(true);
+
+    act(() => setCloudDataEnabled(false));
+    expect(result.current.gameOptionsLoaded).toBe(true);
+    expect(local()).toBeDefined();
+    expect(local()?.officialBoardStatus).toBeUndefined();
+    expect(result.current.gameOptions.some(o => o.templateId === 'Built-in-Cloud')).toBe(false);
   });
 
   it('finds official boards by aliases from the official catalog without a local BGG dictionary', () => {

@@ -4,6 +4,7 @@
  * through rulesCache.ts, which decides when a request is needed at all.
  */
 import { CLOUD_SHARE_BASE_URL } from '../../services/cloudClient';
+import { isCloudDataEnabled } from '../cloud-data/cloudDataPreference';
 import type { GameRules, RuleSummary } from './types';
 
 const REQUEST_TIMEOUT_MS = 15000;
@@ -19,10 +20,13 @@ export class RulesApiError extends Error {
 }
 
 const request = async <T>(path: string): Promise<T> => {
+  if (!isCloudDataEnabled()) throw new RulesApiError('cloud_data_disabled', 0);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(`${CLOUD_SHARE_BASE_URL}${path}`, { signal: controller.signal });
+    const response = await fetch(`${CLOUD_SHARE_BASE_URL}${path}`, {
+      credentials: 'omit', referrerPolicy: 'no-referrer', signal: controller.signal,
+    });
     const text = await response.text();
     const body = text ? JSON.parse(text) : null;
     if (!response.ok) throw new RulesApiError(body?.error || `http_${response.status}`, response.status);

@@ -12,7 +12,7 @@ import type { GameRules, RuleSummary } from '../types';
 export const useRuleSummary = (bggId: string | undefined, enabled: boolean): RuleSummary | null => {
   const id = enabled ? bggId?.trim() : undefined;
   const local = useLiveQuery(async () => (id ? (await findLocalRuleSummary(id)) ?? null : null), [id]);
-  return local ?? null;
+  return id ? local ?? null : null;
 };
 
 export type GameRulesState =

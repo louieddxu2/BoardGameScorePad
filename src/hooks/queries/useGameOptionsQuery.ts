@@ -9,6 +9,7 @@ import { BggGameSummary, extractBggGameSummary } from '../../utils/extractDataSu
 import { GameTemplate, SavedListItem } from '../../types';
 import { getGameSearchNames, getRecentSearchUids, normalizeGameSearch } from '../../features/game-selector/utils/searchRanking';
 import { LanguageContext } from '../../i18n';
+import { useCloudDataEnabled } from '../../features/cloud-data/cloudDataPreference';
 import { computeOfficialLaunchStates, localOfficialVersion } from '../../features/official-boards/officialBoards';
 import { mergeOfficialGameInfo } from '../../features/official-boards/officialGameInfo';
 import { officialBoardsOf } from '../../features/official-boards/gameCatalog';
@@ -79,12 +80,13 @@ export const useGameOptionsQuery = (
   // 3a. Official catalog (local copy) for the current language.
   // Read the language without requiring a provider (zh-TW is the app default).
   const isEnglish = (useContext(LanguageContext)?.language ?? 'zh-TW').startsWith('en');
+  const catalogEnabled = useCloudDataEnabled() && enabled;
   // The game catalog: every game with a BGG ID, its official boards and rules.
   const localOfficialCatalog = useLiveQuery(
-    async (): Promise<GameCatalogEntry[] | undefined> => enabled ? db.gameCatalog.toArray() : undefined,
-    [enabled]
+    async (): Promise<GameCatalogEntry[] | undefined> => catalogEnabled ? db.gameCatalog.toArray() : undefined,
+    [catalogEnabled]
   );
-  const catalogGames = localOfficialCatalog ?? EMPTY_GAMES;
+  const catalogGames = catalogEnabled ? localOfficialCatalog ?? EMPTY_GAMES : EMPTY_GAMES;
   const officialCatalog = useMemo(() => officialBoardsOf(catalogGames), [catalogGames]);
   const languageCatalog = useMemo(
     () => officialCatalog.filter(entry =>
@@ -107,7 +109,7 @@ export const useGameOptionsQuery = (
     () => enabled ? [...allTemplates, ...allSystemTemplates, ...cloudOnlyTemplates] : EMPTY_TEMPLATES,
     [enabled, allTemplates, allSystemTemplates, cloudOnlyTemplates]
   );
-  const sourcesLoaded = templatesLoaded && savedGamesLoaded && localOfficialCatalog !== undefined;
+  const sourcesLoaded = templatesLoaded && savedGamesLoaded && (!catalogEnabled || localOfficialCatalog !== undefined);
   const needsDictionary = useMemo(() => recentGamesNeedDictionary(allSavedGames, templatesForOptions),
     [allSavedGames, templatesForOptions]);
   const readDictionary = enabled && (loadFullDictionary || (sourcesLoaded && needsDictionary));

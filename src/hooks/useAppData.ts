@@ -2,8 +2,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../db';
 import { migrateFromLocalStorage } from '../utils/dbMigration';
-import { syncCatalogsInBackground } from '../features/official-boards/catalogSync';
+import { syncGameCatalogInBackground } from '../features/official-boards/catalogSync';
 import { installOfficialPackInBackground } from '../features/official-boards/officialPack';
+import { useCloudDataEnabled } from '../features/cloud-data/cloudDataPreference';
 import { GameTemplate, GameSession, HistoryRecord } from '../types';
 import { googleDriveService, getAutoConnectPreference } from '../services/googleDrive';
 import { backupTemplateToCloud } from './sessionCloudBackup';
@@ -35,6 +36,7 @@ import { useAppTheme } from './useAppTheme';
 export const useAppData = () => {
     const { showToast } = useToast();
     const { t: tApp } = useAppTranslation();
+    const cloudDataEnabled = useCloudDataEnabled();
     const [isDbReady, setIsDbReady] = useState(false);
     const [historyRequested, setHistoryRequested] = useState(false);
     const [gameOptionsRequested, setGameOptionsRequested] = useState(false);
@@ -67,11 +69,11 @@ export const useAppData = () => {
 
     const appLangCode = tApp('app_lang_code') || 'zh-TW';
     useEffect(() => {
-        if (!isDbReady) return;
+        if (!isDbReady || !cloudDataEnabled) return;
         let current = true;
         const refreshCloud = () => {
-            // Both reads are background work. The pack check shares the official catalog result.
-            void syncCatalogsInBackground()?.then(result => {
+            // The pack check shares the official catalog result.
+            void syncGameCatalogInBackground()?.then(result => {
                 if (current && result) installOfficialPackInBackground(appLangCode, result.state.throughVersion);
             });
         };
@@ -81,7 +83,7 @@ export const useAppData = () => {
             current = false;
             window.removeEventListener('online', refreshCloud);
         };
-    }, [isDbReady, appLangCode]);
+    }, [isDbReady, cloudDataEnabled, appLangCode]);
 
     // --- 2. Queries, Library & Session Management ---
     // Pass pinnedIds so queries can correctly filter simple templates

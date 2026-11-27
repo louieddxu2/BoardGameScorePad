@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SettingsView } from './SettingsView';
 import { LanguageContext, LanguageProvider } from '../../../i18n';
+import { setCloudDataEnabled } from '../../../features/cloud-data/cloudDataPreference';
 import { useMobileZoom } from '../../../hooks/useMobileZoom';
 import { BackupError } from '../../../services/offlineBackup/errors';
 import { BackupInProgressError, withBackupAccess } from '../../../services/backupAccess';
@@ -42,6 +43,30 @@ function SettingsWithLivePreferences() {
     zoomLevel={zoomLevel} onZoomChange={setZoomLevel} isCloudConnected={false} isCloudSyncing={false} onOpenCloud={mocks.openCloud}
     onOpenBgStats={mocks.openBgStats} onOpenGameCatalogImport={mocks.openCatalog} />;
 }
+
+it('shows the cloud opt-in copy and remembers the checkbox on this device', () => {
+  const view = renderSettings(undefined, 'zh-TW');
+  const checkbox = screen.getByRole('checkbox', { name: '連結雲端資料庫(尚未完善暫時供手動啟用，未來會預設開啟)：' });
+  expect(checkbox).not.toBeChecked();
+  expect(screen.getByText('啟用後App會在需要時連結雲端資料庫取得資料，此功能不會傳遞你的資料出去。')).toBeVisible();
+  expect(screen.getByText('下載雲端有的遊戲目錄與內建計分板(如果有的話)。')).toBeVisible();
+  expect(screen.getByText('自動查詢《玩錯的桌遊規則》網站裡記錄的規則。')).toBeVisible();
+
+  try {
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+    expect(mocks.openCloud).not.toHaveBeenCalled();
+    view.unmount();
+
+    renderSettings();
+    const savedCheckbox = screen.getByRole('checkbox', { name: /^Connect to the cloud database/ });
+    expect(savedCheckbox).toBeChecked();
+    fireEvent.click(savedCheckbox);
+    expect(savedCheckbox).not.toBeChecked();
+  } finally {
+    act(() => setCloudDataEnabled(false));
+  }
+});
 
 it('uses the existing zoom and language owners and opens cloud management only when requested', () => {
   const oldLanguage = localStorage.getItem('app_language');

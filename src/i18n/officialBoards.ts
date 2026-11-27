@@ -9,6 +9,7 @@ export const officialBoardsTranslations = {
         // Cloud library tabs
         official_tab_share: "雲端分享",
         official_tab_official: "雲端內建",
+        official_cloud_data_disabled: "請先在設定的「外部資料」開啟「連結雲端資料庫」。",
         // Sync status
         official_sync_title: "目錄同步",
         official_sync_official: "雲端內建目錄",
@@ -91,6 +92,7 @@ export const officialBoardsTranslations = {
         official_using_local: "Couldn't get the new version, so the local version is used for this game.",
         official_tab_share: "Shared",
         official_tab_official: "Cloud built-in",
+        official_cloud_data_disabled: "In Settings, go to External data and turn on Connect to the cloud database.",
         official_sync_title: "Catalog sync",
         official_sync_official: "Cloud built-in catalog",
         official_sync_share: "Shared catalog",

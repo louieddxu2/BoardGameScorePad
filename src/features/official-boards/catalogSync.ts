@@ -10,7 +10,7 @@
  */
 import type { Table } from 'dexie';
 import { db } from '../../db';
-import { fetchCatalogChanges, fetchCatalogSnapshot, fetchGameCatalog, fetchGameCatalogVersion } from './officialApi';
+import { fetchCatalogChanges, fetchCatalogSnapshot, fetchGameCatalog, fetchGameCatalogVersion, OfficialApiError } from './officialApi';
 import { toStoredGameEntry } from './gameCatalog';
 import type { CatalogKind, CatalogSyncState, ShareCatalogEntry } from './types';
 
@@ -129,15 +129,12 @@ export const syncCatalog = (kind: CatalogKind, mode: CatalogSyncMode = 'auto'): 
 };
 
 /** Background sync used on app start and reconnect. Reuse the game catalog result for the first-open pack check. */
-export const syncCatalogsInBackground = () => {
-  // Unit tests drive sync explicitly and must not reach the network on app start.
-  if (import.meta.env.MODE === 'test') return;
+export const syncGameCatalogInBackground = () => {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-  const sync = (kind: CatalogKind) => syncCatalog(kind).catch((error) => {
-    console.warn(`[catalog] ${kind} sync failed`, error);
+  return syncCatalog('games').catch((error) => {
+    if (!(error instanceof OfficialApiError && error.code === 'cloud_data_disabled')) {
+      console.warn('[catalog] game sync failed', error);
+    }
     return null;
   });
-  const official = sync('games');
-  void sync('share');
-  return official;
 };

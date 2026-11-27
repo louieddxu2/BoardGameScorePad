@@ -3,6 +3,7 @@
  * Public reads need no account; admin calls carry the Google access token.
  */
 import { CLOUD_SHARE_BASE_URL } from '../../services/cloudClient';
+import { isCloudDataEnabled } from '../cloud-data/cloudDataPreference';
 import {
   clearCloudSessionIfTokenMatches,
   CloudSessionError,
@@ -55,22 +56,26 @@ export const fetchCatalogSnapshot = <T extends ShareCatalogEntry>(_kind: 'share'
 export const fetchCatalogChanges = <T extends ShareCatalogEntry>(_kind: 'share', after: number) =>
   request<CatalogChangesPayload<T>>(`/api/share/catalog/changes?after=${after}`);
 
+const readCloudData = async <T>(path: string, timeoutMs?: number): Promise<T> => {
+  if (!isCloudDataEnabled()) throw new OfficialApiError('cloud_data_disabled', 0);
+  return request<T>(path, { credentials: 'omit', referrerPolicy: 'no-referrer' }, timeoutMs);
+};
+
 /** The game catalog's current generation: one D1 row, so devices can tell whether to download. */
-export const fetchGameCatalogVersion = () => request<{ generation: number; generatedAt: number }>('/api/games/catalog/version');
+export const fetchGameCatalogVersion = () => readCloudData<{ generation: number; generatedAt: number }>('/api/games/catalog/version');
 
 /** The whole game catalog: every game with its names, official boards and rules (a few D1 rows). */
-export const fetchGameCatalog = () => request<{ generation: number; generatedAt: number; games: GameCatalogEntry[] }>('/api/games/catalog');
+export const fetchGameCatalog = () => readCloudData<{ generation: number; generatedAt: number; games: GameCatalogEntry[] }>('/api/games/catalog');
 
 export const fetchOfficialTemplate = (id: string, version: number | undefined, timeoutMs?: number) =>
-  request<OfficialCatalogEntry & { payload: GameTemplate }>(
+  readCloudData<OfficialCatalogEntry & { payload: GameTemplate }>(
     `/api/official/template/${encodeURIComponent(id)}${version === undefined ? '' : `?version=${version}`}`,
-    {},
     timeoutMs
   );
 
 /** Every bundled official scoreboard of one language, served from a single D1 row. */
 export const fetchOfficialPack = (lang: string) =>
-  request<OfficialPackPayload>(`/api/official/pack?lang=${encodeURIComponent(lang)}`);
+  readCloudData<OfficialPackPayload>(`/api/official/pack?lang=${encodeURIComponent(lang)}`);
 
 // ---------------------------------------------------------------------------
 // Admin

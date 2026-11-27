@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
+import { setCloudDataEnabled } from '../cloud-data/cloudDataPreference';
 import { computeRuleFilter } from '../../shared/ruleFilter';
 import {
   getGameRules,
@@ -68,10 +69,13 @@ const cloud = () => {
   };
 };
 
-describe('rule summary cache', () => {
-  beforeEach(() => Promise.all([db.ruleSummaries.clear(), db.ruleContents.clear()]));
-  afterEach(() => vi.restoreAllMocks());
+beforeEach(async () => {
+  setCloudDataEnabled(true);
+  await Promise.all([db.ruleSummaries.clear(), db.ruleContents.clear()]);
+});
+afterEach(() => { setCloudDataEnabled(false); vi.restoreAllMocks(); });
 
+describe('rule summary cache', () => {
   it('reads the cloud once per hour per BGG ID', async () => {
     const site = cloud();
     site.publish('v1');
@@ -111,9 +115,6 @@ describe('rule summary cache', () => {
 });
 
 describe('rule content cache', () => {
-  beforeEach(() => Promise.all([db.ruleSummaries.clear(), db.ruleContents.clear()]));
-  afterEach(() => vi.restoreAllMocks());
-
   it('reuses rules while the version matches and they are under 7 days old', async () => {
     const site = cloud();
     site.publish('v1');

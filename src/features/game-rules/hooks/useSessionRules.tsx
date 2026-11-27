@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from '../../../i18n';
+import { useCloudDataEnabled } from '../../cloud-data/cloudDataPreference';
 import { useGameRules, useRuleSummary } from './useGameRuleData';
 import RulesEntryButton from '../components/RulesEntryButton';
 import RulesDrawer from '../components/RulesDrawer';
@@ -10,11 +11,15 @@ import RulesDrawer from '../components/RulesDrawer';
  */
 export const useSessionRules = (bggId: string | undefined) => {
   const { language } = useTranslation();
-  const summary = useRuleSummary(bggId, language === 'zh-TW');
+  const canShowRules = useCloudDataEnabled() && language === 'zh-TW';
+  const summary = useRuleSummary(bggId, canShowRules);
   const [isOpen, setIsOpen] = useState(false);
   const state = useGameRules(summary, isOpen);
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
+  useEffect(() => {
+    if (!canShowRules) close();
+  }, [canShowRules, close]);
 
   // Once read, the rules give the current count even if the hour-old summary does not.
   const count = state.status === 'ready' ? state.rules?.rules.length ?? 0 : summary?.publishedRuleCount ?? 0;

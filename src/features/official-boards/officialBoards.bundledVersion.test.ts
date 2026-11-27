@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
+import { setCloudDataEnabled } from '../cloud-data/cloudDataPreference';
 import { useSessionManager } from '../../hooks/useSessionManager';
 import type { GameSession, GameTemplate } from '../../types';
 import { migrateFromLocalStorage } from '../../utils/dbMigration';
@@ -43,6 +44,7 @@ describe('bundled copies that record their cloud version', () => {
   beforeEach(async () => {
     await Promise.all(db.tables.map((table) => table.clear()));
     localStorage.clear();
+    setCloudDataEnabled(true);
     showToast.mockClear();
     confirm.mockReset();
   });

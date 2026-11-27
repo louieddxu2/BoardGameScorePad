@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../db';
+import { setCloudDataEnabled } from '../cloud-data/cloudDataPreference';
 import type { GameSession, GameTemplate } from '../../types';
 import * as dbMigration from '../../utils/dbMigration';
 import { syncCatalog } from './catalogSync';
@@ -58,9 +59,10 @@ const mockWorker = (route: Route) =>
 
 describe('official boards (local)', () => {
   beforeEach(async () => {
+    setCloudDataEnabled(true);
     await Promise.all(db.tables.map((table) => table.clear()));
   });
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { setCloudDataEnabled(false); vi.restoreAllMocks(); });
 
   it('marks boards that are missing or older locally', () => {
     const states = computeOfficialLaunchStates(
@@ -213,8 +215,9 @@ describe('official pack (first open)', () => {
   beforeEach(async () => {
     await Promise.all(db.tables.map((table) => table.clear()));
     localStorage.clear();
+    setCloudDataEnabled(true);
   });
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { setCloudDataEnabled(false); vi.restoreAllMocks(); });
 
   const packItem = (id: string, version: number, columns: string[]) => ({
     id,

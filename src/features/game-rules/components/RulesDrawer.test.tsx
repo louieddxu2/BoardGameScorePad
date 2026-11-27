@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../../../db';
 import { LanguageProvider } from '../../../i18n';
 import { _resetActiveCountForTesting } from '../../../hooks/useModalBackHandler';
+import { setCloudDataEnabled } from '../../cloud-data/cloudDataPreference';
 import GridFooter from '../../../components/session/parts/GridFooter';
 import { useSessionRules } from '../hooks/useSessionRules';
 import { toStoredGameEntry } from '../../official-boards/gameCatalog';
@@ -51,16 +52,36 @@ const settle = () => act(async () => { await new Promise((resolve) => setTimeout
 
 beforeEach(async () => {
   localStorage.setItem('app_language', 'zh-TW');
+  setCloudDataEnabled(true);
   _resetActiveCountForTesting();
   await Promise.all([db.ruleSummaries.clear(), db.ruleContents.clear(), db.gameCatalog.clear()]);
   await putGames();
 });
 afterEach(() => {
   cleanup();
+  setCloudDataEnabled(false);
   vi.restoreAllMocks();
 });
 
 describe('rules entry from the local game catalog', () => {
+  it('shows rules only while the cloud data option is enabled', async () => {
+    setCloudDataEnabled(false);
+    const fetchSpy = mockCloud();
+    renderSession();
+    await settle();
+    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    act(() => setCloudDataEnabled(true));
+    fireEvent.click(await screen.findByRole('button', { name: '玩錯規則，2 條' }));
+    expect(await screen.findByText(RULES.rules[0].statement)).toBeInTheDocument();
+
+    act(() => setCloudDataEnabled(false));
+    expect(screen.getByTestId('entry')).toBeEmptyDOMElement();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('shows the count from the catalog, and an expansion its base game\'s count, without any request', async () => {
     const fetchSpy = mockCloud();
     renderSession('321');
