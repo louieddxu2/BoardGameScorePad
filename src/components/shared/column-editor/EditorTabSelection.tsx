@@ -75,6 +75,7 @@ const EditorTabSelection: React.FC<EditorTabSelectionProps> = ({ column, onChang
           quickActions={column.quickActions || []}
           buttonGridColumns={column.buttonGridColumns}
           defaultColor={column.color}
+          defaultActionValue={0}
           showModifierToggle={false}
           onChange={handleQuickActionsChange}
         />

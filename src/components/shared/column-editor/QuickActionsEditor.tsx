@@ -14,6 +14,7 @@ interface QuickActionsEditorProps {
   quickActions: QuickAction[];
   buttonGridColumns?: number;
   defaultColor?: string;
+  defaultActionValue?: number;
   showModifierToggle: boolean;
   onChange: (updates: { quickActions?: QuickAction[]; buttonGridColumns?: number }) => void;
 }
@@ -81,6 +82,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
   quickActions = [],
   buttonGridColumns = 1,
   defaultColor,
+  defaultActionValue = 1,
   showModifierToggle,
   onChange,
 }) => {
@@ -94,7 +96,7 @@ const QuickActionsEditor: React.FC<QuickActionsEditorProps> = ({
       {
         id: generateId(DATA_LIMITS.ID_LENGTH.SHORT), // Short ID for actions
         label: '',
-        value: 1,
+        value: defaultActionValue,
         isModifier: false,
       },
     ];

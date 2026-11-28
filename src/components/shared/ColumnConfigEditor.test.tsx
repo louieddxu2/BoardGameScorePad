@@ -13,12 +13,12 @@ const automatic: ScoreColumn = {
     id: 'automatic', name: 'Automatic', formula: '', inputType: 'auto', isAuto: true, isScoring: true,
 };
 
-const renderEditor = () => {
+const renderEditor = (column = automatic) => {
     const onSave = vi.fn();
     render(
         <LanguageContext.Provider value={{ language: 'en', setLanguage: vi.fn() }}>
             <ConfirmationProvider>
-                <ColumnConfigEditor column={automatic} allColumns={[trees, automatic]}
+                <ColumnConfigEditor column={column} allColumns={[trees, column]}
                     onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />
             </ConfirmationProvider>
         </LanguageContext.Provider>,
@@ -30,6 +30,30 @@ const getFormulaInput = () => screen.getByPlaceholderText<HTMLInputElement>('f1(
 const save = () => fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
 afterEach(cleanup);
+
+describe('list options', () => {
+    it.each([
+        ['Standard', 'standard'],
+        ['Value Only', 'value_only'],
+        ['Label Only', 'label_only'],
+    ])('saves new options with zero in %s mode', (mode, renderMode) => {
+        const existingOption = { id: 'oak', label: 'Oak', value: 5, isModifier: false };
+        const onSave = renderEditor({ ...trees, id: 'list', inputType: 'clicker', quickActions: [existingOption] });
+
+        fireEvent.click(screen.getByRole('button', { name: mode }));
+        fireEvent.click(screen.getByRole('button', { name: 'Add Button' }));
+        const [, newValue] = screen.getAllByPlaceholderText('0');
+        expect(newValue).toHaveValue('0');
+        const [, newLabel] = screen.getAllByPlaceholderText('Label');
+        fireEvent.change(newLabel, { target: { value: 'Pine' } });
+        save();
+
+        expect(onSave).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+            renderMode,
+            quickActions: [existingOption, expect.objectContaining({ label: 'Pine', value: 0 })],
+        }));
+    });
+});
 
 describe('automatic formula draft', () => {
     it('saves a typed formula and its bindings directly', () => {
