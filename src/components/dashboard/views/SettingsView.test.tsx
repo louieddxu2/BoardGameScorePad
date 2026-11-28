@@ -300,7 +300,8 @@ it('shows release status and notes in the reader language with earlier updates c
   expect(screen.queryByText(/connect to the cloud database|cloud built-in scoreboard|rule mistakes site/i)).not.toBeInTheDocument();
   const earlier = screen.getByText('Earlier updates').closest('details')!;
   expect(earlier).not.toHaveAttribute('open');
-  expect(earlier).toHaveTextContent(previous.items[0].en!);
+  const previousEnglishNote = previous.items.find(item => item.en);
+  expect(earlier).toHaveTextContent(previousEnglishNote!.en!);
   const september = earlier.querySelector('section[aria-label="2026-09-30"]')!;
   expect(september).toHaveTextContent('Quick start lists up to five recent games.');
   expect(september).not.toHaveTextContent('Sweet Lands');

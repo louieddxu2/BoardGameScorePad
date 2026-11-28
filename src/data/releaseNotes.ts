@@ -22,6 +22,14 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    items: [
+      { kind: 'new', zh: '小工具新增「展示」，把手機橫放在桌上，兩側都能查看分數。畫面也會顯示勾選「照片分享」的選項標籤。',
+        en: 'The Display tool shows scores to both sides of the table when you set your phone down in landscape. It also shows selected option labels from fields marked Photo.' },
+      { kind: 'improved', zh: '列表選單新增項目時，預設數值為 0。',
+        en: 'New list options default to a value of 0.' },
+    ],
+  },
+  {
     date: '2026-11-28',
     items: [
       { kind: 'new', zh: '設定新增「連結雲端資料庫」，預設關閉。開啟後可搜尋更多遊戲、下載或更新雲端內建計分板，並在部分遊戲的計分表下方查看「玩錯規則」。' },
