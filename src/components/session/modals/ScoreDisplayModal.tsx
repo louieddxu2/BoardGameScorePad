@@ -134,6 +134,7 @@ const ScoreDisplayModal: React.FC<ScoreDisplayModalProps> = ({ isOpen, onClose, 
   return createPortal(
     <div
       className="score-display-viewport"
+      data-allow-landscape="true"
       role="dialog"
       aria-modal="true"
       aria-label={t('score_display_title')}

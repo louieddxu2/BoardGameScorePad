@@ -115,30 +115,6 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
     const [shouldKeepRetreatedLayout, setShouldKeepRetreatedLayout] = useState(false);
     
-    // 全螢幕切換防線
-    useEffect(() => {
-        if (isOpen) {
-            try {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log("Fullscreen request was rejected/failed:", err);
-                });
-            } catch (e) {
-                console.log("Fullscreen not supported:", e);
-            }
-        }
-        return () => {
-            if (document.fullscreenElement) {
-                try {
-                    document.exitFullscreen().catch(err => {
-                        console.log("Exit fullscreen failed:", err);
-                    });
-                } catch (e) {
-                    console.log("Exit fullscreen not supported:", e);
-                }
-            }
-        };
-    }, [isOpen]);
-
     // 鍵盤 Esc 退出監聽
     useEffect(() => {
         if (!isOpen) return;
@@ -445,6 +421,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
     return createPortal(
         <div 
             className="fixed inset-0 bg-black flex flex-col animate-in fade-in duration-200 text-txt-on-color select-none"
+            data-allow-landscape="true"
             data-mobile-zoom-ignore="true"
             style={{ zIndex }}
         >

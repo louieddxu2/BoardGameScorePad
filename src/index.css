@@ -402,6 +402,11 @@ html[data-theme='sage'] {
 
 }
 
+/* Tabletop tools portaled to the body can be used in landscape. */
+body:has(> [data-allow-landscape="true"]) #landscape-overlay {
+  visibility: hidden;
+}
+
 /* ============================================================
    LAYER: COMPONENTS (UI Abstractions & @apply)
    ============================================================ */

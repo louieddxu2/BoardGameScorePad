@@ -105,7 +105,8 @@ describe('PlayerSelectorModal gesture handling', () => {
         );
 
         const modal = document.querySelector('[data-mobile-zoom-ignore="true"]');
-        expect(modal).toBeTruthy();
+        expect(modal).toHaveAttribute('data-allow-landscape', 'true');
+        expect(document.documentElement.requestFullscreen).not.toHaveBeenCalled();
 
         const surface = screen.getByTestId('player-selector-surface');
         expect(surface.style.touchAction).toBe('none');
