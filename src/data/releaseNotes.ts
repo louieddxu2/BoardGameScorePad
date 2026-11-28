@@ -22,8 +22,10 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    date: '2026-11-28',
     items: [
       { kind: 'new', zh: '設定新增「連結雲端資料庫」，預設關閉。開啟後可搜尋更多遊戲、下載或更新雲端內建計分板，並在部分遊戲的計分表下方查看「玩錯規則」。' },
+      { kind: 'new', zh: '新增《River Valley Glassworks》內建計分板。' },
       { kind: 'improved', zh: 'BGG 清單中標為擴充的遊戲會從開局搜尋隱藏。舊清單需重新匯入才會套用。',
         en: 'Start search hides games marked as expansions in imported BGG lists. Re-import older lists to apply this change.' },
       { kind: 'improved', zh: '減少開啟 App 時的底色閃爍和首頁版面跳動。',
