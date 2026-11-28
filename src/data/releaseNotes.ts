@@ -23,9 +23,7 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     items: [
-      { kind: 'new', zh: '可在設定手動開啟「連結雲端資料庫」，搜尋更多遊戲。這項功能目前預設關閉。' },
-      { kind: 'new', zh: '開局可下載或更新雲端內建計分板。下載失敗時，仍可用裝置上已有的版本開局。' },
-      { kind: 'new', zh: '部分遊戲可在計分表下方查看常玩錯的規則，也能前往「玩錯的桌遊規則」網站補充。' },
+      { kind: 'new', zh: '設定新增「連結雲端資料庫」，預設關閉。開啟後可搜尋更多遊戲、下載或更新雲端內建計分板，並在部分遊戲的計分表下方查看「玩錯規則」。' },
       { kind: 'improved', zh: 'BGG 清單中標為擴充的遊戲會從開局搜尋隱藏。舊清單需重新匯入才會套用。',
         en: 'Start search hides games marked as expansions in imported BGG lists. Re-import older lists to apply this change.' },
       { kind: 'improved', zh: '減少開啟 App 時的底色閃爍和首頁版面跳動。',
