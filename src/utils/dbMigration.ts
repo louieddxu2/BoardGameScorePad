@@ -5,9 +5,9 @@ import { generateId } from './idGenerator';
 import { archiveOfficialVersion, localOfficialVersion, pruneOfficialVersions, reapplyDownloadedOfficialVersions } from '../features/official-boards/officialBoards';
 
 // Bump when built-in template content changes so existing installs refresh it.
-const CURRENT_BUILTIN_VERSION = 23;
+const CURRENT_BUILTIN_VERSION = 24;
 // Recorded by sync:builtins after both bundled languages match the cloud catalog.
-const BUNDLED_OFFICIAL_CATALOG_VERSION: number | null = null;
+const BUNDLED_OFFICIAL_CATALOG_VERSION: number | null = 3;
 const VERSION_KEY = 'sm_builtin_data_version';
 
 export const getInstalledBundledOfficialCatalogVersion = (): number | null => {
