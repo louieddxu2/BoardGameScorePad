@@ -27,6 +27,10 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         en: 'The Display tool shows scores to both sides of the table when you set your phone down in landscape. It also shows selected option labels from fields marked Photo.' },
       { kind: 'improved', zh: '列表選單新增項目時，預設數值為 0。',
         en: 'New list options default to a value of 0.' },
+      { kind: 'improved', zh: '起始玩家決定器直接鋪滿 App 畫面，省去瀏覽器的全螢幕提示。',
+        en: 'The First Player Picker fills the app window and skips the browser’s fullscreen prompt.' },
+      { kind: 'improved', zh: '起始玩家決定器只保留在計分板或決定器裡手選的顏色，讓玩家可以直接交換自動分配的顏色。',
+        en: 'The First Player Picker only reserves colors chosen by hand on the score sheet or in the picker, so players can swap automatically assigned colors directly.' },
     ],
   },
   {
