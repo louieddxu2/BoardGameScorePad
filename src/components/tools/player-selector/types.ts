@@ -2,12 +2,14 @@ export interface Candidate {
     id: string;
     name: string;
     linkedPlayerId?: string;
+    sessionPlayerId?: string;
     suggestedColors?: string[];
 }
 
 export interface SelectorPlayer {
     id: string;
     candidateId?: string;
+    sessionPlayerId?: string;
     text: string;
     linkedPlayerId?: string;
     touchId?: string | number;

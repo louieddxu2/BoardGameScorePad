@@ -3,6 +3,7 @@ import { act, render, screen } from '@testing-library/react';
 import React, { useRef, useEffect } from 'react';
 import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
 import { Candidate, SelectorPlayer } from './types';
+import type { Player } from '../../../types';
 
 // Mock Vibrate API
 if (typeof navigator !== 'undefined' && !navigator.vibrate) {
@@ -16,6 +17,7 @@ interface TestComponentProps {
     svgWidth?: number;
     svgHeight?: number;
     expectedPlayerCount?: number;
+    sessionPlayers?: Player[];
     mockSvgRef?: (svg: SVGSVGElement | null) => void;
 }
 
@@ -26,6 +28,7 @@ const TestComponent: React.FC<TestComponentProps> = ({
     svgWidth = 800,
     svgHeight = 600,
     expectedPlayerCount = 0,
+    sessionPlayers,
     mockSvgRef
 }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -56,7 +59,8 @@ const TestComponent: React.FC<TestComponentProps> = ({
         randomNames: ['Arthur', 'Merlin'],
         onSelectorPlayersChange: onPlayersChange,
         onCandidateLocked: onLocked,
-        expectedPlayerCount
+        expectedPlayerCount,
+        sessionPlayers
     });
 
     return <svg ref={svgRef} data-testid="test-svg" style={{ width: svgWidth, height: svgHeight }} />;
@@ -495,6 +499,28 @@ describe('usePlayerSelectorRenderer', () => {
             })
         ]);
         expect(svgElement.textContent).toContain('玩家 1');
+    });
+
+    it('carries a manually selected scoreboard color into the matching visible player', () => {
+        const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+        const onPlayersChange = vi.fn();
+        const sessionPlayers: Player[] = [
+            { id: 'slot-1', name: '玩家 1', color: '#ef4444', scores: {}, totalScore: 0, isColorManuallySet: true },
+        ];
+        render(<TestComponent candidates={[]} onPlayersChange={onPlayersChange} expectedPlayerCount={1} sessionPlayers={sessionPlayers} />);
+        const svg = screen.getByTestId('test-svg') as unknown as SVGSVGElement;
+
+        act(() => {
+            dispatchTouch(svg, 'touchstart', { identifier: 1, clientX: 220, clientY: 180 });
+            runFrame();
+        });
+        dateNowSpy.mockReturnValue(4101);
+        act(() => { runFrame(); });
+
+        expect(onPlayersChange).toHaveBeenLastCalledWith([
+            expect.objectContaining({ sessionPlayerId: 'slot-1', color: '#ef4444', isColorManuallySet: true }),
+        ]);
+        expect(svg.querySelector('rect[fill="#ef4444"]')).toBeInTheDocument();
     });
 
     it('should correctly trigger player changes and maintain prototype player properties', () => {

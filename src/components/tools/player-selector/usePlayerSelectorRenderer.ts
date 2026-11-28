@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import { OptionState, SelectorPointerInput, TouchState } from './selectorEngineTypes';
-import { getFourCandidatesForTouch } from './selectorCandidates';
-import { applyPaletteClick, applyPlayerClick } from './selectorHitTest';
+import { findSelectorSessionPlayer, getFourCandidatesForTouch } from './selectorCandidates';
+import { applyPaletteClick, applyPlayerClick, getInitialSelectorColor } from './selectorHitTest';
 import { createPlayerSelectorPhysicsLoop, DEFAULT_COLOR } from './selectorPhysics';
 import { bindPlayerSelectorEvents } from './selectorEvents';
 import { closeSelectorPlayerPalettes } from './selectorDisplay';
-import { GameTemplate, SavedListItem } from '../../../types';
+import { GameTemplate, Player, SavedListItem } from '../../../types';
 import { Voter } from '../../../features/recommendation/ContextResolver';
 
 
@@ -22,6 +22,7 @@ interface UsePlayerSelectorPrototypeRendererProps {
     shouldRetreatPlayers?: boolean;
     isInteractionLocked?: boolean;
     expectedPlayerCount?: number;
+    sessionPlayers?: Player[];
     template?: GameTemplate;
     allSavedPlayers?: SavedListItem[];
     contextVoters?: Voter[];
@@ -40,6 +41,7 @@ export const usePlayerSelectorRenderer = ({
     shouldRetreatPlayers = false,
     isInteractionLocked = false,
     expectedPlayerCount = 0,
+    sessionPlayers = [],
     template,
     allSavedPlayers = [],
     contextVoters = [],
@@ -51,12 +53,14 @@ export const usePlayerSelectorRenderer = ({
     const templateRef = useRef(template);
     const allSavedPlayersRef = useRef(allSavedPlayers);
     const contextVotersRef = useRef(contextVoters);
+    const sessionPlayersRef = useRef(sessionPlayers);
 
     useEffect(() => {
         templateRef.current = template;
         allSavedPlayersRef.current = allSavedPlayers;
         contextVotersRef.current = contextVoters;
-    }, [template, allSavedPlayers, contextVoters]);
+        sessionPlayersRef.current = sessionPlayers;
+    }, [template, allSavedPlayers, contextVoters, sessionPlayers]);
 
     const activeTouchesRef = useRef<Map<string | number, TouchState>>(new Map());
     const optionsRef = useRef<OptionState[]>([]);
@@ -187,25 +191,33 @@ export const usePlayerSelectorRenderer = ({
         const id = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
         playerVelocitiesRef.current.set(id, { vx: option.vx || 0, vy: option.vy || 0 });
 
+        const assignedIds = new Set(playersRef.current.map(player => player.sessionPlayerId).filter(id => id !== undefined));
+        const sessionPlayer = findSelectorSessionPlayer(sessionPlayersRef.current, option.candidate, assignedIds);
+        const suggestedColors = option.candidate.suggestedColors;
+        const color = sessionPlayer?.isColorManuallySet
+            ? sessionPlayer.color
+            : getInitialSelectorColor(suggestedColors, playersRef.current, sessionPlayersRef.current) ?? DEFAULT_COLOR;
+
         playersRef.current.push({
             id,
             candidateId: option.candidate.id,
+            sessionPlayerId: sessionPlayer?.id,
             touchId: touch.id,
-            suggestedColors: option.candidate.suggestedColors,
+            suggestedColors,
             linkedPlayerId: option.candidate.linkedPlayerId,
             x: option.x,
             y: option.y,
             textRotationDeg: touch.textRotationDeg,
             text: option.text,
-            color: option.color,
-            isColorManuallySet: false,
+            color,
+            isColorManuallySet: sessionPlayer?.isColorManuallySet === true,
             state
         });
         callbacksRef.current.onSelectorPlayersChange([...playersRef.current]);
     };
 
     const physicsLoop = createPlayerSelectorPhysicsLoop({
-        svgRef, activeTouchesRef, optionsRef, playersRef, playerVelocitiesRef, displayPositionsRef,
+        svgRef, activeTouchesRef, optionsRef, playersRef, sessionPlayersRef, playerVelocitiesRef, displayPositionsRef,
         optionIdCounterRef, animationFrameIdRef, isRunningRef, resultDisplayRef, allSavedPlayersRef, templateRef,
         contextVotersRef, prevWidthRef, prevHeightRef, callbacksRef,
         materializePlayer, removeOptionsForTouch, getNextAnonymousPlayerName, tapToRefreshText
@@ -219,7 +231,8 @@ export const usePlayerSelectorRenderer = ({
         const result = applyPaletteClick(
             playersRef.current,
             { x: clickX - rect.left, y: clickY - rect.top },
-            displayPositionsRef.current
+            displayPositionsRef.current,
+            sessionPlayersRef.current
         );
 
         if (!result.handled) return false;

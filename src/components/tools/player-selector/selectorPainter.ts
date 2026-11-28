@@ -6,6 +6,7 @@ import {
     getRetreatedDisplayPosition
 } from './selectorDisplay';
 import { COLOR_PALETTE_RADIUS, getPlayerPaletteColors, SLOT_INDICES } from './selectorHitTest';
+import type { Player } from '../../../types';
 const ORBIT_RADIUS = 110;
 const BALL_RADIUS = 26;
 
@@ -28,6 +29,7 @@ interface DrawSelectorSvgProps {
     svg: SVGSVGElement;
     rect: DOMRect;
     players: SelectorPlayer[];
+    sessionPlayers: Player[];
     options: OptionState[];
     activeTouches: Map<string | number, TouchState>;
     displayPositions: Map<string, { x: number; y: number }>;
@@ -42,6 +44,7 @@ export const drawSelectorSvg = ({
     svg,
     rect,
     players,
+    sessionPlayers,
     options,
     activeTouches,
     displayPositions,
@@ -136,7 +139,7 @@ export const drawSelectorSvg = ({
                 "stroke-width": 1
             }));
 
-            const paletteColors = getPlayerPaletteColors(p.suggestedColors, players, p.id);
+            const paletteColors = getPlayerPaletteColors(p.suggestedColors, players, p.id, sessionPlayers);
             paletteColors.forEach((color, idx) => {
                 const slotIndex = SLOT_INDICES[idx];
                 const angle = (slotIndex * 45) * Math.PI / 180;

@@ -151,13 +151,13 @@ describe('PlayerSelectorModal gesture handling', () => {
         expect(latestRendererProps.candidates.map(candidate => candidate.name)).toEqual(['Manual Alice', 'Carol']);
     });
 
-    it('marks selected players as manual and keeps exactly one starter after confirmation', async () => {
+    it('saves manual color choices and keeps exactly one starter after confirmation', async () => {
         const onUpdateSession = vi.fn();
         const sessionToConfirm: GameSession = {
             ...session,
             players: [
                 { id: 'slot-1', name: 'Alice', linkedPlayerId: 'saved-a', color: '#fff', scores: {}, totalScore: 0, isIdentityManuallySet: false },
-                { id: 'slot-2', name: 'Bob', linkedPlayerId: 'saved-b', color: '#000', scores: {}, totalScore: 0, isIdentityManuallySet: false }
+                { id: 'slot-2', name: 'Bob', linkedPlayerId: 'saved-b', color: '#000', scores: {}, totalScore: 0, isIdentityManuallySet: false, isColorManuallySet: true }
             ]
         };
 
@@ -176,8 +176,8 @@ describe('PlayerSelectorModal gesture handling', () => {
         vi.useFakeTimers();
 
         const selectedPlayers: SelectorPlayer[] = [
-            { id: 'selector-a', candidateId: 'saved-a', linkedPlayerId: 'saved-a', text: 'Alice', x: 10, y: 0, textRotationDeg: 0, color: '#fff', state: 'READY' },
-            { id: 'selector-b', candidateId: 'saved-b', linkedPlayerId: 'saved-b', text: 'Bob', x: -10, y: 0, textRotationDeg: 0, color: '#000', state: 'READY' }
+            { id: 'selector-a', candidateId: 'saved-a', sessionPlayerId: 'slot-1', linkedPlayerId: 'saved-a', text: 'Alice', x: 10, y: 0, textRotationDeg: 0, color: '#f00', isColorManuallySet: true, state: 'READY' },
+            { id: 'selector-b', candidateId: 'saved-b', linkedPlayerId: 'saved-b', text: 'Bob', x: -10, y: 0, textRotationDeg: 0, color: '#0f0', state: 'READY' }
         ];
         const latestRendererProps = rendererSpy.mock.calls[rendererSpy.mock.calls.length - 1][0] as {
             onSelectorPlayersChange: (players: SelectorPlayer[]) => void;
@@ -196,5 +196,9 @@ describe('PlayerSelectorModal gesture handling', () => {
         const updatedSession = onUpdateSession.mock.calls[0][0] as GameSession;
         expect(updatedSession.players.every(player => player.isIdentityManuallySet)).toBe(true);
         expect(updatedSession.players.filter(player => player.isStarter)).toHaveLength(1);
+        expect(updatedSession.players).toEqual(expect.arrayContaining([
+            expect.objectContaining({ id: 'slot-1', color: '#f00', isColorManuallySet: true }),
+            expect.objectContaining({ id: 'slot-2', color: '#000', isColorManuallySet: true }),
+        ]));
     });
 });

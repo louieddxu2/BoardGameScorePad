@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useImperativeHandle, useCallback, u
 import { createPortal } from 'react-dom';
 import { Play, RefreshCw } from 'lucide-react';
 import { useToolsTranslation } from '../../../i18n/tools';
-import { GameSession, SavedListItem, GameTemplate } from '../../../types';
+import { GameSession, Player, SavedListItem, GameTemplate } from '../../../types';
 import { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import { usePlayerSelectorRenderer } from './usePlayerSelectorRenderer';
 import { useModalBackHandler } from '../../../hooks/useModalBackHandler';
@@ -12,7 +12,7 @@ import { playerRecommendationEngine } from '../../../features/recommendation/Pla
 import { Voter } from '../../../features/recommendation/ContextResolver';
 import { loadPlayerRecommendationContext, LoadedPlayerRecommendationContext } from '../../../features/recommendation/playerRecommendationContext';
 import { DEFAULT_PLAYER_WEIGHTS } from '../../../features/recommendation/types';
-import { getManualSessionPlayerCandidates, getPlayerCandidateLocks, prioritizePlayerCandidates } from './selectorCandidates';
+import { findSelectorSessionPlayer, getManualSessionPlayerCandidates, getPlayerCandidateLocks, prioritizePlayerCandidates } from './selectorCandidates';
 
 interface PlayerSelectorModalProps {
     isOpen: boolean;
@@ -37,6 +37,7 @@ interface PlayerSelectorSurfaceProps {
     shouldRetreatPlayers: boolean;
     isInteractionLocked: boolean;
     expectedPlayerCount?: number;
+    sessionPlayers: Player[];
     template?: GameTemplate;
     allSavedPlayers?: SavedListItem[];
     contextVoters?: Voter[];
@@ -53,6 +54,7 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
     shouldRetreatPlayers,
     isInteractionLocked,
     expectedPlayerCount = 0,
+    sessionPlayers,
     template,
     allSavedPlayers,
     contextVoters,
@@ -71,6 +73,7 @@ const PlayerSelectorSurface = React.forwardRef<PlayerSelectorSurfaceHandle, Play
         shouldRetreatPlayers,
         isInteractionLocked,
         expectedPlayerCount,
+        sessionPlayers,
         template,
         allSavedPlayers,
         contextVoters,
@@ -369,25 +372,25 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
 
             // 3. 安全更新計分板 GameSession (保留歷史分數，僅調整座位與 Starter)
             if (onUpdateSession) {
-                const usedExistingIds = new Set<string>(); // 避免 existingPlayer 被重複配對
+                const existingById = new Map(session.players.map(player => [player.id, player]));
+                const usedExistingIds = new Set(sortedBySeat.map(player => player.sessionPlayerId).filter(id => id !== undefined));
 
                 const updatedPlayers = sortedBySeat.map(sp => {
-                    // 比對 linkedPlayerId 或 name，尋找原本已在計分板中且尚未被佔用的玩家
-                    const existingPlayer = session.players.find(p => 
-                        !usedExistingIds.has(p.id) && (
-                            (sp.linkedPlayerId && p.linkedPlayerId === sp.linkedPlayerId) ||
-                            p.id === sp.id || 
-                            p.name === sp.text
-                        )
-                    );
+                    const existingPlayer = (sp.sessionPlayerId ? existingById.get(sp.sessionPlayerId) : undefined)
+                        ?? findSelectorSessionPlayer(session.players, {
+                            sessionPlayerId: sp.id,
+                            linkedPlayerId: sp.linkedPlayerId,
+                            name: sp.text,
+                        }, usedExistingIds);
 
                     const isStarter = sp.id === starterPlayerId;
 
                     if (existingPlayer) {
                         usedExistingIds.add(existingPlayer.id);
+                        const keepSessionColor = existingPlayer.isColorManuallySet && !sp.isColorManuallySet;
                         return {
                             ...existingPlayer,
-                            color: sp.color,
+                            color: keepSessionColor ? existingPlayer.color : sp.color,
                             isStarter,
                             isIdentityManuallySet: true,
                             isColorManuallySet: sp.isColorManuallySet || existingPlayer.isColorManuallySet || false
@@ -441,6 +444,7 @@ const PlayerSelectorModal: React.FC<PlayerSelectorModalProps> = ({
                     shouldRetreatPlayers={shouldKeepRetreatedLayout}
                     isInteractionLocked={phase === 'drawing'}
                     expectedPlayerCount={session.players.length}
+                    sessionPlayers={session.players}
                     template={template}
                     allSavedPlayers={allSavedPlayers}
                     contextVoters={recommendationContext.voters}

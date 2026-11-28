@@ -1,4 +1,4 @@
-import { getPlayerPaletteColors, COLOR_PALETTE_RADIUS } from './selectorHitTest';
+import { COLOR_PALETTE_RADIUS } from './selectorHitTest';
 import { drawSelectorSvg } from './selectorPainter';
 import { predictColorsForPlayer } from '../../../features/recommendation/PlayerRecommendationEngine';
 import { COLORS } from '../../../colors';
@@ -26,7 +26,7 @@ export const DEFAULT_COLOR = "#475569";
 
 /** Capture shared refs once; no new context is allocated during animation frames. */
 export function createPlayerSelectorPhysicsLoop({
-    svgRef, activeTouchesRef, optionsRef, playersRef, playerVelocitiesRef, displayPositionsRef,
+    svgRef, activeTouchesRef, optionsRef, playersRef, sessionPlayersRef, playerVelocitiesRef, displayPositionsRef,
     optionIdCounterRef, animationFrameIdRef, isRunningRef, resultDisplayRef, allSavedPlayersRef, templateRef,
     contextVotersRef, prevWidthRef, prevHeightRef, callbacksRef,
     materializePlayer, removeOptionsForTouch, getNextAnonymousPlayerName, tapToRefreshText
@@ -261,12 +261,6 @@ export function createPlayerSelectorPhysicsLoop({
 
                                 lockedOpt.candidate.suggestedColors = preferredColors;
 
-                                const recommendedColors = getPlayerPaletteColors(
-                                    preferredColors,
-                                    playersRef.current,
-                                    'player_' + touchId
-                                );
-                                lockedOpt.color = recommendedColors[0] || DEFAULT_COLOR;
                                 optionsRef.current = optionsRef.current.filter(o => {
                                     if (o.touchId !== touchId) return true;
                                     return o.id === touch.selectedOptionId;
@@ -304,7 +298,7 @@ export function createPlayerSelectorPhysicsLoop({
                             frozenX: touch.anchorX,
                             frozenY: touch.anchorY,
                             text: anonymousName,
-                            color: getPlayerPaletteColors(undefined, playersRef.current, 'player_' + touchId)[0] || DEFAULT_COLOR,
+                            color: DEFAULT_COLOR,
                             candidate: anonymousCandidate
                         };
 
@@ -525,6 +519,7 @@ export function createPlayerSelectorPhysicsLoop({
             svg,
             rect,
             players: playersRef.current,
+            sessionPlayers: sessionPlayersRef.current,
             options: optionsRef.current,
             activeTouches: activeTouchesRef.current,
             displayPositions: displayPositionsRef.current,

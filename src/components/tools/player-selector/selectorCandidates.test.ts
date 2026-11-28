@@ -31,8 +31,8 @@ describe('selectorCandidates', () => {
         ]);
 
         expect(result).toEqual([
-            { id: 'saved-a', linkedPlayerId: 'saved-a', name: 'Alice edited' },
-            { id: 'session-player:slot-3', linkedPlayerId: undefined, name: 'Manual Guest' },
+            { id: 'saved-a', linkedPlayerId: 'saved-a', name: 'Alice edited', sessionPlayerId: 'slot-1' },
+            { id: 'session-player:slot-3', linkedPlayerId: undefined, name: 'Manual Guest', sessionPlayerId: 'slot-3' },
             { id: 'saved-b', linkedPlayerId: 'saved-b', name: 'Wrong prediction' },
             { id: 'saved-c', linkedPlayerId: 'saved-c', name: 'Carol' },
             { id: 'same-name-guest', name: 'Manual Guest' }

@@ -1,5 +1,6 @@
 import { SelectorPlayer } from './types';
 import { COLORS } from '../../../colors';
+import type { Player } from '../../../types';
 
 export const PLAYER_BOX_HALF_WIDTH = 43;
 export const PLAYER_BOX_HALF_HEIGHT = 17;
@@ -57,31 +58,51 @@ export const isPlayerBodyHit = (localPoint: Point): boolean => {
 };
 
 /**
- * 計算某位玩家當前可用的調色盤推薦色（排除被其他玩家選走的顏色，最多 7 色）
+ * 決定器的新選擇會取代同一位玩家原先在計分板選的顏色。
  */
+const getAvailableColors = (
+    preferredColors: string[] | undefined,
+    currentPlayers: SelectorPlayer[],
+    sessionPlayers: Player[],
+    currentPlayerId?: string
+): string[] => {
+    const assignedIds = new Set<string>();
+    const reservedColors = new Set<string>();
+    for (const player of currentPlayers) {
+        if (player.sessionPlayerId) assignedIds.add(player.sessionPlayerId);
+        if (player.id !== currentPlayerId && player.isColorManuallySet) reservedColors.add(player.color);
+    }
+    for (const player of sessionPlayers) {
+        if (player.isColorManuallySet && !assignedIds.has(player.id)) reservedColors.add(player.color);
+    }
+    const sourceColors = preferredColors && preferredColors.length > 0 ? preferredColors : COLORS;
+    return sourceColors.filter(color => color !== 'transparent' && !reservedColors.has(color));
+};
+
 export const getPlayerPaletteColors = (
     preferredColors: string[] | undefined,
     currentPlayers: SelectorPlayer[],
-    currentPlayerId: string
+    currentPlayerId: string,
+    sessionPlayers: Player[] = []
 ): string[] => {
-    const otherSelectedColors = new Set(
-        currentPlayers
-            .filter(p => p.id !== currentPlayerId)
-            .map(p => p.color)
-    );
+    const available = getAvailableColors(preferredColors, currentPlayers, sessionPlayers, currentPlayerId);
+    const palette = available.slice(0, SLOT_INDICES.length);
+    const currentColor = currentPlayers.find(player => player.id === currentPlayerId)?.color;
+    // An automatic color can sit beyond the first seven suggestions in a larger group.
+    if (currentColor && available.includes(currentColor) && !palette.includes(currentColor)) {
+        palette[palette.length - 1] = currentColor;
+    }
+    return palette;
+};
 
-    const availableColors: string[] = [];
-
-    // 推薦顏色已包含所有 17 色的完整排序，直接按順序取用未被佔用的顏色
-    const sourceColors = preferredColors && preferredColors.length > 0 ? preferredColors : COLORS;
-
-    sourceColors.forEach(color => {
-        if (!otherSelectedColors.has(color) && color !== 'transparent') {
-            availableColors.push(color);
-        }
-    });
-
-    return availableColors.slice(0, 7);
+export const getInitialSelectorColor = (
+    preferredColors: string[] | undefined,
+    currentPlayers: SelectorPlayer[],
+    sessionPlayers: Player[]
+): string | undefined => {
+    const available = getAvailableColors(preferredColors, currentPlayers, sessionPlayers);
+    const usedColors = new Set(currentPlayers.map(player => player.color));
+    return available.find(color => !usedColors.has(color)) ?? available[0];
 };
 
 /**
@@ -105,12 +126,13 @@ export const getPaletteColorAtLocalPoint = (localPoint: Point, paletteColors: st
 export const applyPaletteClick = (
     players: SelectorPlayer[],
     point: Point,
-    displayPositions?: Map<string, Point>
+    displayPositions?: Map<string, Point>,
+    sessionPlayers?: Player[]
 ): PaletteHitResult => {
     for (const player of players) {
         if (player.state !== 'COLOR_PICKING') continue;
 
-        const paletteColors = getPlayerPaletteColors(player.suggestedColors, players, player.id);
+        const paletteColors = getPlayerPaletteColors(player.suggestedColors, players, player.id, sessionPlayers);
         const displayPos = displayPositions?.get(player.id);
         const color = getPaletteColorAtLocalPoint(getPlayerLocalPoint(player, point, displayPos), paletteColors);
         if (!color) continue;

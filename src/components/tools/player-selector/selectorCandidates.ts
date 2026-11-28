@@ -7,8 +7,20 @@ export const getManualSessionPlayerCandidates = (players: Player[]): Candidate[]
     .map(player => ({
         id: player.linkedPlayerId || `session-player:${player.id}`,
         name: player.name.trim(),
-        linkedPlayerId: player.linkedPlayerId
+        linkedPlayerId: player.linkedPlayerId,
+        sessionPlayerId: player.id
     }));
+
+export function findSelectorSessionPlayer(
+    players: Player[],
+    { sessionPlayerId, linkedPlayerId, name }: { sessionPlayerId?: string; linkedPlayerId?: string; name: string },
+    assignedIds: ReadonlySet<string>
+): Player | undefined {
+    const available = players.filter(player => !assignedIds.has(player.id));
+    return available.find(player => player.id === sessionPlayerId)
+        ?? available.find(player => linkedPlayerId && player.linkedPlayerId === linkedPlayerId)
+        ?? available.find(player => (!linkedPlayerId || !player.linkedPlayerId) && player.name.trim() === name);
+}
 
 export const prioritizePlayerCandidates = (
     preferredCandidates: Candidate[],

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { SelectorPlayer } from './types';
+import type { Player } from '../../../types';
+import { COLORS } from '../../../colors';
 import {
     applyPaletteClick,
     applyPlayerClick,
     COLOR_PALETTE_RADIUS,
+    getInitialSelectorColor,
+    getPlayerPaletteColors,
     getPlayerLocalPoint,
     isPlayerBodyHit,
     isPlayerDeleteHit
@@ -48,6 +52,43 @@ describe('selectorHitTest', () => {
             color: 'rgb(var(--c-p-emerald))',
             state: 'READY'
         });
+    });
+
+    it('lets two players swap automatically assigned colors with one choice each', () => {
+        const colors = ['#2563eb', '#ef4444', '#059669'];
+        const players = [
+            makePlayer({ id: 'alice', state: 'COLOR_PICKING', color: colors[1], suggestedColors: colors }),
+            makePlayer({ id: 'bob', x: 300, color: colors[0], suggestedColors: colors }),
+        ];
+        const first = applyPaletteClick(players, { x: 100, y: 100 + COLOR_PALETTE_RADIUS });
+        expect(first.players[0]).toMatchObject({ color: colors[0], isColorManuallySet: true });
+
+        const opened = applyPlayerClick(first.players, { x: 300, y: 100 });
+        const second = applyPaletteClick(opened.players, { x: 300, y: 100 + COLOR_PALETTE_RADIUS });
+        expect(second.players[1]).toMatchObject({ color: colors[1], isColorManuallySet: true });
+    });
+
+    it('reserves a scoreboard choice until its owner selects a replacement', () => {
+        const [blue, red, green] = ['#2563eb', '#ef4444', '#059669'];
+        const scoreboard: Player[] = [
+            { id: 'alice', name: 'Alice', color: blue, isColorManuallySet: true, scores: {}, totalScore: 0 },
+            { id: 'bob', name: 'Bob', color: green, scores: {}, totalScore: 0 },
+        ];
+        const bob = makePlayer({ id: 'bob-selector', color: green, suggestedColors: [blue, red, green] });
+        const alice = makePlayer({ id: 'alice-selector', sessionPlayerId: 'alice', color: blue, isColorManuallySet: true,
+            suggestedColors: [red, blue, green], state: 'COLOR_PICKING' });
+        expect(getPlayerPaletteColors(bob.suggestedColors, [bob], bob.id, scoreboard)).toEqual([red, green]);
+        expect(getPlayerPaletteColors(alice.suggestedColors, [alice, bob], alice.id, scoreboard)).toEqual([red, blue, green]);
+
+        const changed = applyPaletteClick([alice, bob], { x: 100, y: 100 + COLOR_PALETTE_RADIUS }, undefined, scoreboard);
+        expect(changed.players[0].color).toBe(red);
+        expect(getPlayerPaletteColors(bob.suggestedColors, changed.players, bob.id, scoreboard)).toEqual([blue, green]);
+        expect(getInitialSelectorColor(bob.suggestedColors, [bob], scoreboard)).toBe(red);
+    });
+
+    it('keeps a player’s current unreserved color available even beyond the first seven suggestions', () => {
+        const player = makePlayer({ color: COLORS[7] });
+        expect(getPlayerPaletteColors(COLORS, [player], player.id)).toEqual([...COLORS.slice(0, 6), COLORS[7]]);
     });
 
     it('does not select a color at the hidden top slot (270° / index 6)', () => {

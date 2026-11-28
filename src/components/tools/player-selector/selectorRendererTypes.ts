@@ -1,5 +1,5 @@
 import type { MutableRefObject, RefObject } from 'react';
-import type { GameTemplate, SavedListItem } from '../../../types';
+import type { GameTemplate, Player, SavedListItem } from '../../../types';
 import type { Voter } from '../../../features/recommendation/ContextResolver';
 import type { Candidate, SelectorPlayer, SelectorTurnOrderEntry } from './types';
 import type { OptionState, TouchState } from './selectorEngineTypes';
@@ -9,6 +9,7 @@ export interface PlayerSelectorPhysicsOptions {
     activeTouchesRef: MutableRefObject<Map<string | number, TouchState>>;
     optionsRef: MutableRefObject<OptionState[]>;
     playersRef: MutableRefObject<SelectorPlayer[]>;
+    sessionPlayersRef: MutableRefObject<Player[]>;
     playerVelocitiesRef: MutableRefObject<Map<string, { vx: number; vy: number }>>;
     displayPositionsRef: MutableRefObject<Map<string, { x: number; y: number }>>;
     optionIdCounterRef: MutableRefObject<number>;
