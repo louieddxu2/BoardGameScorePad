@@ -245,6 +245,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
     isScannerOpen ||
     isTextureMapperOpen ||
     screenshotModal.isOpen ||
+    sessionState.uiState.isScoreDisplayOpen ||
     showShareMenu;
 
   const canAutoOpenToolbox = !!baseImage || template.columns.length >= 5;
@@ -366,6 +367,8 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
       {dialogViews.columnEditor}
 
       {dialogViews.addColumn}
+
+      {dialogViews.scoreDisplay}
 
       {/* Hidden inputs for photos */}
       <input ref={media.photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={media.handlePhotoSelect} />
@@ -546,6 +549,7 @@ const SessionView: React.FC<SessionViewProps> = (props) => {
         onUpdateSavedPlayer={props.onUpdateSavedPlayer} // Updated Prop Name
         onTakePhoto={capabilities.canUseMediaTools ? media.openScoreCamera : undefined}
         onScreenshotRequest={capabilities.canUseMediaTools ? handleScreenshotRequest : undefined}
+        onShowScores={() => setUiState(prev => ({ ...prev, isScoreDisplayOpen: true }))}
         isVoiceEnabled={props.isVoiceEnabled}
         onToggleVoice={props.onToggleVoice}
         bottomOffset={panelDockOffset}

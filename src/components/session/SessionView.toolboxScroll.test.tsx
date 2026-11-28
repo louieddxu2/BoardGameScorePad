@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SessionView from './SessionView';
 import { ConfirmationProvider } from '../../hooks/useConfirm';
@@ -394,6 +394,95 @@ describe('SessionView toolbox browser history', () => {
     expect(screen.getByText('Game Toolbox')).toBeInTheDocument();
     expect(window.history.pushState).not.toHaveBeenCalled();
     expect(historyIndex).toBe(0);
+  });
+
+  it('opens score display from the right end of the first toolbox row', () => {
+    renderSession({ session: { ...makeSession(), photos: ['photo-1'] } });
+    openToolbox('button');
+    const display = screen.getByRole('button', { name: 'Display' });
+    const toolsRow = display.parentElement!;
+    const toolboxGrid = toolsRow.closest('[data-toolbox-scroller]')?.firstElementChild;
+    expect(toolsRow.parentElement).toBe(toolboxGrid?.firstElementChild);
+    expect(within(toolsRow).getAllByRole('button').map(button => button.textContent)).toEqual([
+      'Screenshot', 'Camera', 'Display',
+    ]);
+    fireEvent.click(display);
+
+    expect(screen.getByRole('dialog', { name: 'Score display' })).toBeInTheDocument();
+    expect(historyIndex).toBe(2);
+    expect(entries[historyIndex]).toEqual({ modal: 'session-score-display' });
+    act(() => {
+      historyIndex -= 1;
+      window.dispatchEvent(new PopStateEvent('popstate', { state: entries[historyIndex] }));
+    });
+
+    expect(screen.queryByRole('dialog', { name: 'Score display' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Display' })).toBeInTheDocument();
+    expect((window as any).__modalStack).toEqual(['session-toolbox']);
+    expect(window.history.back).not.toHaveBeenCalled();
+  });
+
+  it('closes with one history traversal and returns focus to Display', async () => {
+    renderSession();
+    openToolbox('button');
+    const display = screen.getByRole('button', { name: 'Display' });
+    display.focus();
+    fireEvent.click(display);
+    const dialog = screen.getByRole('dialog', { name: 'Score display' });
+    const close = within(dialog).getByRole('button', { name: 'Close' });
+    expect(close).toHaveFocus();
+    fireEvent.click(close);
+    fireEvent.click(close);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersToNextTimerAsync();
+    });
+
+    expect(screen.queryByRole('dialog', { name: 'Score display' })).not.toBeInTheDocument();
+    expect(display).toHaveFocus();
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    expect(historyIndex).toBe(1);
+  });
+
+  it('shows the same sorted results and selected photo labels on both sides', () => {
+    const template = makeTemplate();
+    const [role, mission, hidden, numeric] = template.columns;
+    template.columns.splice(0, 4,
+      { ...role, name: 'Role heading', inputType: 'clicker', showInPhoto: true, renderMode: 'label_only',
+        quickActions: [{ id: 'captain', label: 'Captain', value: 0 }] },
+      { ...mission, name: 'Mission heading', inputType: 'clicker', showInPhoto: true, isShared: true, isMultiSelect: true,
+        quickActions: [{ id: 'dawn', label: 'Dawn', value: 0 }, { id: 'dusk', label: 'Dusk', value: 0 }] },
+      { ...hidden, name: 'Private heading', inputType: 'clicker',
+        quickActions: [{ id: 'invisible', label: 'Invisible', value: 0 }] },
+      { ...numeric, name: 'Numeric heading', showInPhoto: true },
+    );
+    const session = makeSession();
+    session.players[0].totalScore = 4;
+    session.players[1] = {
+      ...session.players[1],
+      totalScore: 10,
+      scores: {
+        [role.id]: { parts: [0], optionId: 'captain' },
+        [mission.id]: { parts: [0], multiOptionIds: ['dawn', 'dusk'] },
+        [hidden.id]: { parts: [0], optionId: 'invisible' },
+        [numeric.id]: { parts: [727] },
+      },
+    };
+    renderSession({ session, template });
+    openToolbox('button');
+    fireEvent.click(screen.getByRole('button', { name: 'Display' }));
+    const dialog = screen.getByRole('dialog', { name: 'Score display' });
+    const lists = within(dialog).getAllByRole('list', { hidden: true });
+    expect(lists).toHaveLength(2);
+    for (const list of lists) {
+      const [first, second] = Array.from(list.children);
+      expect(first).toHaveAttribute('data-first-place', 'true');
+      expect(first).toHaveTextContent('Place 1Player 210Captain');
+      expect(second).toHaveTextContent('Place 2Player 14');
+    }
+    expect(within(dialog).getAllByText('Dawn')).toHaveLength(2);
+    expect(within(dialog).getAllByText('Dusk')).toHaveLength(2);
+    expect(within(dialog).queryByText(/heading|Invisible|727/)).not.toBeInTheDocument();
   });
 });
 

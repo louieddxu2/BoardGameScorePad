@@ -39,6 +39,7 @@ export const toolsTranslations = {
         // Media
         media_camera: "拍照",
         media_screenshot: "截圖",
+        media_display: "展示",
 
         // Team Tool
         team_title: "隨機分隊",
@@ -123,6 +124,7 @@ export const toolsTranslations = {
         // Media
         media_camera: "Camera",
         media_screenshot: "Screenshot",
+        media_display: "Display",
 
         // Team Tool
         team_title: "Team Generator",

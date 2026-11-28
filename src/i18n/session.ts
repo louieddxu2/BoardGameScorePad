@@ -311,6 +311,8 @@ export const sessionTranslations = {
     screenshot_outcome_loss: "敗",
     screenshot_team_win: "團隊勝利",
     screenshot_team_loss: "團隊落敗",
+    score_display_title: "分數展示",
+    score_display_rank: "第 {rank} 名",
   },
   'en': {
     // --- Session View ---
@@ -622,6 +624,8 @@ export const sessionTranslations = {
     screenshot_outcome_loss: "Loss",
     screenshot_team_win: "Team victory",
     screenshot_team_loss: "Team defeat",
+    score_display_title: "Score display",
+    score_display_rank: "Place {rank}",
   },
 };
 

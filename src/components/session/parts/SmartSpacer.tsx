@@ -16,6 +16,7 @@ interface SmartSpacerProps {
     template: GameTemplate;
     onTakePhoto?: () => void;
     onScreenshot?: () => void;
+    onShowScores?: () => void;
     onUpdateSession: (session: GameSession) => void;
     mode?: 'session' | 'history'; // New prop
     mediaOnly?: boolean;
@@ -23,12 +24,13 @@ interface SmartSpacerProps {
     onMemoFocusChange?: (focused: boolean) => void;
 }
 
-const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onUpdateSession, mode = 'session', mediaOnly = false, topContent, onMemoFocusChange }) => {
+const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhoto, onScreenshot, onShowScores, onUpdateSession, mode = 'session', mediaOnly = false, topContent, onMemoFocusChange }) => {
     const { t } = useSessionTranslation();
     const isHistory = mode === 'history';
     const isPinchingRef = useRef(false);
     const scrollerRef = useRef<HTMLDivElement>(null);
     const isMemoFocusedRef = useRef(false);
+    const photoStrip = topContent && <div className="col-span-4 min-w-0">{topContent}</div>;
 
     const pinMemoToTop = () => {
         if (!isMemoFocusedRef.current || !scrollerRef.current) return;
@@ -80,16 +82,14 @@ const SmartSpacer: React.FC<SmartSpacerProps> = ({ session, template, onTakePhot
             {/* Toolbox Grid - Masonry-ish Layout */}
             <div className="grid grid-cols-4 gap-3 w-full max-w-sm mx-auto pb-20">
 
-                {topContent && (
-                    <div className="col-span-4 min-w-0">
-                        {topContent}
-                    </div>
-                )}
+                {!onShowScores && photoStrip}
 
                 {/* Row 1: Media */}
                 <div className="col-span-4">
-                    <MediaTool onTakePhoto={onTakePhoto} onScreenshot={onScreenshot} />
+                    <MediaTool onTakePhoto={onTakePhoto} onScreenshot={onScreenshot} onShowScores={onShowScores} />
                 </div>
+
+                {onShowScores && photoStrip}
 
                 {!mediaOnly && <div className="col-span-4 h-px bg-[rgb(var(--c-input-border)/0.5)] my-1 flex items-center justify-center">
                     <span className="bg-[rgb(var(--c-input-bg))] px-2 text-[10px] text-txt-muted font-bold uppercase tracking-widest flex items-center gap-1">

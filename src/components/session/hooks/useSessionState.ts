@@ -33,6 +33,7 @@ export interface UIState {
   isSessionExitModalOpen: boolean;
   isAddColumnModalOpen: boolean;
   showShareMenu: boolean;
+  isScoreDisplayOpen: boolean;
   screenshotModal: {
     isOpen: boolean;
     mode: 'full' | 'simple';
@@ -79,6 +80,7 @@ export const useSessionState = (props: SessionViewProps) => {
       isSessionExitModalOpen: false,
       isAddColumnModalOpen: false,
       showShareMenu: false,
+      isScoreDisplayOpen: false,
       screenshotModal: { isOpen: false, mode: 'full', layout: null },
       isPhotoGalleryOpen: false,
       galleryParams: { mode: 'default' }, // Default init

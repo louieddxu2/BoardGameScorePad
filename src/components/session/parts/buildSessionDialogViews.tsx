@@ -13,6 +13,7 @@ import type { useCommonTranslation } from '../../../i18n/common';
 import ColumnConfigEditor from '../../shared/ColumnConfigEditor';
 import AddColumnModal from '../modals/AddColumnModal';
 import SessionExitModal from '../modals/SessionExitModal';
+import ScoreDisplayModal from '../modals/ScoreDisplayModal';
 import PhotoGalleryModal from '../modals/PhotoGalleryModal';
 import SessionBackgroundModal from '../modals/SessionBackgroundModal';
 import SessionImageFlow from '../SessionImageFlow';
@@ -209,6 +210,16 @@ export function buildSessionDialogViews({
         onClose={() => setUiState(prev => ({ ...prev, isAddColumnModalOpen: false }))}
         onAddBlank={eventHandlers.handleAddBlankColumn}
         onCopy={eventHandlers.handleCopyColumns}
+      />
+    ),
+    scoreDisplay: (
+      <ScoreDisplayModal
+        isOpen={sessionState.uiState.isScoreDisplayOpen}
+        gameName={session.name || template.name}
+        players={session.players}
+        columns={template.columns}
+        scoringRule={session.scoringRule}
+        onClose={() => setUiState(prev => ({ ...prev, isScoreDisplayOpen: false }))}
       />
     ),
   };

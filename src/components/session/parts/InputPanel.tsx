@@ -30,6 +30,7 @@ interface InputPanelProps {
     // [New Props for SmartSpacer]
     onTakePhoto?: () => void;
     onScreenshotRequest?: (mode: 'full' | 'simple') => void;
+    onShowScores?: () => void;
     isVoiceEnabled?: boolean;
     onToggleVoice?: () => void;
     bottomOffset: string;
@@ -527,6 +528,7 @@ const InputPanel: React.FC<InputPanelProps> = (props) => {
                         template={template}
                         onTakePhoto={onTakePhoto}
                         onScreenshot={() => onScreenshotRequest?.('simple')} // Default to simple for quick screenshot
+                        onShowScores={props.onShowScores}
                         onUpdateSession={onUpdateSession} // [Fix] Pass updater to allow order shuffling
                         mediaOnly={mediaOnlyTools}
                         onMemoFocusChange={onToolboxInputFocusChange}

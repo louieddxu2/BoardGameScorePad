@@ -12,8 +12,9 @@ interface PhotoItemHeading {
 export type PhotoItemValue = { value: string } | { labels: Array<{ id: string; text: string; color: string }> };
 
 /** Resolve values against the same column definitions and scoring context as the grid. */
-function getPhotoItemValue(column: ScoreColumn, player: Player, columns: ScoreColumn[], players: Player[]): PhotoItemValue | undefined {
-  const context = { allColumns: columns, playerScores: player.scores, allPlayers: players };
+function getPhotoItemValue(
+  column: ScoreColumn, player: Player, columns: ScoreColumn[], players: Player[], labelsOnly: boolean,
+): PhotoItemValue | undefined {
   const score = player.scores[column.id];
   const options = resolveSelectedOptions(column, score);
   if (options.length) {
@@ -21,13 +22,17 @@ function getPhotoItemValue(column: ScoreColumn, player: Player, columns: ScoreCo
       id: option.id, text: option.label, color: getQuickActionBackground(option.color, column.color),
     })) };
   }
+  if (labelsOnly) return undefined;
   const parts = score?.parts ?? [];
   if (!column.isAuto && parts.length === 0) return undefined;
+  const context = { allColumns: columns, playerScores: player.scores, allPlayers: players };
   const error = getAutoColumnError(column, context);
   return { value: error ? 'ERR' : formatDisplayNumber(calculateColumnScore(column, parts, context, score)) };
 }
 
-export function getPhotoItemRows(columns: ScoreColumn[], players: (Player & { isAnonymous?: boolean })[]) {
+export function getPhotoItemRows(
+  columns: ScoreColumn[], players: (Player & { isAnonymous?: boolean })[], { labelsOnly = false } = {},
+) {
   const individual: (PhotoItemHeading & { values: Map<string, PhotoItemValue> })[] = [];
   const shared: (PhotoItemHeading & { value: PhotoItemValue })[] = [];
   const visiblePlayers = players.filter(player => !player.isAnonymous);
@@ -37,7 +42,7 @@ export function getPhotoItemRows(columns: ScoreColumn[], players: (Player & { is
     const heading = { id: column.id, name: column.name, color: column.color };
     const values = new Map<string, PhotoItemValue>();
     for (const player of visiblePlayers) {
-      const value = getPhotoItemValue(column, player, columns, players);
+      const value = getPhotoItemValue(column, player, columns, players, labelsOnly);
       if (!value) continue;
       if (column.isShared) {
         // A shared input is stored per player. Use the first value eligible for export.
